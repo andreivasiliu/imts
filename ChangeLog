@@ -1,0 +1,26 @@
+IMTS-3
+======
+
+- MudBot no longer treats data received from the server as C strings, anywhere.
+- GetString limit set, to prevent any buffer overflows. Not that they ever
+existed though...
+- Replaced all occurances of "\n\r" with "\r\n", in hope of making it more
+compatible with Zmud.
+
+- Lines beginning with '<', '(', or any weird characters won't be considered
+room names.
+- Who list changed.
+- Survey will create an area or switch to an existing one, instead of
+updating the current area's name.
+- 'area update' will make survey update an area's name, instead of
+creating/switching.
+- 'map path' can take more arguments as vnums, and will bring you to the
+nearest vnum.
+- 'exit special capture create' and 'exit special capture link <vnum>' added.
+
+
+IMTS-4
+======
+
+- Alias checking doesn't crash when the Command it points to is NULL.
+

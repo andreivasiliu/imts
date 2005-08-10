@@ -1,0 +1,86 @@
+# Aliases
+
+# Variables: $t = target
+#            $T = $1 if not null, or else target
+#            $1 - $9 = argument
+#            $* = all arguments
+
+alias clear
+
+# Misc
+alias add ice point ring47309 $1
+alias add fire point ring13771 at $T
+alias add oeat outr $1;eat $1
+alias add ms mind sense $T
+alias add - get $T
+alias add = get 5 $T
+alias add spr outr primrose;eat primrose;search;who here
+alias add tbow taekyonbow $1
+alias add pnod politenod $1
+#alias add lure land;drop bottle;say Phasma phasmatis;get bottle;sk
+#alias add salt land;get saltpetre;sk
+alias add flint wield flintlock;wield flintlock
+alias add load1 outr shot;outr blackpowder;load 152344
+alias add load2 outr shot;outr blackpowder;load 152667
+alias add unw unwield left;unwield right
+
+# Taekate
+alias add sl spp $T left
+alias add hl hfp $T left
+alias add sr spp $T right
+alias add hr hfp $T right
+alias add lleg hfp $T left;hfp $T left;hfp $T left;hfp $T left
+alias add rleg hfp $T right;hfp $T right;hfp $T right;hfp $T right
+alias add larm spp $T left;spp $T left;spp $T left;spp $T left
+alias add rarm spp $T right;spp $T right;spp $T right;spp $T right
+alias add legs hfp $T left;hfp $T right;hfp $T left;hfp $T right
+alias add arms spp $T left;spp $T right;spp $T left;spp $T right
+alias add head ucp $T;ucp $T;ucp $T;ucp $T
+alias add k ucp $T;ucp $T;ucp $T;ucp $T
+alias add bk brs;ucp $T;ucp $T
+alias add torso hkp $T;hkp $T;hkp $T;hkp $T
+alias add all hfp $T left;hfp $T right;spp $T left;spp $T right
+alias add f feint $T torso
+alias add hunt sdk $T;ucp $T;ucp $T
+alias add shunt scs;ucp $T;ucp $T
+
+alias add jaa jpk $T;swk $T;spp $T left;spp $T right
+alias add jll jpk $T;swk $T;hfp $T left;hfp $T right
+alias add sll swk $T;hfp $T left;hfp $T right
+alias add saa swk $T;spp $T left;spp $T right
+alias add kaicombo slt $T;pmp $T;pmp $T
+alias add selfkaicombo kon;slt $T;pmp $T;pmp $T;koff
+alias add bbt bbt $T
+alias add bbtc bbt $T;mind command apply restoration to head
+alias add cc swk $T;jpk $T;feint $T torso;trueassess $T;hfp $T right;trueassess $T
+
+# Telepathy.
+alias add ml mind lock $T
+alias add mdl mind deadening $T;mind lock $T
+alias add prl mind paralyse $T
+alias add conf mind confuse $T
+alias add drain mind drain $T
+alias add epil mind epilepsy $T
+alias add stp mind stupidity $T
+alias add stup mind stupidity $T
+alias add pacif mind pacify $T
+alias add amn mind amnesia $T
+alias add batter mind batter $T
+alias add dis mind disrupt $T
+alias add div mind divine $T
+alias add mr mind radiance
+alias add mc mind command $*
+alias add md mind deadening $T
+alias add cr mind crush $T
+alias add strip mind strip $T
+alias add b mind blackout
+
+# Kaido
+alias add kc kai choke $T
+alias add kcr kai cripple $T
+alias add kb kai banish $T
+alias add kl kai strike $T left leg
+alias add kr kai strike $T right leg
+alias add ki kai immolate $T
+alias add ke kai enfeeble $T
+

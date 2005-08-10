@@ -1,0 +1,37 @@
+OVERALL
+=======
+
+- Make it all work well. :)
+
+IMPERIAN
+========
+
+- Pull barbed arrows only if more than 5.
+- Enemy All
+- Fix salve balance timers.
+- Fix 'heal_to_crippled'.
+- Fix Defense pipe refilling.
+- Timer on Pipes.
+- "The salve fizzles away without effect."
+
+- Blackout trips.
+
+IMAPPER
+=======
+
+- Fix open door.
+- Customizable colors.
+- Personal rooms, stored in a personal map file.
+- Alertness fixing.
+* IAC.
+- Locked doors vnum message.
+* Path NEAR.
+- Enable/Disable prefix/suffix.
+- Modules.txt
+- Composer gather
+
+
+IOFFENSE
+========
+
+- Nothing!

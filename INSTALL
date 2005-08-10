@@ -1,0 +1,44 @@
+UNIX
+====
+
+All you have to do is to type 'make', and pray. If all works well, you
+should be able to run the newly created './bot' executable, which will use
+the newly created *.so files.
+
+Should make fail, this is how a manual compile is done:
+bot - gcc [extra flags] -o bot main.c -lz -ldl
+modules - gcc [extra flags] -o name.so -shared name.c
+
+
+
+WINDOWS
+=======
+
+MudBot Core:
+-----------
+
+Compile main.c as a console application (as opposed to a Windows app, which
+requires a WinMain function), and define FOR_WINDOWS. Also link the WinSock
+library (-lwsock32). If you do not add MCCP support, also define DISABLE_MCCP.
+
+Example:
+ gcc [extra flags] -o mb-core main.c -DFOR_WINDOWS -DDISABLE_MCCP -lwsock32
+
+For MCCP support, you'll need to (statically) link libz.a, and add zlib.h
+and zconf.h in a subdirectory called 'zlib'. (useful link: www.zlib.org)
+
+Example:
+ gcc [extra flags] -o mb-core main.c zlib/libz.a -DFOR_WINDOWS -lwsock32
+
+Modules:
+-------
+
+Compile [name].c as a Windows DLL, and define FOR_WINDOWS. Make sure it does
+not export symbols with an underscore.
+
+I forgot the command line arguments to compile a DLL, so no example.
+
+
+
+Have problems compiling, and you -really- want to get it working? Use this,
+then:  andrei@stipo.ro

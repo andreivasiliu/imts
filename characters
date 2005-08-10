@@ -1,0 +1,168 @@
+CHARACTERS
+
+
+Ch: "Kedawin"
+Health: 391
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 801
+Leg-Health: 801
+Head-Health: 801
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Trynt"
+Health: 314
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Hasbirr"
+Health: 321
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Damarius"
+Health: 495
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Tahm"
+Health: 0
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Dergon"
+Health: 401
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Sirandalis"
+Health: 262
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 750
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Dummy"
+Health: 0
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Sani"
+Health: 321
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Rothar"
+Health: 234
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Gelf"
+Health: 370
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Eldreth"
+Health: 306
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 900
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Palandrias"
+Health: 353
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Iolanthe"
+Health: 259
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+
+Ch: "Justus"
+Health: 285
+Min-Estimate: 0
+Max-Estimate: 0
+Arm-Health: 0
+Leg-Health: 0
+Head-Health: 0
+Limit: 0
+Sync-Parts: 1 2 3 4 end
+End
+

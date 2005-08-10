@@ -1,0 +1,27 @@
+Table of Contents
+=================
+
+1. Introduction
+2. Installing
+3. MudBot
+  a. 
+
+
+1. Introduction
+===============
+
+The Imperian Modularized Trigger System, IMTS, is composed of the core
+engine, MudBot, and various modules. The core starts listening on port
+123, loads all the modules, then waits for a connection. Once a user
+connected, it can connect further to a MUD server, and monitor/modify
+everything that passes through. Every server line and every user command
+are sent to the modules for processing, before being sent further.
+
+
+2. Installing
+=============
+
+- Open modules.txt, and comment/uncomment any modules you wish or don't wish
+to load.
+- Run the MudBot executable (mb-core.exe)
+- 
