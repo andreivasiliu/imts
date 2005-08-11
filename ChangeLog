@@ -23,4 +23,6 @@ IMTS-4
 ======
 
 - Alias checking doesn't crash when the Command it points to is NULL.
+- 'map path near <vnum>' added.
+- Telnet negotation handler somewhat rewritten.
 

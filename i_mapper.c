@@ -2205,6 +2205,7 @@ ROOM_TYPE *add_room_type( char *name, char *color, int c_in, int c_out, int m_sw
 int save_settings( char *file )
 {
    FILE *fl;
+   int i;
    
    fl = fopen( file, "w" );
    
@@ -2225,7 +2226,8 @@ int save_settings( char *file )
    
    fprintf( fl, "Disable-Swimming: %s\r\n", disable_swimming ? "yes" : "no" );
    
-   
+   fclose( fl );
+   return 0;
 }
 
 
@@ -2236,6 +2238,7 @@ int load_settings( char *file )
    char option[256];
    char value[1024];
    char *p;
+   int i;
    
    fl = fopen( file, "r" );
    
@@ -2288,14 +2291,15 @@ int load_settings( char *file )
 	     else if ( !strcmp( value, "no" ) )
 	       disable_swimming = 0;
 	     else
-	       debugff( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
+	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
 	  }
 	
 	else
-	  debugff( "Parse error in file '%s', unknown option '%s'.", file, option );
+	  debugf( "Parse error in file '%s', unknown option '%s'.", file, option );
      }
    
    fclose( fl );
+   return 0;
 }
 
 

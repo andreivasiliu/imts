@@ -6,6 +6,7 @@ DEBUG   = -ggdb
 O_FLAGS = #-O3
 C_FLAGS = $(O_FLAGS) $(DEBUG) $(NOCRYPT) -Wall
 L_FLAGS = $(O_FLAGS) $(DEBUG) -ldl -lz
+M_FLAGS = -shared
 
 SO_FILES = imperian.so i_mapper.so i_offense.so mmchat.so voter.so
 

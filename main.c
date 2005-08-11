@@ -39,9 +39,12 @@
 #else
 # include <sys/socket.h>  /* All socket stuff */
 # include <sys/time.h>    /* For gettimeofday() */ 
-# include <netdb.h>       /* For sockaddr_in and others */
-# include <zlib.h>	  /* needed for MCCP */
+# include <netdb.h>       /* For gethostbyaddr() and others */
+# include <netinet/in.h>  /* For sockaddr_in */
 # include <dlfcn.h>	  /* For dlopen(), dlsym(), dlclose() and dlerror() */
+# if !defined( DISABLE_MCCP )
+#  include <zlib.h>	  /* needed for MCCP */
+# endif
 #endif
 
 int main_version_major = 2;
@@ -1970,16 +1973,16 @@ void handle_atcp( char *msg )
 	
 	if ( !strncmp( opt, "CH", 2 ) )
 	  {
-	     char buf[256];
+	     char buf[1024];
 	     char sb_atcp[] = { IAC, SB, ATCP, 0 };
 	     char se_atcp[] = { IAC, SE, 0 };
 	     
 	     if ( body )
 	       {
-		  sprintf( buf, "%s" "auth %d JavaClient 2.4.8" "%s",
-//		  sprintf( buf, "%s" "auth %d MudBot %d.%d" "%s",
+//		  sprintf( buf, "%s" "auth %d Nexus 3.0.1" "%s",
+		  sprintf( buf, "%s" "auth %d MudBot %d.%d" "%s",
 			   sb_atcp, atcp_authfunc( body ),
-//			   main_version_major, main_version_minor,
+			   main_version_major, main_version_minor,
 			   se_atcp );
 		  send_to_server( buf );
 	       }
@@ -1989,10 +1992,6 @@ void handle_atcp( char *msg )
 	
 	if ( !strncmp( opt, "ON", 2 ) )
 	  {
-//	     char buf[256];
-//	     char sb_atcp[] = { IAC, SB, ATCP, 0 };
-//	     char se_atcp[] = { IAC, SE, 0 };
-	     
 //	     sprintf( buf, "%s" "file get javaclient_settings2 Settings" "%s",
 //		      sb_atcp, se_atcp );
 //	     send_to_server( buf );
@@ -2035,7 +2034,7 @@ void handle_atcp( char *msg )
      }
    
 //   else
-//     debugf( "[%s[%s]]", body, msg );
+     debugf( "[%s[%s]%s]", act, body, msg );
 }
 
 
@@ -2107,16 +2106,28 @@ void debug_telnet( char *buf, char *dst, char *who, int *bytes )
 	     
 	     else if ( !memcmp( iac_string, will_atcp, 3 ) )
 	       {
+		  char buf[256];
+		  char sb_atcp[] = { IAC, SB, ATCP, 0 };
+		  char se_atcp[] = { IAC, SE, 0 };
+		  
 		  /* Send it for ourselves. */
 		  send_to_server( (char *) do_atcp );
 		  
 		  debugf( "atcp: Sent IAC DO ATCP." );
+		  
+	     
+		  sprintf( buf, "%s" "hello MudBot %d.%d\nauth 1\ncomposer 1\nchar_name 1\nchar_vitals 1\nroom_brief 1\nroom_exits 1" "%s",
+			   sb_atcp,
+			   main_version_major, main_version_minor,
+			   se_atcp );
+		  send_to_server( buf );
 	       }
 	     
 	     else if ( !memcmp( iac_string, sb_atcp, 3 ) )
 	       {
 		  in_atcp = 1;
 		  k = 0;
+		  debugf( "Sb atcp." );
 	       }
 	     
 	     /* This one only has two bytes, compare only the last two. */
@@ -2437,6 +2448,15 @@ void process_client_line( char *buf )
 	else if ( !strcmp( buf, "`echo" ) )
 	  {
 	     clientfb( "Usage: `echo <string> or `echo prompt." );
+	  }
+	else if ( !strncmp( buf, "`sendatcp", 9 ) )
+	  {
+	     const char sb_atcp[] = { IAC, SB, ATCP, 0 };
+	     const char se[] = { IAC, SE, 0 };
+	     char buf[1024];
+	     
+	     sprintf( buf, "%s%s%s", sb_atcp, buf + 10, se );
+	     send_to_server( buf );
 	  }
 #if defined( FOR_WINDOWS )
 	else if ( !strcmp( buf, "`edit" ) )
