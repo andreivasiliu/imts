@@ -5050,7 +5050,27 @@ void do_map_config( char *arg )
 	else
 	  clientfr( "Swimming enabled." );
      }
-   
+   else if ( !strcmp( option, "save" ) )
+     {
+	if ( save_settings( "settings.mapper.txt" ) )
+	  clientfr( "Unable to open the file for writing." );
+	else
+	  clientfr( "All settings saved." );
+     }
+   else if ( !strcmp( option, "load" ) )
+     {
+	if ( load_settings( "settings.mapper.txt" ) )
+	  clientfr( "Unable to open the file for reading." );
+	else
+	  clientfr( "All settings reloaded." );
+     }
+   else
+     {
+	clientfr( "Commands:" );
+	clientf( " map config save   - Save all settings.\r\n"
+		 " map config load   - Reload the previously saved settings.\r\n"
+		 " map config swim   - Toggle swimming.\r\n"
+  
    clientfr( "Use 'map config save' to make it permanent." );
 }
 
