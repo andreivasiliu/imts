@@ -744,6 +744,33 @@ int room_cmp( char *room, char *smallr )
 }
 
 
+void set_reverse( ROOM_DATA *source, int dir, ROOM_DATA *destination )
+{
+   if ( ( !source && destination->more_reverse_exits[dir] ) ||
+	( source && destination->reverse_exits[dir] &&
+	  destination->reverse_exits[dir] != source ) )
+     {
+	ROOM_DATA *room;
+	
+	destination->reverse_exits[dir] = NULL;
+	destination->more_reverse_exits[dir] = 0;
+	
+	for ( room = world; room; room = room->next_in_world )
+	  {
+	     if ( room->exits[dir] != destination )
+	       continue;
+	     
+	     if ( destination->reverse_exits[dir] )
+	       destination->more_reverse_exits[dir]++;
+	     else
+	       destination->reverse_exits[dir] = room;
+	  }
+     }
+   else
+     destination->reverse_exits[dir] = source;
+}
+
+
 void parse_room( char *line, char *raw_line )
 {
    ROOM_DATA *new_room;
@@ -938,7 +965,8 @@ void parse_room( char *line, char *raw_line )
 			      }
 			    
 			    current_room->exits[q] = new_room;
-			    new_room->reverse_exits[q] = current_room;
+			    set_reverse( current_room, q, new_room );
+//			    new_room->reverse_exits[q] = current_room;
 			    if ( !unidirectional_exit )
 			      {
 				 if ( !new_room->exits[reverse_exit[q]] )
@@ -1388,7 +1416,9 @@ void go_next( )
 	       }
 	     else if ( door_locked )
 	       {
-		  clientfr( "Auto-walk disabled." );
+		  clientff( C_R "\n\r[Locked room " C_W "%s" C_R " of v" C_W "%d" C_R ". Speedwalking disabled.]\n\r" C_0,
+			    dir_name[current_room->pf_direction], current_room->vnum );
+		  show_prompt( );
 		  door_locked = 0;
 		  door_closed = 0;
 		  auto_walk = 0;
@@ -2219,12 +2249,12 @@ int save_settings( char *file )
      {
 	if ( !strcmp( color_names[i].title_code, room_color ) )
 	  {
-	     fprintf( fl, "Title-Color: %s\r\n", color_names[i].name );
+	     fprintf( fl, "Title-Color %s\r\n", color_names[i].name );
 	     break;
 	  }
      }
    
-   fprintf( fl, "Disable-Swimming: %s\r\n", disable_swimming ? "yes" : "no" );
+   fprintf( fl, "Disable-Swimming %s\r\n", disable_swimming ? "yes" : "no" );
    
    fclose( fl );
    return 0;
@@ -2266,8 +2296,8 @@ int load_settings( char *file )
 	
 	p = get_string( line, option, 256 );
 	
-	if ( !strcmp( option, "Title-Color:" ) ||
-	     !strcmp( option, "Title-Colour:" ) )
+	if ( !strcmp( option, "Title-Color" ) ||
+	     !strcmp( option, "Title-Colour" ) )
 	  {
 	     get_string( p, value, 1024 );
 	     
@@ -2282,7 +2312,7 @@ int load_settings( char *file )
 	       }
 	  }
 	
-	else if ( !strcmp( option, "Disable-Swimming:" ) )
+	else if ( !strcmp( option, "Disable-Swimming" ) )
 	  {
 	     get_string( p, value, 1024 );
 	     
@@ -2478,7 +2508,8 @@ void convert_vnum_exits( )
 			       room->vnum, room->name, room->vnum_exits[i] );
 		       continue;
 		    }
-		  room->exits[i]->reverse_exits[i] = room;
+		  set_reverse( room, i, room->exits[i] );
+//		  room->exits[i]->reverse_exits[i] = room;
 		  room->vnum_exits[i] = 0;
 	       }
 	  }
@@ -3048,7 +3079,17 @@ void path_finder( )
 		  /* Unidirectional exits leading here. */
 		  else if ( room->reverse_exits[i] && !room->exits[i] &&
 			    room->reverse_exits[i]->exits[i] == room )
-		    add_openlist( room, room->reverse_exits[i], i );
+		    {
+		       if ( !room->more_reverse_exits[i] )
+			 add_openlist( room, room->reverse_exits[i], i );
+		       else
+			 {
+			    /* More rooms lead here. Search for them. */
+			    for ( r = world; r; r = r->next_in_world )
+			      if ( r->exits[i] == room )
+				add_openlist( room, r, i );
+			 }
+		    }
 	       }
 	     
 	     /*	for ( i = 1; dir_name[i]; i++ )
@@ -3635,6 +3676,8 @@ void parse_alertness( char *line )
    static char buf[512];
    static int alertness_message;
    
+   DEBUG( "parse_alertness" );
+   
    if ( !cmp( "Your enhanced senses inform you that *", line ) )
      {
 	buf[0] = 0;
@@ -3653,15 +3696,19 @@ void parse_alertness( char *line )
 	return;
      }
    
+   if ( buf[0] && buf[strlen(buf)-1] != ' ' )
+     strcat( buf, " " );
+   
    strcat( buf, line );
    
    if ( strstr( buf, "nearby." ) )
      {
 	/* We now have the full message in 'buf'. Parse it. */
-	ROOM_DATA *room;
 	char player[256];
 	char room_name[256];
 	char *p, *p2;
+	int found = 0;
+	int i;
 	
 	alertness_message = 0;
 	
@@ -3682,36 +3729,40 @@ void parse_alertness( char *line )
 	strcpy( room_name, p + 13 );
 	strcat( room_name, "." );
 	
-	/* Find the room with that name. */
-	for ( room = world; room; room = room->next_in_world )
-	  if ( !room_cmp( room->name, room_name ) )
-	    break;
-	
 	alertness_message = 0;
 	
-	if ( current_room && room == current_room )
-	  {
-	     clientff( C_R "[" C_W "%s" C_R " - " C_W "%s" C_R ".]\r\n" C_0,
-		       player, "here" );
-	     return;
-	  }
-	else if ( current_room && room )
-	  {
-	     int i;
+	clientff( C_R "[" C_W "%s" C_R " - ", player );
+   
+	/* Find where that room is. */
+	
+	if ( current_room )
+	  {	
+	     if ( !room_cmp( current_room->name, room_name ) )
+	       {
+		  clientf( C_W "here" );
+		  found = 1;
+	       }
 	     
 	     for ( i = 1; dir_name[i]; i++ )
 	       {
-		  if ( room == current_room->exits[i] )
+		  if ( !current_room->exits[i] )
+		    continue;
+		  
+		  if ( !room_cmp( current_room->exits[i]->name, room_name ) )
 		    {
-		       clientff( C_R "[" C_W "%s" C_R " - " C_B "%s" C_R ".]\r\n" C_0,
-				 player, dir_name[i] );
-		       return;
+		       if ( found )
+			 clientf( C_R ", " );
+		       
+		       clientff( C_B "%s", dir_name[i] );
+		       found = 1;
 		    }
 	       }
 	  }
 	
-	clientff( C_R "[" C_W "%s" C_R " - " C_R "%s" C_R "]\r\n" C_0,
-		  player, room_name );
+	if ( !found )
+	  clientff( C_R "%s", room_name );
+	
+	clientf( C_R "]\n\r" C_0 );
      }
 }
 
@@ -3720,6 +3771,8 @@ void parse_alertness( char *line )
 void parse_eventstatus( char *line )
 {
    char buf[512];
+   
+   DEBUG( "parse_eventstatus" );
    
    if ( !strncmp( line, "Current event: ", 15 ) )
      {
@@ -3778,6 +3831,8 @@ void parse_who( char *line, char *colorless )
    char buf2[1024];
    char color[64];
    int more, len, moreareas;
+   
+   DEBUG( "parse_who" );
    
    if ( colorless[0] != ' ' )
      return;
@@ -4606,9 +4661,10 @@ void do_map_help( char *arg )
 	    " map file     - Set the file for map load and map save.\r\n"
 	    " map teleport - Manage global special exits.\r\n"
 	    " map swim     - Toggle swimming.\r\n"
+	    " map queue    - Show the command queue.\r\n"
+	    " map queue cl - Clear the command queue.\r\n"
+	    " map config   - Configure the mapper.\r\n"
 	    " map          - Generate a map, from the current room.\r\n"
-	    " queue        - Show the command queue.\r\n"
-	    " queue clear  - Clear the command queue.\r\n"
 	    " landmarks    - Show all the landmarks, in the world.\r\n"
 	    " go/stop      - Begins, or stops speedwalking.\r\n" );
 }
@@ -4948,6 +5004,55 @@ void do_map_bump( char *arg )
    go_next( );
 }
 
+
+
+void do_map_queue( char *arg )
+{
+   char buf[256];
+   int i;
+   
+   if ( arg[0] == 'c' )
+     {
+	q_top = 0;
+	clientfr( "Queue cleared." );
+	del_timer( "queue_reset_timer" );
+	return;
+     }
+   
+   if ( q_top )
+     {
+	clientfr( "Command queue:" );
+	
+	for ( i = 0; i < q_top; i++ )
+	  {
+	     sprintf( buf, C_R " %d: %s.\r\n" C_0, i,
+		      queue[i] < 0 ? "look" : dir_name[queue[i]] );
+	     clientf( buf );
+	  }
+     }
+   else
+     clientfr( "Queue empty." );
+}
+
+
+
+void do_map_config( char *arg )
+{
+   char option[256];
+   
+   arg = get_string( arg, option, 256 );
+   
+   if ( !strcmp( option, "swim" ) )
+     {
+	disable_swimming = disable_swimming ? 0 : 1;
+	if ( disable_swimming )
+	  clientfr( "Swimming disabled - will now walk over water." );
+	else
+	  clientfr( "Swimming enabled." );
+     }
+   
+   clientfr( "Use 'map config save' to make it permanent." );
+}
 
 
 
@@ -5770,7 +5875,8 @@ void do_room_destroy( char *arg )
 	     /* We don't want pointers to point in unknown locations, don't we? */
 	     for ( i = 1; dir_name[i]; i++ )
 	       if ( room->exits[i] )
-		 room->exits[i]->reverse_exits[i] = NULL;
+		 set_reverse( NULL, i, room->exits[i] );
+//		 room->exits[i]->reverse_exits[i] = NULL;
 	     
 	     for ( r = world; r; r = r->next_in_world )
 	       {
@@ -6159,13 +6265,15 @@ void do_exit_destroy( char *arg )
      }
    else
      {
-	current_room->reverse_exits[reverse_exit[dir]] = NULL;
+	set_reverse( NULL, reverse_exit[dir], current_room );
+//	current_room->reverse_exits[reverse_exit[dir]] = NULL;
 	current_room->exits[dir]->exits[reverse_exit[dir]] = NULL;
      }
    
    i = current_room->exits[dir]->vnum;
    
-   current_room->exits[dir]->reverse_exits[dir] = NULL;
+   set_reverse( NULL, dir, current_room->exits[dir] );
+//   current_room->exits[dir]->reverse_exits[dir] = NULL;
    current_room->exits[dir] = NULL;
    
    sprintf( buf, "Link to vnum %d destroyed.", i );
@@ -6499,36 +6607,6 @@ void do_exit_special( char *arg )
 
 /* Normal commands. */
 
-void do_queue( char *arg )
-{
-   char buf[256];
-   int i;
-   
-   if ( arg[0] == 'c' )
-     {
-	q_top = 0;
-	clientfr( "Queue cleared." );
-	del_timer( "queue_reset_timer" );
-	return;
-     }
-   
-   if ( q_top )
-     {
-	clientfr( "Command queue:" );
-	
-	for ( i = 0; i < q_top; i++ )
-	  {
-	     sprintf( buf, C_R " %d: %s.\r\n" C_0, i,
-		      queue[i] < 0 ? "look" : dir_name[queue[i]] );
-	     clientf( buf );
-	  }
-     }
-   else
-     clientfr( "Queue empty." );
-}
-
-
-
 void do_landmarks( char *arg )
 {
    AREA_DATA *area;
@@ -6680,6 +6758,8 @@ FUNC_DATA cmd_table[] =
      { "file",		do_map_file,	CMD_MAP },
      { "teleport",	do_map_teleport,CMD_MAP },
      { "swim",		do_map_swim,	CMD_MAP },
+     { "queue",		do_map_queue,	CMD_MAP },
+     { "config",	do_map_config,	CMD_MAP },
    
    /* Area commands. */
      { "help",		do_area_help,	CMD_AREA },
@@ -6718,7 +6798,6 @@ FUNC_DATA cmd_table[] =
    
    /* Normal commands. */
      { "map",		do_map,		CMD_NONE },
-     { "queue",		do_queue,	CMD_NONE },
      { "landmarks",	do_landmarks,	CMD_NONE },
      { "mhelp",		do_mhelp,	CMD_NONE },
      { "go",		do_go,		CMD_NONE },

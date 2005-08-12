@@ -72,6 +72,7 @@ struct room_data
    /* NULL, N, NE, E, SE, S, SW, W, NW, UP, DOWN, IN, OUT */
    ROOM_DATA *exits[13];
    ROOM_DATA *reverse_exits[13];
+   int more_reverse_exits[13];
    int vnum_exits[13];
    short detected_exits[13];
    short locked_exits[13];

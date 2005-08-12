@@ -5739,7 +5739,7 @@ char *imperian_build_custom_prompt( )
    char iac_ga[] = { IAC, GA, 0 };
    char iac_eor[] = { EOR, 0 };
    int truth_value = 0, skip = 0, end;
-   int *a_max_hp, *a_max_mana;
+   int *a_max_hp, *a_max_mana, *a_exp;
    
    if ( !custom_prompt[0] )
      return NULL;
@@ -5829,6 +5829,13 @@ char *imperian_build_custom_prompt( )
 		  a_max_mana = get_variable( "a_max_mana" );
 		  if ( a_max_mana )
 		    sprintf( buf, "%d", *a_max_mana / 11 );
+		  else
+		    sprintf( buf, "0" );
+		  break;
+		case 'x':
+		  a_exp = get_variable( "a_exp" );
+		  if ( a_exp )
+		    sprintf( buf, "%d", *a_exp );
 		  else
 		    sprintf( buf, "0" );
 		  break;

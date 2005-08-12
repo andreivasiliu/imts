@@ -173,8 +173,15 @@ char *log_file = "log.txt";
 char server_hostname[1024];
 char client_hostname[1024];
 
+/* Options from modules.txt */
+char default_host[512];
+int default_port;
+char atcp_login_as[512];
+char default_user[512];
+char default_pass[512];
+
 /* ATCP. */
-int a_hp, a_mana, a_end, a_will;
+int a_hp, a_mana, a_end, a_will, a_exp;
 int a_max_hp, a_max_mana, a_max_end, a_max_will;
 char a_name[512], a_title[512];
 int a_on;
@@ -284,6 +291,7 @@ void *get_variable( char *name )
 	  { "a_max_hp", &a_max_hp },
 	  { "a_mana", &a_mana },
 	  { "a_max_mana", &a_max_mana },
+	  { "a_exp", &a_exp },
 	
 	  { NULL, NULL }
      }, *p;
@@ -500,8 +508,9 @@ void load_all_modules( )
    MODULE *module;
    const char *dl_error;
    void (*register_module)( MODULE *self );
+   char line[256];
    char buf[256];
-   char file[256];
+   char cmd[256];
    char *p;
    void *dl_handle;
    
@@ -520,36 +529,68 @@ void load_all_modules( )
    
    while( 1 )
      {
-	fgets( buf, 256, fl );
+	fgets( line, 256, fl );
 	
 	if ( feof( fl ) )
 	  break;
 	
 	/* Skip if empty/comment line. */
-	if ( buf[0] == '#' || buf[0] == ' ' || buf[0] == '\n' || buf[0] == '\r' || !buf[0] )
+	if ( line[0] == '#' || line[0] == ' ' || line[0] == '\n' || line[0] == '\r' || !line[0] )
 	  continue;
 	
-	p = buf;
+	p = get_string( line, cmd, 256 );
+	
+	/* This file also contains some options. Load them too. */
+	if ( !strcmp( cmd, "host" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     strcpy( default_host, buf );
+	  }
+	else if ( !strcmp( cmd, "port" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     default_port = atoi( buf );
+	  }
+	else if ( !strcmp( cmd, "atcp_login_as" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     strcpy( atcp_login_as, buf );
+	  }
+	else if ( !strcmp( cmd, "user" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     strcpy( default_user, buf );
+	  }
+	else if ( !strcmp( cmd, "pass" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     strcpy( default_pass, buf );
+	  }
 	
 	/* Shared Object file. (.so) */
-	if ( !strncmp( buf, "so ", 3 ) )
+	else if ( !strcmp( cmd, "so" ) )
 	  {
 #if !defined( FOR_WINDOWS )
-	     get_string( p + 3, file, 256 );
+	     get_string( p, buf, 256 );
 	     
-	     debugf( "Loading file '%s'.", file );
+	     debugf( "Loading file '%s'.", buf );
 	     
-	     if ( !file[0] )
+	     if ( !buf[0] )
 	       {
 		  debugf( "Syntax error in the 'modules' file." );
 		  continue;
 	       }
 	     
-	     dl_handle = dlopen( file, RTLD_NOW );
+	     dl_handle = dlopen( buf, RTLD_NOW );
 	     
 	     if ( !dl_handle )
 	       {
-		  debugf( "Can't load %s: %s", file, dlerror( ) );
+		  debugf( "Can't load %s: %s", buf, dlerror( ) );
 		  continue;
 	       }
 	     
@@ -557,7 +598,7 @@ void load_all_modules( )
 	     if ( ( dl_error = dlerror( ) ) != NULL )
 	       {
 		  debugf( "Can't get the Register symbol from %s: %s",
-			  file, dl_error );
+			  buf, dl_error );
 		  dlclose( dl_handle );
 		  continue;
 	       }
@@ -566,20 +607,20 @@ void load_all_modules( )
 	     module->register_module = register_module;
 	     module->name = strdup( "unregistered" );
 	     module->dl_handle = dl_handle;
-	     module->file_name = strdup( file );
+	     module->file_name = strdup( buf );
 #endif
 	  }
 	/* Dynamic Loaded Library file. (.dll) */
-	else if ( !strncmp( buf, "dll ", 4 ) )
+	else if ( !strcmp( cmd, "dll" ) )
 	  {
 #if defined( FOR_WINDOWS )
 	     HINSTANCE mod;
 	     
-	     get_string( p + 4, file, 256 );
+	     get_string( p, buf, 256 );
 	     
-	     debugf( "Loading file '%s'.", file );
+	     debugf( "Loading file '%s'.", buf );
 	     
-	     if ( !file[0] )
+	     if ( !buf[0] )
 	       {
 		  debugf( "Syntax error in the 'modules' file." );
 		  continue;
@@ -588,11 +629,11 @@ void load_all_modules( )
 	     /* Prevent showing a Message box if the file is not found. */
 	     SetErrorMode( SEM_NOOPENFILEERRORBOX );
 	     
-	     mod = LoadLibrary( file );
+	     mod = LoadLibrary( buf );
 	     
 	     if ( mod <= (HINSTANCE) HINSTANCE_ERROR )
 	       {
-		  debugf( "Can't load %s.", file );
+		  debugf( "Can't load %s.", buf );
 		  continue;
 	       }
 	     
@@ -600,7 +641,7 @@ void load_all_modules( )
 	     
 	     if ( !register_module )
 	       {
-		  debugf( "Can't get the Register symbol from %s.", file );
+		  debugf( "Can't get the Register symbol from %s.", buf );
 		  FreeLibrary( mod );
 	       }
 	     
@@ -608,7 +649,7 @@ void load_all_modules( )
 	     module->register_module = register_module;
 	     module->name = strdup( "unregistered" );
 	     module->dll_hinstance = mod;
-	     module->file_name = strdup( file );
+	     module->file_name = strdup( buf );
 #endif
 	  }
 	else
@@ -915,8 +956,6 @@ void module_show_version( )
 	if ( module->show_notice )
 	  (*module->show_notice)( module );
      }
-   
-   clientf( C_B "[" C_R "Syntax: connect hostname portnumber" C_B "]\r\n" C_0 );
 }
 
 
@@ -1375,6 +1414,39 @@ void new_descriptor( int control )
 	assign_client( desc );
 	
 	module_show_version( );
+	
+	if ( default_port && default_host[0] )
+	  {
+	     int sock;
+	     
+	     debugf( "Connecting to: %s %d.", default_host, default_port );
+	     clientff( C_B "Connecting to %s:%d... " C_0, default_host, default_port );
+	     
+	     sock = mb_connect( default_host, default_port );
+	     
+	     if ( sock < 0 )
+	       {
+		  debugf( "Failed (%s)", get_connect_error( ) );
+		  clientff( C_B "%s.\r\n" C_0, get_connect_error( ) );
+		  server = 0;
+		  
+		  /* Don't return. Let it display the Syntax line. */
+	       }
+	     else
+	       {
+		  debugf( "Connected." );
+		  clientf( C_B "Done.\r\n" C_0 );
+		  clientfb( "Send `help to get some help." );
+		  
+		  strcpy( server_hostname, default_host );
+		  
+		  assign_server( sock );
+		  
+		  return;
+	       }
+	  }
+	
+	clientf( C_B "[" C_R "Syntax: connect hostname portnumber" C_B "]\r\n" C_0 );
      }
    else
      {
@@ -1958,6 +2030,9 @@ void handle_atcp( char *msg )
    
    DEBUG( "handle_atcp" );
    
+   if ( !strcmp( atcp_login_as, "none" ) )
+     return;
+   
    body = strchr( msg, '\n' );
    
    if ( body )
@@ -1975,15 +2050,16 @@ void handle_atcp( char *msg )
 	  {
 	     char buf[1024];
 	     char sb_atcp[] = { IAC, SB, ATCP, 0 };
-	     char se_atcp[] = { IAC, SE, 0 };
+	     char se[] = { IAC, SE, 0 };
 	     
 	     if ( body )
 	       {
-//		  sprintf( buf, "%s" "auth %d Nexus 3.0.1" "%s",
-		  sprintf( buf, "%s" "auth %d MudBot %d.%d" "%s",
+		  if ( !atcp_login_as[0] || !strcmp( atcp_login_as, "default" ) )
+		    sprintf( atcp_login_as, "MudBot %d.%d", main_version_major, main_version_minor );
+		  
+		  sprintf( buf, "%s" "auth %d %s" "%s",
 			   sb_atcp, atcp_authfunc( body ),
-			   main_version_major, main_version_minor,
-			   se_atcp );
+			   atcp_login_as, se );
 		  send_to_server( buf );
 	       }
 	     else
@@ -2019,9 +2095,9 @@ void handle_atcp( char *msg )
 	     return;
 	  }
 	
-	sscanf( body, "H:%d/%d M:%d/%d E:%d/%d W:%d/%d",
+	sscanf( body, "H:%d/%d M:%d/%d E:%d/%d W:%d/%d NL:%d/100",
 		&a_hp, &a_max_hp, &a_mana, &a_max_mana,
-		&a_end, &a_max_end, &a_will, &a_max_will );
+		&a_end, &a_max_end, &a_will, &a_max_will, &a_exp );
      }
    
    else if ( !strncmp( act, "Char.Name", 9 ) )
@@ -2033,7 +2109,7 @@ void handle_atcp( char *msg )
 	strcpy( a_title, body );
      }
    
-//   else
+   else
      debugf( "[%s[%s]%s]", act, body, msg );
 }
 
@@ -2104,33 +2180,42 @@ void debug_telnet( char *buf, char *dst, char *who, int *bytes )
 #endif
 	       }
 	     
-	     else if ( !memcmp( iac_string, will_atcp, 3 ) )
+	     else if ( !memcmp( iac_string, will_atcp, 3 ) &&
+		       strcmp( atcp_login_as, "none" ) )
 	       {
 		  char buf[256];
 		  char sb_atcp[] = { IAC, SB, ATCP, 0 };
-		  char se_atcp[] = { IAC, SE, 0 };
+		  char se[] = { IAC, SE, 0 };
 		  
 		  /* Send it for ourselves. */
 		  send_to_server( (char *) do_atcp );
 		  
 		  debugf( "atcp: Sent IAC DO ATCP." );
 		  
-	     
-		  sprintf( buf, "%s" "hello MudBot %d.%d\nauth 1\ncomposer 1\nchar_name 1\nchar_vitals 1\nroom_brief 1\nroom_exits 1" "%s",
-			   sb_atcp,
-			   main_version_major, main_version_minor,
-			   se_atcp );
+		  if ( !atcp_login_as[0] || !strcmp( atcp_login_as, "default" ) )
+		    sprintf( atcp_login_as, "MudBot %d.%d", main_version_major, main_version_minor );
+		  
+		  sprintf( buf, "%s" "hello %s\nauth 1\ncomposer 1\nchar_name 1\nchar_vitals 1\nroom_brief 1\nroom_exits 1" "%s",
+			   sb_atcp, atcp_login_as, se );
 		  send_to_server( buf );
+		  
+		  if ( default_user[0] && default_pass[0] )
+		    {
+		       sprintf( buf, "%s" "login %s %s" "%s",
+				sb_atcp, default_user, default_pass, se );
+		       send_to_server( buf );
+		       debugf( "atcp: Requested login with '%s'.", default_user );
+		    }
 	       }
 	     
-	     else if ( !memcmp( iac_string, sb_atcp, 3 ) )
+	     else if ( !memcmp( iac_string, sb_atcp, 3 ) &&
+		       strcmp( atcp_login_as, "none" ) )
 	       {
 		  in_atcp = 1;
 		  k = 0;
-		  debugf( "Sb atcp." );
 	       }
 	     
-	     /* This one only has two bytes, compare only the last two. */
+	     /* This one only has two bytes. */
 	     else if ( in_atcp && !memcmp( iac_string, se, 2 ) )
 	       {
 		  atcp_msg[k] = 0;

@@ -43,12 +43,12 @@ D "warning" on
 D "splitting" on
 D "regeneration" on
 # Huge, I know, but nice.
-P "^x<^1%h^x/^g%H^xh ^2%m^x/^g%M^xm ^3%e^xe ^4%w^xw^x ?k{^5%k^xk }<?e{^ge^x}!{-}?b{^gb^x}!{-}?l{^gp^x}!{-}?r{^gp^x}!{-}>?A{ <^r}?H{h}?S{s}?P{p}?C{c}?T{t}?F{f}?U{b}?W{w}?A{^x>}?a{ <^Y}?p{p}?f{f}?B{b}?d{d}?s{s}?t{^b%t^Y}?L{^Gl^Y}?M{^Rl^Y}?a{^x>}?D{ <^r%D^x>}>^x "
+P "^x<^1%h^x/^g%H^xh ^2%m^x/^g%M^xm ^3%e^xe ^4%w^xw ^g%x^xx ?k{^5%k^xk }<?e{^ge^x}!{-}?b{^gb^x}!{-}?l{^gp^x}!{-}?r{^gp^x}!{-}>?A{ <^r}?H{h}?S{s}?P{p}?C{c}?T{t}?F{f}?U{b}?W{w}?A{^x>}?a{ <^Y}?p{p}?f{f}?B{b}?d{d}?s{s}?t{^b%t^Y}?L{^Gl^Y}?M{^Rl^Y}?a{^x>}?D{ <^r%D^x>}>^x "
 # Non monk prompt.
 #P "^x<^1%h^x/^g%H^xh ^2%m^x/^g%M^xm ^3%e^xe ^4%w^xw^x <?e{^ge^x}!{-}?b{^gb^x}!{-}>?A{ <^r}?H{h}?S{s}?P{p}?C{c}?T{t}?F{f}?U{b}?W{w}?A{^x>}?a{ <^Y}?p{p}?f{f}?B{b}?d{d}?s{s}?t{^b%t^Y}?a{^x>}?D{ <^r%D^x>}>^x "
 
 ["aetolia_init"]
-P "^R<^x^1%h^x/^g%H^xh ^2%m^x/^g%M^xm ^3%e^xe ^4%w^xw^x <?e{^ge^x}!{-}?b{^gb^x}!{-}>?A{ <^r}?H{h}?S{s}?P{p}?C{c}?W{w}?A{^x>}?a{ <^Y}?p{p}?f{f}?B{b}?d{d}?s{s}?c{c}?a{^x>}?D{ <^r%D^x>}^R>^x "
+P "^R<^x^1%h^x/^g%H^xh ^2%m^x/^g%M^xm ^3%e^xe ^4%w^xw ^g%x^xx <?e{^ge^x}!{-}?b{^gb^x}!{-}>?A{ <^r}?H{h}?S{s}?P{p}?C{c}?W{w}?A{^x>}?a{ <^Y}?p{p}?f{f}?B{b}?d{d}?s{s}?c{c}?a{^x>}?D{ <^r%D^x>}^R>^x "
 
 
 ["none"]

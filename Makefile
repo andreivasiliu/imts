@@ -1,5 +1,7 @@
 # Generic Makefile.
 
+# Windows must have -DFOR_WINDOWS, Macintosh must have -DFOR_MAC
+
 NAME	= bot
 CC      = gcc
 DEBUG   = -ggdb

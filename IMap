@@ -1,7 +1,5 @@
 MAPFILE
 
-Title-Color: magenta
-Disable-Swimming
 
 
 ROOM-TYPES
@@ -6666,6 +6664,7 @@ ROOM v1400
 Name: Amid the Ravana hills.
 Type: Hills
 E: north 1407
+E: east 8439
 E: south 1398
 E: west 1401
 
@@ -19207,6 +19206,10 @@ E: up 285
 AREA
 Name: Celidon Council.
 
+ROOM v8472
+Name: A glorious, well lit entryway.
+E: south 3340
+
 ROOM v8336
 Name: A magnificent pool surrounded by stalactites.
 Type: Undefined
@@ -19766,7 +19769,7 @@ SPE: 5260 10 "enter grate" "You step through a marble grate."
 ROOM v3340
 Name: Cul-de-sac in Zephyr Plaza.
 Type: Natural underground
-DEL: north
+E: north 8472
 E: east 3339
 DEL: west
 E: down 3341
@@ -54836,6 +54839,188 @@ ROOM v8421
 Name: A sparse bedchamber.
 Type: Urban
 E: down 8418
+
+
+
+AREA
+Name: Towneship of Annona.
+
+ROOM v8439
+Name: In a widening valley between the hills.
+Type: Hills
+E: east 8440
+E: west 1400
+
+ROOM v8440
+Name: Between large berry bushes.
+Type: Village
+E: north 8441
+E: southwest 8442
+E: west 8439
+
+ROOM v8441
+Name: A grassy square.
+Type: Village
+E: north 8449
+E: northeast 8448
+E: east 8445
+E: south 8440
+E: west 8443
+E: northwest 8451
+E: in 8464
+
+ROOM v8442
+Name: Inside a homey cottage.
+Type: Village
+E: northeast 8440
+E: out 8459
+
+ROOM v8443
+Name: Inside a quaint farmhouse.
+Type: Village
+E: east 8441
+E: northwest 8444
+E: up 8470
+E: out 8455
+
+ROOM v8444
+Name: A pungent chicken yard.
+Type: Village
+E: north 8452
+E: southeast 8443
+E: southwest 8455
+E: northwest 8454
+
+ROOM v8445
+Name: An aromatic bakery.
+Type: Village
+E: east 8446
+E: west 8441
+E: up 8447
+
+ROOM v8446
+Name: A flour-covered mill.
+Type: Village
+E: west 8445
+
+ROOM v8447
+Name: Snug living quarters.
+Type: Village
+E: down 8445
+
+ROOM v8448
+Name: A cozy dwelling.
+Type: Village
+E: southwest 8441
+E: out 8450
+
+ROOM v8449
+Name: Inside a comfortable home.
+Type: Village
+E: south 8441
+
+ROOM v8450
+Name: A well-tended vegetable garden.
+Type: Village
+E: in 8448
+
+ROOM v8451
+Name: A quiet post office.
+Type: Village
+E: southeast 8441
+
+ROOM v8452
+Name: A muddy pigpen.
+Type: Village
+E: north 8453
+E: south 8444
+
+ROOM v8453
+Name: A hilly pasture.
+Type: Village
+E: south 8452
+
+ROOM v8454
+Name: A dry storage room.
+Type: Village
+E: southeast 8444
+
+ROOM v8455
+Name: Amid waving wheat near a farmhouse.
+Type: Village
+E: northeast 8444
+E: southwest 8458
+E: northwest 8456
+E: in 8443
+
+ROOM v8456
+Name: Among the wheatfields.
+Type: Village
+E: southeast 8455
+E: southwest 8457
+
+ROOM v8457
+Name: In a field of tall wheat.
+Type: Village
+E: northeast 8456
+E: southeast 8458
+
+ROOM v8458
+Name: Amid the fields of wheat.
+Type: Village
+E: northeast 8455
+E: northwest 8457
+
+ROOM v8459
+Name: Fruit trees near a cottage.
+Type: Village
+E: southwest 8460
+E: in 8442
+
+ROOM v8460
+Name: A rambling orchard.
+Type: Village
+E: northeast 8459
+E: south 8461
+
+ROOM v8461
+Name: Amidst fruit trees.
+Type: Village
+E: north 8460
+E: west 8462
+
+ROOM v8462
+Name: Under the branches of the fruit trees.
+Type: Village
+E: east 8461
+E: northwest 8463
+
+ROOM v8463
+Name: A sloping orchard.
+Type: Village
+E: southeast 8462
+
+ROOM v8464
+Name: Annonan Trading.
+Type: Village
+E: north 8465
+E: out 8441
+
+ROOM v8465
+Name: A comfortable study.
+Type: Village
+E: south 8464
+
+ROOM v8470
+Name: A simple bedroom.
+Type: Village
+E: north 8471
+E: down 8443
+
+ROOM v8471
+Name: A cute bedroom.
+Type: Village
+E: south 8470
 
 
 

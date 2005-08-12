@@ -22,13 +22,12 @@ IMAPPER
 - Fix open door.
 - Customizable colors.
 - Personal rooms, stored in a personal map file.
-- Alertness fixing.
-* IAC.
-- Locked doors vnum message.
-* Path NEAR.
+- NPC says before room titles need to be fixed.
 - Enable/Disable prefix/suffix.
-- Modules.txt
-- Composer gather
+- Landmarks.
+- Composer gather.
+- MCCP disable on quit.
+- Windows crash report.
 
 
 IOFFENSE
