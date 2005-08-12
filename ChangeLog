@@ -29,10 +29,13 @@ IMTS-4
 (Imperian:)
 - The Imperian module makes use of the 'experience to next level' value, and now has it in the custom prompt.
 (IMapper:)
-- Alias checking doesn't crash when the Command it points to is NULL. (Thanks Brydian)
+- On special exits, Alias checking doesn't crash when the Command it points to is NULL. (Thanks Brydian)
 - Swimming over water bug properly fixed. Sorry about that.
 - 'map path near <vnum>' added. Keep alertness up, folks.
 - Multiple uni-directional exits leading to the same room can now be handled by the pathfinder. As a side effect though, pathfinding is a bit slower.
 - Alertness fixed even further. Should always recognize a room name properly, and show ALL directions matching it.
 - Speedwalking into a locked door will give a more unique message, so a client can trigger it to unlock the door.
-
+- 'queue' and 'queue clear' changed to 'map queue' and 'map queue clear'.
+- 'map swim' removed.
+- 'map config' added, with the options: save, load, swim, wholist, alertness, locate, showarea.
+- Landmarks are now saved and loaded from the config file.

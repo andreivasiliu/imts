@@ -140,10 +140,17 @@ int destroying_world;
 int door_closed;
 int door_locked;
 int locate_arena;
-int disable_swimming;
 int capture_special_exit;
 char cse_command[5120];
 char cse_message[5120];
+
+/* settings.mapper.txt options. */
+int disable_swimming;
+int disable_wholist;
+int disable_alertness;
+int disable_locating;
+int disable_areaname;
+
 
 char *dash_command;
 
@@ -848,7 +855,6 @@ void parse_room( char *line, char *raw_line )
 		  return;
 	       }
 	     
-	     debugf( "%d\n", capture_special_exit );
 	     if ( capture_special_exit > 0 )
 	       {
 		  new_room = get_room( capture_special_exit );
@@ -878,16 +884,16 @@ void parse_room( char *line, char *raw_line )
 	       }
 	     
 	     clientff( C_R " (" C_W "sp:" C_G "%d" C_R ")" C_0, new_room->vnum );
-	     clientff( C_R "\n\r[Special exit created.]" );
+	     clientff( C_R "\r\n[Special exit created.]" );
 	     spexit = create_exit( current_room );
 	     spexit->to = new_room;
 	     
-	     clientff( C_R "\n\rCommand: '" C_W "%s" C_R "'" C_0,
+	     clientff( C_R "\r\nCommand: '" C_W "%s" C_R "'" C_0,
 		       cse_command[0] ? cse_command : "null" );
 	     if ( cse_command[0] )
 	       spexit->command = strdup( cse_command );
 	     
-	     clientff( C_R "\n\rMessage: '" C_W "%s" C_R "'" C_0,
+	     clientff( C_R "\r\nMessage: '" C_W "%s" C_R "'" C_0,
 		       cse_message );
 	     spexit->message = strdup( cse_message );
 	     
@@ -1097,8 +1103,9 @@ void parse_room( char *line, char *raw_line )
 	  }
 	else if ( mode == FOLLOWING )
 	  {
-	     clientff( C_R " (" "\33[0;32m" "%s" C_R "%s)" C_0,
-		      current_room->area->name, get_unlost_exits ? "?" : "" );
+	     if ( !disable_areaname )
+	       clientff( C_R " (" C_g "%s" C_R "%s)" C_0,
+			 current_room->area->name, get_unlost_exits ? "?" : "" );
 	  }
 	
 	/* We're ready to move. */
@@ -1416,7 +1423,7 @@ void go_next( )
 	       }
 	     else if ( door_locked )
 	       {
-		  clientff( C_R "\n\r[Locked room " C_W "%s" C_R " of v" C_W "%d" C_R ". Speedwalking disabled.]\n\r" C_0,
+		  clientff( C_R "\r\n[Locked room " C_W "%s" C_R " of v" C_W "%d" C_R ". Speedwalking disabled.]\r\n" C_0,
 			    dir_name[current_room->pf_direction], current_room->vnum );
 		  show_prompt( );
 		  door_locked = 0;
@@ -2234,6 +2241,7 @@ ROOM_TYPE *add_room_type( char *name, char *color, int c_in, int c_out, int m_sw
 
 int save_settings( char *file )
 {
+   ROOM_DATA *r;
    FILE *fl;
    int i;
    
@@ -2255,6 +2263,20 @@ int save_settings( char *file )
      }
    
    fprintf( fl, "Disable-Swimming %s\r\n", disable_swimming ? "yes" : "no" );
+   fprintf( fl, "Disable-WhoList %s\r\n", disable_wholist ? "yes" : "no" );
+   fprintf( fl, "Disable-Alertness %s\r\n", disable_alertness ? "yes" : "no" );
+   fprintf( fl, "Disable-Locating %s\r\n", disable_locating ? "yes" : "no" );
+   fprintf( fl, "Disable-AreaName %s\r\n", disable_areaname ? "yes" : "no" );
+   
+   /* Save all landmarks. */
+   
+   fprintf( fl, "\r\n# Landmarks.\r\n\r\n" );
+   for ( r = world; r; r = r->next_in_world )
+     {
+	if ( r->landmark )
+	  fprintf( fl, "# %s (%s)\r\nLand-Mark %d\r\n",
+		   r->name, r->area->name, r->vnum );
+     }
    
    fclose( fl );
    return 0;
@@ -2296,11 +2318,11 @@ int load_settings( char *file )
 	
 	p = get_string( line, option, 256 );
 	
+	get_string( p, value, 1024 );
+	
 	if ( !strcmp( option, "Title-Color" ) ||
 	     !strcmp( option, "Title-Colour" ) )
 	  {
-	     get_string( p, value, 1024 );
-	     
 	     for ( i = 0; color_names[i].name; i++ )
 	       {
 		  if ( !strcmp( value, color_names[i].name ) )
@@ -2314,14 +2336,69 @@ int load_settings( char *file )
 	
 	else if ( !strcmp( option, "Disable-Swimming" ) )
 	  {
-	     get_string( p, value, 1024 );
-	     
 	     if ( !strcmp( value, "yes" ) )
 	       disable_swimming = 1;
 	     else if ( !strcmp( value, "no" ) )
 	       disable_swimming = 0;
 	     else
 	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
+	  }
+	
+	else if ( !strcmp( option, "Disable-WhoList" ) )
+	  {
+	     if ( !strcmp( value, "yes" ) )
+	       disable_wholist = 1;
+	     else if ( !strcmp( value, "no" ) )
+	       disable_wholist = 0;
+	     else
+	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
+	  }
+	
+	else if ( !strcmp( option, "Disable-Alertness" ) )
+	  {
+	     if ( !strcmp( value, "yes" ) )
+	       disable_alertness = 1;
+	     else if ( !strcmp( value, "no" ) )
+	       disable_alertness = 0;
+	     else
+	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
+	  }
+	
+	else if ( !strcmp( option, "Disable-Locating" ) )
+	  {
+	     if ( !strcmp( value, "yes" ) )
+	       disable_locating = 1;
+	     else if ( !strcmp( value, "no" ) )
+	       disable_locating = 0;
+	     else
+	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
+	  }
+	
+	else if ( !strcmp( option, "Disable-AreaName" ) )
+	  {
+	     if ( !strcmp( value, "yes" ) )
+	       disable_areaname = 1;
+	     else if ( !strcmp( value, "no" ) )
+	       disable_areaname = 0;
+	     else
+	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
+	  }
+	
+	else if ( !strcmp( option, "Land-Mark" ) )
+	  {
+	     ROOM_DATA *room;
+	     int vnum = atoi( value );
+	     
+	     if ( !vnum )
+	       debugf( "Parse error in file '%s', expected a landmark vnum, got '%s' instead.", file, value );
+	     else
+	       {
+		  room = get_room( vnum );
+		  if ( !room )
+		    debugf( "Warning! Unable to landmark room %d, it doesn't exist!", vnum );
+		  else
+		    room->landmark = 1;
+	       }
 	  }
 	
 	else
@@ -2402,8 +2479,6 @@ void save_map( char *file )
 	       fprintf( fl, "Type: %s\n", room->room_type->name );
 	     if ( room->underwater )
 	       fprintf( fl, "Underwater\n" );
-	     if ( room->landmark )
-	       fprintf( fl, "Marked\n" );
 	     for ( i = 1; dir_name[i]; i++ )
 	       {
 		  if ( room->exits[i] )
@@ -2858,6 +2933,7 @@ int load_map( char *file )
 	     room->underwater = 1;
 	  }
 	
+	/* Deprecated. Here only for backwards compatibility. */
 	else if ( !strncmp( line, "Marked", 6 ) )
 	  {
 	     if ( section != 2 )
@@ -3223,6 +3299,8 @@ void i_mapper_module_init_data( )
 	check_map( );
 	debugf( "Map loaded. (%d microseconds)", get_timer( ) );
      }
+   
+   load_settings( "settings.mapper.txt" );
    
    mode = GET_UNLOST;
 }
@@ -3678,6 +3756,9 @@ void parse_alertness( char *line )
    
    DEBUG( "parse_alertness" );
    
+   if ( disable_alertness )
+     return;
+   
    if ( !cmp( "Your enhanced senses inform you that *", line ) )
      {
 	buf[0] = 0;
@@ -3762,7 +3843,7 @@ void parse_alertness( char *line )
 	if ( !found )
 	  clientff( C_R "%s", room_name );
 	
-	clientf( C_R "]\n\r" C_0 );
+	clientf( C_R "]\r\n" C_0 );
      }
 }
 
@@ -3833,6 +3914,9 @@ void parse_who( char *line, char *colorless )
    int more, len, moreareas;
    
    DEBUG( "parse_who" );
+   
+   if ( disable_wholist )
+     return;
    
    if ( colorless[0] != ' ' )
      return;
@@ -4363,19 +4447,22 @@ void i_mapper_process_server_line_suffix( char *colorless_line, char *colorful_l
    parse_follow( colorless_line );
    
    /* Is this a sense/seek command? */
-   parse_msense( colorless_line );
-   parse_window( colorless_line );
-   parse_scent( colorless_line );
-   parse_scry( colorless_line );
-   parse_ka( colorless_line );
-   parse_seek( colorless_line );
-   parse_scout( colorless_line );
-   parse_pursue( colorless_line );
-   parse_eventstatus( colorless_line );
-   
-   /* Is this a fullsense command? */
-   parse_fullsense( colorless_line );
-   parse_shrinesight( colorless_line );
+   if ( !disable_locating )
+     {
+	parse_msense( colorless_line );
+	parse_window( colorless_line );
+	parse_scent( colorless_line );
+	parse_scry( colorless_line );
+	parse_ka( colorless_line );
+	parse_seek( colorless_line );
+	parse_scout( colorless_line );
+	parse_pursue( colorless_line );
+	parse_eventstatus( colorless_line );
+	
+	/* Is this a fullsense command? */
+	parse_fullsense( colorless_line );
+	parse_shrinesight( colorless_line );
+     }
    
    /* Can we get the area name and room type from here? */
    parse_survey( line );
@@ -4660,7 +4747,6 @@ void do_map_help( char *arg )
 	    " map color    - Change the color of the room title.\r\n"
 	    " map file     - Set the file for map load and map save.\r\n"
 	    " map teleport - Manage global special exits.\r\n"
-	    " map swim     - Toggle swimming.\r\n"
 	    " map queue    - Show the command queue.\r\n"
 	    " map queue cl - Clear the command queue.\r\n"
 	    " map config   - Configure the mapper.\r\n"
@@ -4770,6 +4856,7 @@ void do_map_load( char *arg )
 	sprintf( buf, "Vnum exits converted. (%d microseconds)", get_timer( ) );
 	clientfr( buf );
 	check_map( );
+	load_settings( "settings.mapper.txt" );
 	
 	mode = GET_UNLOST;
      }
@@ -4921,7 +5008,7 @@ void do_map_color( char *arg )
 	     sprintf( buf, "Room title color changed to: " C_0 "%s%s" C_R ".",
 		      room_color, color_names[i].name );
 	     clientfr( buf );
-	     clientfr( "Use 'map save' to make it permanent." );
+	     clientfr( "Use 'map config save' to make it permanent." );
 	     
 	     return;
 	  }
@@ -5042,20 +5129,13 @@ void do_map_config( char *arg )
    
    arg = get_string( arg, option, 256 );
    
-   if ( !strcmp( option, "swim" ) )
-     {
-	disable_swimming = disable_swimming ? 0 : 1;
-	if ( disable_swimming )
-	  clientfr( "Swimming disabled - will now walk over water." );
-	else
-	  clientfr( "Swimming enabled." );
-     }
-   else if ( !strcmp( option, "save" ) )
+   if ( !strcmp( option, "save" ) )
      {
 	if ( save_settings( "settings.mapper.txt" ) )
 	  clientfr( "Unable to open the file for writing." );
 	else
 	  clientfr( "All settings saved." );
+	return;
      }
    else if ( !strcmp( option, "load" ) )
      {
@@ -5063,13 +5143,61 @@ void do_map_config( char *arg )
 	  clientfr( "Unable to open the file for reading." );
 	else
 	  clientfr( "All settings reloaded." );
+	return;
+     }
+   else if ( !strcmp( option, "swim" ) )
+     {
+	disable_swimming = disable_swimming ? 0 : 1;
+	if ( disable_swimming )
+	  clientfr( "Swimming disabled - will now walk over water." );
+	else
+	  clientfr( "Swimming enabled." );
+     }
+   else if ( !strcmp( option, "wholist" ) )
+     {
+	disable_wholist = disable_wholist ? 0 : 1;
+	if ( disable_wholist )
+	  clientfr( "Parsing disabled." );
+	else
+	  clientfr( "Parsing enabled." );
+     }
+   else if ( !strcmp( option, "alertness" ) )
+     {
+	disable_alertness = disable_alertness ? 0 : 1;
+	if ( disable_alertness )
+	  clientfr( "Parsing disabled." );
+	else
+	  clientfr( "Parsing enabled." );
+     }
+   else if ( !strcmp( option, "locate" ) )
+     {
+	disable_locating = disable_locating ? 0 : 1;
+	if ( disable_locating )
+	  clientfr( "Locating disabled." );
+	else
+	  clientfr( "Vnums will now be displayed on locating abilities." );
+     }
+   else if ( !strcmp( option, "showarea" ) )
+     {
+	disable_areaname = disable_areaname ? 0 : 1;
+	if ( disable_areaname )
+	  clientfr( "The area name will no longer be shown." );
+	else
+	  clientfr( "The area name will be shown after room titles." );
      }
    else
      {
 	clientfr( "Commands:" );
-	clientf( " map config save   - Save all settings.\r\n"
-		 " map config load   - Reload the previously saved settings.\r\n"
-		 " map config swim   - Toggle swimming.\r\n"
+	clientf( " map config save      - Save all settings.\r\n"
+		 " map config load      - Reload the previously saved settings.\r\n"
+		 " map config swim      - Toggle swimming.\r\n"
+		 " map config wholist   - Parse and replace the 'who' list.\r\n"
+		 " map config alertness - Parse and replace alertness messages.\r\n"
+		 " map config locate    - Append vnums to various locating abilities.\r\n"
+		 " map config showarea  - Show the current area after a room title.\r\n" );
+	
+	return;
+     }
   
    clientfr( "Use 'map config save' to make it permanent." );
 }
@@ -5419,18 +5547,6 @@ void do_map_teleport( char *arg )
      }
 }
 
-
-void do_map_swim( char *arg )
-{
-   disable_swimming = disable_swimming ? 0 : 1;
-   
-   if ( disable_swimming )
-     clientfr( "Swimming disabled - will now walk over water." );
-   else
-     clientfr( "Swimming enabled." );
-   
-   clientfr( "Using 'map save' will make it permanent." );
-}
 
 
 
@@ -6423,7 +6539,7 @@ void do_exit_special( char *arg )
 	     
 	     capture_special_exit = vnum;
 	     
-	     clientff( C_R "[Capturing. The exit will be linked to '%s']\n\r" C_0, room->name );
+	     clientff( C_R "[Capturing. The exit will be linked to '%s']\r\n" C_0, room->name );
 	     clientfr( "Use 'stop' to disable capturing." );
 	  }
 	
@@ -6777,7 +6893,6 @@ FUNC_DATA cmd_table[] =
      { "old",		do_map_old,	CMD_MAP },
      { "file",		do_map_file,	CMD_MAP },
      { "teleport",	do_map_teleport,CMD_MAP },
-     { "swim",		do_map_swim,	CMD_MAP },
      { "queue",		do_map_queue,	CMD_MAP },
      { "config",	do_map_config,	CMD_MAP },
    
@@ -6965,7 +7080,7 @@ int i_mapper_process_client_aliases( char *line )
    if ( capture_special_exit )
      {
 	strcpy( cse_command, line );
-	clientff( C_R "[Command changed to '%s'.]\n\r" C_0, cse_command );
+	clientff( C_R "[Command changed to '%s'.]\r\n" C_0, cse_command );
      }
    
    return 0;

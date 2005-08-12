@@ -23,11 +23,12 @@ IMAPPER
 - Customizable colors.
 - Personal rooms, stored in a personal map file.
 - NPC says before room titles need to be fixed.
-- Enable/Disable prefix/suffix.
-- Landmarks.
+* Enable/Disable prefix/suffix.
+* Landmarks.
 - Composer gather.
 - MCCP disable on quit.
 - Windows crash report.
+- Area Off.
 
 
 IOFFENSE
