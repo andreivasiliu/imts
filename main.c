@@ -48,7 +48,7 @@
 #endif
 
 int main_version_major = 2;
-int main_version_minor = 1;
+int main_version_minor = 2;
 
 
 
@@ -594,8 +594,17 @@ void load_all_modules( )
 		  continue;
 	       }
 	     
+	     /* Try both. Some systems export it with an underscore. */
+	     
 	     register_module = dlsym( dl_handle, "module_register" );
-	     if ( ( dl_error = dlerror( ) ) != NULL )
+	     dl_error = dlerror( );
+	     if ( dl_error )
+	       {
+		  register_module = dlsym( dl_handle, "_module_register" );
+		  dl_error = dlerror( );
+	       }
+	     
+	     if ( dl_error )
 	       {
 		  debugf( "Can't get the Register symbol from %s: %s",
 			  buf, dl_error );
@@ -1240,10 +1249,10 @@ void logff( char *type, char *string, ... )
    gettimeofday( &tv, NULL );
    
    if ( type )
-     fprintf( fl, "(%3ld.%2ld) [%s]: %s", tv.tv_sec % 1000,
+     fprintf( fl, "(%3ld.%2ld) [%s]: %s\n", tv.tv_sec % 1000,
 	      tv.tv_usec / 10000, type, string );
    else
-     fprintf( fl, "(%3ld.%2ld) %s", tv.tv_sec % 1000,
+     fprintf( fl, "(%3ld.%2ld) %s\n", tv.tv_sec % 1000,
 	      tv.tv_usec / 10000, string );
    
    fclose( fl );
@@ -1261,7 +1270,7 @@ void start_log( )
      {
 	debugf( "Log file found! Logging everything in it." );
 	logging = 1;
-	logff( NULL, "-= LOG STARTED =-\n" );
+	logff( NULL, "-= LOG STARTED =-" );
 	fclose( fl );
      }
    else
@@ -1609,7 +1618,6 @@ void log_bytes( char *type, char *string, int bytes )
      }
    
    *(b++) = '\'';
-   *(b++) = '\n';
    *(b++) = 0;
    
    logff( NULL, buf );
@@ -2109,8 +2117,8 @@ void handle_atcp( char *msg )
 	strcpy( a_title, body );
      }
    
-   else
-     debugf( "[%s[%s]%s]", act, body, msg );
+//   else
+//     debugf( "[%s[%s]%s]", act, body, msg );
 }
 
 
@@ -2195,7 +2203,7 @@ void debug_telnet( char *buf, char *dst, char *who, int *bytes )
 		  if ( !atcp_login_as[0] || !strcmp( atcp_login_as, "default" ) )
 		    sprintf( atcp_login_as, "MudBot %d.%d", main_version_major, main_version_minor );
 		  
-		  sprintf( buf, "%s" "hello %s\nauth 1\ncomposer 1\nchar_name 1\nchar_vitals 1\nroom_brief 1\nroom_exits 1" "%s",
+		  sprintf( buf, "%s" "hello %s\nauth 1\ncomposer 0\nchar_name 1\nchar_vitals 1\nroom_brief 0\nroom_exits 0" "%s",
 			   sb_atcp, atcp_login_as, se );
 		  send_to_server( buf );
 		  
@@ -2687,6 +2695,8 @@ int process_client( void )
    
    log_bytes( "c->m", buf, bytes );
    
+//   send_to_server( buf );
+//#if 0
    for ( i = 0; i < bytes; i++ )
      {
 	/* Anything usually gets dumped here. */
@@ -2710,6 +2720,7 @@ int process_client( void )
 	     last_client_line[--last_client_pos] = 0;
 	  }
      }
+//#endif
    
    return 0;
 }
@@ -2728,6 +2739,7 @@ void process_buffer( char *raw_buf, int bytes )
    int ignore = 0;
    int i;
    struct timeval tvold, tvnew;
+   int in_sub_iac = 0;
    
    bytes_uncompressed += bytes;
    
@@ -2741,7 +2753,7 @@ void process_buffer( char *raw_buf, int bytes )
    buffer_output = 1;
    for ( i = 0; i < bytes; i++ )
      {
-	if ( buf[i] == '\n' )
+	if ( buf[i] == '\n' && !in_sub_iac )
 	  {
 	     current_line++;
 	     
@@ -2765,9 +2777,27 @@ void process_buffer( char *raw_buf, int bytes )
 	     last_printable_line[0] = 0;
 	     last_p_pos = 0;
 	  }
-	else if ( buf[i] == '\r' )
+	else if ( buf[i] == '\r' && !in_sub_iac )
 	  {
 	     /* Just skip it. */
+	  }
+	else if ( buf[i] == (char) SB )
+	  {
+	     in_sub_iac = 1;
+	     last_line[last_pos] = buf[i];
+	     last_line[++last_pos] = 0;
+	  }
+	else if ( buf[i] == (char) SE )
+	  {
+	     in_sub_iac = 0;
+	     
+	     last_line[last_pos] = buf[i];
+	     last_line[++last_pos] = 0;
+	     
+	     clientf( last_line );
+	     
+	     last_pos = 0;
+	     last_line[last_pos] = 0;
 	  }
 	else if ( buf[i] == (char) GA || buf[i] == (char) EOR )
 	  {

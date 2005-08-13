@@ -4882,14 +4882,14 @@ void do_map_path( char *arg )
    
    while ( arg[0] )
      {
-	int near = 0;
+	int neari = 0;
 	
 	arg = get_string( arg, buf, 256 );
 	
 	if ( !strcmp( buf, "near" ) )
 	  {
 	     arg = get_string( arg, buf, 256 );
-	     near = 1;
+	     neari = 1;
 	  }
 	
 	room = get_room( atoi( buf ) );
@@ -4902,13 +4902,13 @@ void do_map_path( char *arg )
 	  }
 	else
 	  {
-	     if ( !near )
+	     if ( !neari )
 	       init_openlist( room );
 	     else
 	       {
-		  for ( near = 1; dir_name[near]; near++ )
-		    if ( room->exits[near] )
-		      init_openlist( room->exits[near] );
+		  for ( neari = 1; dir_name[neari]; neari++ )
+		    if ( room->exits[neari] )
+		      init_openlist( room->exits[neari] );
 	       }
 	  }
      }
