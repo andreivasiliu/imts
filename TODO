@@ -29,6 +29,8 @@ IMAPPER
 - MCCP disable on quit.
 - Windows crash report.
 - Area Off.
+- do_before's and do_after's.
+
 
 
 IOFFENSE
