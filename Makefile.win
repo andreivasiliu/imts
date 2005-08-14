@@ -1,0 +1,37 @@
+# Project: mb-core
+# Makefile created by Dev-C++ 4.9.9.1
+
+CC      = gcc.exe
+WINDRES = windres.exe
+DLLWRAP = dllwrap.exe
+LINKOBJ = main.o winmain.o
+LIBS    = -L"D:/Programs/Dev-Cpp/lib"
+INCS    = -I"D:/Programs/Dev-Cpp/include"
+BIN     = mb-core.exe
+CFLAGS  = $(INCS) -DFOR_WINDOWS -I../zlib
+FILES   = $(BIN) i_mapper.dll imperian.dll mmchat.dll voter.dll
+
+all: $(FILES)
+
+clean:
+	rm -f *~ *.o *.res $(BIN) *.dll
+
+$(BIN): main.o winmain.o winres.res
+	$(CC) $(LINKOBJ) -o $(BIN) $(LIBS) -mwindows ../zlib/libz.a -lwsock32 -lcomctl32
+
+%.dll: %.o
+	$(DLLWRAP) -o $@ $< $(LIBS) --no-export-all-symbols --add-stdcall-alias
+
+main.o: main.c header.h
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+winmain.o: winmain.c winres.h
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+%.o: %.c header.h module.h
+	$(CC) -c -o $@ $< $(CFLAGS) -DBUILDING_DLL
+
+i_mapper.o: i_mapper.h
+
+%.res: %.rc
+	$(WINDRES) -i $< --input-format=rc -o $@

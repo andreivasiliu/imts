@@ -1,0 +1,37 @@
+#include <windows.h>
+#include "winres.h"
+
+ID_MAIN_ICON ICON "mb-core.ico"
+ID_MOD_ICON ICON "mb-mod.ico"
+
+ID_EDITOR_MENU MENU
+BEGIN
+     POPUP "Send"
+     BEGIN
+          MENUITEM "As Raw Input", ID_EDM_SENDNORMAL
+          MENUITEM "Set OLE", ID_EDM_SENDSETOLE
+     END
+     MENUITEM "Clear", ID_EDM_CLEAR
+     POPUP "Save"
+     BEGIN
+          MENUITEM "To File", ID_EDM_SAVEFILE
+          MENUITEM SEPARATOR
+          MENUITEM "Buffer 1", ID_EDM_SAVEB1
+          MENUITEM "Buffer 2", ID_EDM_SAVEB2
+          MENUITEM "Buffer 3", ID_EDM_SAVEB3
+     END
+     POPUP "Load"
+     BEGIN
+          MENUITEM "From File", ID_EDM_LOADFILE
+          MENUITEM SEPARATOR
+          MENUITEM "Buffer 1", ID_EDM_LOADB1, GRAYED
+          MENUITEM "Buffer 2", ID_EDM_LOADB2, GRAYED
+          MENUITEM "Buffer 3", ID_EDM_LOADB3, GRAYED
+     END
+     MENUITEM "Close", ID_EDM_CLOSE
+END
+
+// Executable's Icon
+
+A ICON MOVEABLE PURE LOADONCALL DISCARDABLE "mb-core.ico"
+
