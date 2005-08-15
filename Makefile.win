@@ -1,14 +1,18 @@
-# Project: mb-core
-# Makefile created by Dev-C++ 4.9.9.1
+# Project: IMTS
 
 CC      = gcc.exe
 WINDRES = windres.exe
 DLLWRAP = dllwrap.exe
-LINKOBJ = main.o winmain.o
 LIBS    = -L"D:/Programs/Dev-Cpp/lib"
 INCS    = -I"D:/Programs/Dev-Cpp/include"
 BIN     = mb-core.exe
 CFLAGS  = $(INCS) -DFOR_WINDOWS -I../zlib
+
+MAKERES = $(WINDRES) --input-format=rc -O coff
+MAKEDLL = $(DLLWRAP) $(LIBS) --no-export-all-symbols --add-stdcall-alias
+MAKEOBJ = $(CC) $(CFLAGS) -c
+MAKEEXE = $(CC) $(LIBS) -mwindows
+
 FILES   = $(BIN) i_mapper.dll imperian.dll mmchat.dll voter.dll
 
 all: $(FILES)
@@ -17,21 +21,25 @@ clean:
 	rm -f *~ *.o *.res $(BIN) *.dll
 
 $(BIN): main.o winmain.o winres.res
-	$(CC) $(LINKOBJ) winres.res -o $(BIN) $(LIBS) -mwindows ../zlib/libz.a -lwsock32 -lcomctl32
+	@echo Making '$@' from '$^'...
+	@$(MAKEEXE) -o $@ main.o winmain.o winres.res ../zlib/libz.a -lwsock32 -lcomctl32
 
 %.dll: %.o
-	$(DLLWRAP) -o $@ $< $(LIBS) --no-export-all-symbols --add-stdcall-alias
+	@echo Making '$@' from '$^'...
+	@$(MAKEDLL) -o $@ $<
 
 main.o: main.c header.h
-	$(CC) -c -o $@ $< $(CFLAGS)
+	@echo Making '$@' from '$^'...
+	@$(MAKEOBJ) -o $@ $<
 
 winmain.o: winmain.c winres.h
-	$(CC) -c -o $@ $< $(CFLAGS)
+	@echo Making '$@' from '$^'...
+	@$(MAKEOBJ) -o $@ $<
 
 %.o: %.c header.h module.h
-	$(CC) -c -o $@ $< $(CFLAGS) -DBUILDING_DLL
-
-i_mapper.o: i_mapper.h
+	@echo Making '$@' from '$^'...
+	@$(MAKEOBJ) -o $@ $< -DBUILDING_DLL
 
 %.res: %.rc
-	$(WINDRES) -i $< --input-format=rc -o $@ -O coff
+	@echo Making '$@' from '$^'...
+	@$(MAKERES) -o $@ -i $<
