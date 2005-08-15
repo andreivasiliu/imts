@@ -117,7 +117,7 @@ void win_sig_segv_handler( int sig )
    extern char *debug[6];
    int i;
    
-   MessageBox( NULL, "MudBot", "Crash? Attempting to write a crash.log...", 0 );
+   MessageBox( NULL, "Crash? Attempting to write a crash.log...", "MudBot", 0 );
    
    fl = fopen( "crash.log", "w" );
    
@@ -533,9 +533,10 @@ void win_update_descriptors( )
 	  continue;
 	
 	if ( d->callback_in )
-	  WSAAsyncSelect( *d->fd, hwndMain, UDM_WINSOCK_SELECT, FD_READ | FD_CLOSE | FD_ACCEPT );
+	  WSAAsyncSelect( *d->fd, hwndMain, UDM_WINSOCK_SELECT,
+			  ( d->callback_out ? FD_WRITE : 0 ) | FD_READ | FD_CLOSE | FD_ACCEPT );
 	
-	sock_list[i] = *d->fd;
+	sock_list[i++] = *d->fd;
      }
    
    /* Update the System Tray icon. */

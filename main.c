@@ -1486,27 +1486,31 @@ void write_error_buffer( DESCRIPTOR *self )
    int length, bytes, free_buffer = 0;
    
    length = strlen( buffer_write_error );
-   if ( length > 4096 )
-     length = 4096;
-   else
+   
+   while( 1 )
      {
-	free_buffer = 1;
+	bytes = c_write( client, buffer_write_error, length > 4096 ? 4096 : length );
+	
+	if ( bytes < 0 )
+	  break;
+	
+	buffer_write_error += bytes;
+	length -= bytes;
+	
+	if ( !length )
+	  {
+	     free_buffer = 1;
+	     break;
+	  }
      }
-   
-   bytes = c_write( client, buffer_write_error, length );
-   
-   if ( bytes < 0 )
-     {
-	return;
-     }
-   
-   buffer_write_error += length;
    
    if ( free_buffer )
      {
+	debugf( "Everything sent, freeing the memory buffer." );
 	unable_to_write = 0;
-	self->callback_out = NULL;
 	free( initial_big_buffer );
+	self->callback_out = NULL;
+	update_descriptors( );
      }
 }
 
@@ -1565,6 +1569,7 @@ void clientf( char *string )
 	       exit( 1 );
 	     
 	     desc->callback_out = write_error_buffer;
+	     update_descriptors( );
 	  }
      }
 }
