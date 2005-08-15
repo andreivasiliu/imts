@@ -23,10 +23,10 @@
 
 /* Main source file, handles sockets, signals and other little things. */
 
-#include <unistd.h>	/* For write(), read() */
-#include <stdarg.h>	/* For variable argument functions */
-#include <signal.h>	/* For signal() */
-#include <time.h>	/* For time() */
+#include <unistd.h>        /* For write(), read() */
+#include <stdarg.h>        /* For variable argument functions */
+#include <signal.h>        /* For signal() */
+#include <time.h>        /* For time() */
 
 #include "header.h"
 
@@ -41,9 +41,9 @@
 # include <sys/time.h>    /* For gettimeofday() */ 
 # include <netdb.h>       /* For gethostbyaddr() and others */
 # include <netinet/in.h>  /* For sockaddr_in */
-# include <dlfcn.h>	  /* For dlopen(), dlsym(), dlclose() and dlerror() */
+# include <dlfcn.h>          /* For dlopen(), dlsym(), dlclose() and dlerror() */
 # if !defined( DISABLE_MCCP )
-#  include <zlib.h>	  /* needed for MCCP */
+#  include <zlib.h>          /* needed for MCCP */
 # endif
 #endif
 
@@ -164,6 +164,9 @@ int last_timer;
 int sent_something;
 int current_line;
 int show_processing_time;
+int unable_to_write;
+char *buffer_write_error;
+char *initial_big_buffer;
 
 char *connection_error;
 
@@ -285,15 +288,15 @@ void *get_variable( char *name )
       void *var;
    } variables[ ] =
      {
-	/* ATCP */
-	  { "a_on", &a_on },
-	  { "a_hp", &a_hp },
-	  { "a_max_hp", &a_max_hp },
-	  { "a_mana", &a_mana },
-	  { "a_max_mana", &a_max_mana },
-	  { "a_exp", &a_exp },
-	
-	  { NULL, NULL }
+        /* ATCP */
+          { "a_on", &a_on },
+          { "a_hp", &a_hp },
+          { "a_max_hp", &a_max_hp },
+          { "a_mana", &a_mana },
+          { "a_max_mana", &a_max_mana },
+          { "a_exp", &a_exp },
+        
+          { NULL, NULL }
      }, *p;
    
    for ( p = variables; p->name; p++ )
@@ -313,40 +316,40 @@ void *get_function( char *name )
       void *func;
    } functions[ ] =
      {
-	/* Communication */
-	  { "get_variable", get_variable },
-	  { "get_modules", get_modules },
-	  { "DEBUG", DEBUG },
-	  { "debugf", debugf },
-	  { "debugerr", debugerr },
-	  { "logff", logff },
-	  { "clientf", clientf  },
-	  { "clientfr", clientfr },
-	  { "clientff", clientff },
-	  { "send_to_server", send_to_server },
-	  { "show_prompt", show_prompt },
-	  { "gag_line", gag_line },
-	  { "gag_prompt", gag_prompt },
-	/* Utility */
-	  { "gettimeofday", gettimeofday },
-	  { "get_string", get_string },
-	  { "cmp", cmp },
-	/* Timers */
-	  { "get_timers", get_timers },
-	  { "get_timer", get_timer },
-	  { "add_timer", add_timer },
-	  { "del_timer", del_timer },
-	/* Networking */
-	  { "get_descriptors", get_descriptors },
-	  { "mb_connect", mb_connect },
-	  { "get_connect_error", get_connect_error },
-	  { "add_descriptor", add_descriptor },
-	  { "remove_descriptor", remove_descriptor },
-	  { "c_read", c_read },
-	  { "c_write", c_write },
-	  { "c_close", c_close },
-	
-	  { NULL, NULL }
+        /* Communication */
+          { "get_variable", get_variable },
+          { "get_modules", get_modules },
+          { "DEBUG", DEBUG },
+          { "debugf", debugf },
+          { "debugerr", debugerr },
+          { "logff", logff },
+          { "clientf", clientf  },
+          { "clientfr", clientfr },
+          { "clientff", clientff },
+          { "send_to_server", send_to_server },
+          { "show_prompt", show_prompt },
+          { "gag_line", gag_line },
+          { "gag_prompt", gag_prompt },
+        /* Utility */
+          { "gettimeofday", gettimeofday },
+          { "get_string", get_string },
+          { "cmp", cmp },
+        /* Timers */
+          { "get_timers", get_timers },
+          { "get_timer", get_timer },
+          { "add_timer", add_timer },
+          { "del_timer", del_timer },
+        /* Networking */
+          { "get_descriptors", get_descriptors },
+          { "mb_connect", mb_connect },
+          { "get_connect_error", get_connect_error },
+          { "add_descriptor", add_descriptor },
+          { "remove_descriptor", remove_descriptor },
+          { "c_read", c_read },
+          { "c_write", c_write },
+          { "c_close", c_close },
+        
+          { NULL, NULL }
      }, *p;
    
    for ( p = functions; p->name; p++ )
@@ -375,11 +378,11 @@ void debugf( char *string, ... )
    /* Check if any module wants to display it anywhere else. */
    for ( module = modules; module; module = module->next )
      {
-	if ( module->debugf )
-	  {
-	     (*module->debugf)( buf );
-	     to_stdout = 0;
-	  }
+        if ( module->debugf )
+          {
+             (*module->debugf)( buf );
+             to_stdout = 0;
+          }
      }
    
    if ( to_stdout )
@@ -437,9 +440,9 @@ MODULE *add_module( )
      modules = module;
    else
      {
-	for ( m = modules; m->next; m = m->next );
-	
-	m->next = module;
+        for ( m = modules; m->next; m = m->next );
+        
+        m->next = module;
      }
    
    module->next = NULL;
@@ -454,21 +457,21 @@ void update_descriptors( )
    
    for ( module = modules; module; module = module->next )
      {
-	if ( !module->main_loop )
-	  continue;
-	
-	if ( module->update_descriptors )
-	  {
-	     (*module->update_descriptors)( );
-	     break;
-	  }
+        if ( !module->main_loop )
+          continue;
+        
+        if ( module->update_descriptors )
+          {
+             (*module->update_descriptors)( );
+             break;
+          }
      }
    
 #if defined( FOR_WINDOWS )
      {
-	void win_update_descriptors( ); /* From winmain.c */
-	
-	win_update_descriptors( );
+        void win_update_descriptors( ); /* From winmain.c */
+        
+        win_update_descriptors( );
      }
 #endif
 }
@@ -481,21 +484,21 @@ void update_modules( )
    
    for ( module = modules; module; module = module->next )
      {
-	if ( !module->main_loop )
-	  continue;
-	
-	if ( module->update_modules )
-	  {
-	     (*module->update_modules)( );
-	     break;
-	  }
+        if ( !module->main_loop )
+          continue;
+        
+        if ( module->update_modules )
+          {
+             (*module->update_modules)( );
+             break;
+          }
      }
    
 #if defined( FOR_WINDOWS )
      {
-	void win_update_modules( );
-	
-	win_update_modules( );
+        void win_update_modules( );
+        
+        win_update_modules( );
      }
 #endif
 }
@@ -523,149 +526,140 @@ void load_all_modules( )
    
    if ( !fl )
      {
-	debugerr( "modules" );
-	return;
+        debugerr( "modules" );
+        return;
      }
    
    while( 1 )
      {
-	fgets( line, 256, fl );
-	
-	if ( feof( fl ) )
-	  break;
-	
-	/* Skip if empty/comment line. */
-	if ( line[0] == '#' || line[0] == ' ' || line[0] == '\n' || line[0] == '\r' || !line[0] )
-	  continue;
-	
-	p = get_string( line, cmd, 256 );
-	
-	/* This file also contains some options. Load them too. */
-	if ( !strcmp( cmd, "host" ) )
-	  {
-	     get_string( p, buf, 256 );
-	     
-	     strcpy( default_host, buf );
-	  }
-	else if ( !strcmp( cmd, "port" ) )
-	  {
-	     get_string( p, buf, 256 );
-	     
-	     default_port = atoi( buf );
-	  }
-	else if ( !strcmp( cmd, "atcp_login_as" ) )
-	  {
-	     get_string( p, buf, 256 );
-	     
-	     strcpy( atcp_login_as, buf );
-	  }
-	else if ( !strcmp( cmd, "user" ) )
-	  {
-	     get_string( p, buf, 256 );
-	     
-	     strcpy( default_user, buf );
-	  }
-	else if ( !strcmp( cmd, "pass" ) )
-	  {
-	     get_string( p, buf, 256 );
-	     
-	     strcpy( default_pass, buf );
-	  }
-	
-	/* Shared Object file. (.so) */
-	else if ( !strcmp( cmd, "so" ) )
-	  {
+        fgets( line, 256, fl );
+        
+        if ( feof( fl ) )
+          break;
+        
+        /* Skip if empty/comment line. */
+        if ( line[0] == '#' || line[0] == ' ' || line[0] == '\n' || line[0] == '\r' || !line[0] )
+          continue;
+        
+        p = get_string( line, cmd, 256 );
+        
+        /* This file also contains some options. Load them too. */
+        if ( !strcmp( cmd, "host" ) )
+          {
+             get_string( p, buf, 256 );
+             
+             strcpy( default_host, buf );
+          }
+        else if ( !strcmp( cmd, "port" ) )
+          {
+             get_string( p, buf, 256 );
+             
+             default_port = atoi( buf );
+          }
+        else if ( !strcmp( cmd, "atcp_login_as" ) )
+          {
+             get_string( p, buf, 256 );
+             
+             strcpy( atcp_login_as, buf );
+          }
+        else if ( !strcmp( cmd, "user" ) )
+          {
+             get_string( p, buf, 256 );
+             
+             strcpy( default_user, buf );
+          }
+        else if ( !strcmp( cmd, "pass" ) )
+          {
+             get_string( p, buf, 256 );
+             
+             strcpy( default_pass, buf );
+          }
+        
+        /* Shared Object file. (.so) */
+        else if ( !strcmp( cmd, "so" ) )
+          {
 #if !defined( FOR_WINDOWS )
-	     get_string( p, buf, 256 );
-	     
-	     debugf( "Loading file '%s'.", buf );
-	     
-	     if ( !buf[0] )
-	       {
-		  debugf( "Syntax error in the 'modules' file." );
-		  continue;
-	       }
-	     
-	     dl_handle = dlopen( buf, RTLD_NOW );
-	     
-	     if ( !dl_handle )
-	       {
-		  debugf( "Can't load %s: %s", buf, dlerror( ) );
-		  continue;
-	       }
-	     
-	     /* Try both. Some systems export it with an underscore. */
-	     
-	     register_module = dlsym( dl_handle, "module_register" );
-	     dl_error = dlerror( );
-	     if ( dl_error )
-	       {
-		  register_module = dlsym( dl_handle, "_module_register" );
-		  dl_error = dlerror( );
-	       }
-	     
-	     if ( dl_error )
-	       {
-		  debugf( "Can't get the Register symbol from %s: %s",
-			  buf, dl_error );
-		  dlclose( dl_handle );
-		  continue;
-	       }
-	     
-	     module = add_module( );
-	     module->register_module = register_module;
-	     module->name = strdup( "unregistered" );
-	     module->dl_handle = dl_handle;
-	     module->file_name = strdup( buf );
+             get_string( p, buf, 256 );
+             
+             debugf( "Loading file '%s'.", buf );
+             
+             if ( !buf[0] )
+               {
+                  debugf( "Syntax error in the 'modules' file." );
+                  continue;
+               }
+             
+             dl_handle = dlopen( buf, RTLD_NOW );
+             
+             if ( !dl_handle )
+               {
+                  debugf( "Can't load %s: %s", buf, dlerror( ) );
+                  continue;
+               }
+             
+             register_module = dlsym( dl_handle, "module_register" );
+             if ( ( dl_error = dlerror( ) ) != NULL )
+               {
+                  debugf( "Can't get the Register symbol from %s: %s",
+                          buf, dl_error );
+                  dlclose( dl_handle );
+                  continue;
+               }
+             
+             module = add_module( );
+             module->register_module = register_module;
+             module->name = strdup( "unregistered" );
+             module->dl_handle = dl_handle;
+             module->file_name = strdup( buf );
 #endif
-	  }
-	/* Dynamic Loaded Library file. (.dll) */
-	else if ( !strcmp( cmd, "dll" ) )
-	  {
+          }
+        /* Dynamic Loaded Library file. (.dll) */
+        else if ( !strcmp( cmd, "dll" ) )
+          {
 #if defined( FOR_WINDOWS )
-	     HINSTANCE mod;
-	     
-	     get_string( p, buf, 256 );
-	     
-	     debugf( "Loading file '%s'.", buf );
-	     
-	     if ( !buf[0] )
-	       {
-		  debugf( "Syntax error in the 'modules' file." );
-		  continue;
-	       }
-	     
-	     /* Prevent showing a Message box if the file is not found. */
-	     SetErrorMode( SEM_NOOPENFILEERRORBOX );
-	     
-	     mod = LoadLibrary( buf );
-	     
-	     if ( mod <= (HINSTANCE) HINSTANCE_ERROR )
-	       {
-		  debugf( "Can't load %s.", buf );
-		  continue;
-	       }
-	     
-	     register_module = (void *) GetProcAddress( mod, "module_register" );
-	     
-	     if ( !register_module )
-	       {
-		  debugf( "Can't get the Register symbol from %s.", buf );
-		  FreeLibrary( mod );
-	       }
-	     
-	     module = add_module( );
-	     module->register_module = register_module;
-	     module->name = strdup( "unregistered" );
-	     module->dll_hinstance = mod;
-	     module->file_name = strdup( buf );
+             HINSTANCE mod;
+             
+             get_string( p, buf, 256 );
+             
+             debugf( "Loading file '%s'.", buf );
+             
+             if ( !buf[0] )
+               {
+                  debugf( "Syntax error in the 'modules' file." );
+                  continue;
+               }
+             
+             /* Prevent showing a Message box if the file is not found. */
+             SetErrorMode( SEM_NOOPENFILEERRORBOX );
+             
+             mod = LoadLibrary( buf );
+             
+             if ( mod <= (HINSTANCE) HINSTANCE_ERROR )
+               {
+                  debugf( "Can't load %s.", buf );
+                  continue;
+               }
+             
+             register_module = (void *) GetProcAddress( mod, "module_register" );
+             
+             if ( !register_module )
+               {
+                  debugf( "Can't get the Register symbol from %s.", buf );
+                  FreeLibrary( mod );
+               }
+             
+             module = add_module( );
+             module->register_module = register_module;
+             module->name = strdup( "unregistered" );
+             module->dll_hinstance = mod;
+             module->file_name = strdup( buf );
 #endif
-	  }
-	else
-	  {
-	     debugf( "Syntax error, in the 'modules' file." );
-	     continue;
-	  }
+          }
+        else
+          {
+             debugf( "Syntax error, in the 'modules' file." );
+             continue;
+          }
      }
    
    fclose( fl );
@@ -681,9 +675,9 @@ void load_builtin_modules( )
    
    for ( i = 0; built_in_modules[i].name; i++ )
      {
-	module = add_module( );
-	module->register_module = built_in_modules[i].register_module;
-	module->name = strdup( built_in_modules[i].name );
+        module = add_module( );
+        module->register_module = built_in_modules[i].register_module;
+        module->name = strdup( built_in_modules[i].name );
      }
 }
 
@@ -704,37 +698,37 @@ void unload_module( MODULE *module )
      modules = modules->next;
    else
      {
-	for ( m = modules; m->next; m = m->next )
-	  if ( m->next == module )
-	    {
-	       m->next = module->next;
-	       break;
-	    }
+        for ( m = modules; m->next; m = m->next )
+          if ( m->next == module )
+            {
+               m->next = module->next;
+               break;
+            }
      }
    
    /* Remove all descriptors and timers that belong to it. */
    while ( 1 )
      {
-	for ( d = descs; d; d = d->next )
-	  if ( d->mod == module )
-	    {
-	       if ( *d->fd > 0 )
-		 c_close( *d->fd );
-	       remove_descriptor( d );
-	       continue;
-	    }
-	break;
+        for ( d = descs; d; d = d->next )
+          if ( d->mod == module )
+            {
+               if ( *d->fd > 0 )
+                 c_close( *d->fd );
+               remove_descriptor( d );
+               continue;
+            }
+        break;
      }
    
    while ( 1 )
      {
-	for ( t = timers; t; t = t->next )
-	  if ( t->mod == module )
-	    {
-	       remove_timer( t );
-	       continue;
-	    }
-	break;
+        for ( t = timers; t; t = t->next )
+          if ( t->mod == module )
+            {
+               remove_timer( t );
+               continue;
+            }
+        break;
      }
    
    /* Unlink it for good. */
@@ -765,8 +759,8 @@ void do_unload_module( char *name )
    
    if ( !module )
      {
-	clientfb( "A module with that name was not found." );
-	return;
+        clientfb( "A module with that name was not found." );
+        return;
      }
    
    unload_module( module );
@@ -791,27 +785,27 @@ void load_module( char *name )
    
    if ( !name[0] )
      {
-	clientfb( "Null file name!" );
-	return;
+        clientfb( "Null file name!" );
+        return;
      }
    
    dl_handle = dlopen( name, RTLD_NOW );
    
    if ( !dl_handle )
      {
-	sprintf( buf, "Can't load %s: %s", name, dlerror( ) );
-	clientfb( buf );
-	return;
+        sprintf( buf, "Can't load %s: %s", name, dlerror( ) );
+        clientfb( buf );
+        return;
      }
    
    register_module = dlsym( dl_handle, "module_register" );
    if ( ( dl_error = dlerror( ) ) != NULL )
      {
-	sprintf( buf, "Can't get the Register symbol from %s: %s",
-		name, dl_error );
-	clientfb( buf );
-	dlclose( dl_handle );
-	return;
+        sprintf( buf, "Can't get the Register symbol from %s: %s",
+                name, dl_error );
+        clientfb( buf );
+        dlclose( dl_handle );
+        return;
      }
    
    module = add_module( );
@@ -832,8 +826,8 @@ void load_module( char *name )
    
    if ( !name[0] )
      {
-	clientfb( "Null file name!" );
-	return;
+        clientfb( "Null file name!" );
+        return;
      }
    
    /* Prevent showing a Message box if the file is not found. */
@@ -843,18 +837,18 @@ void load_module( char *name )
    
    if ( mod <= (HINSTANCE) HINSTANCE_ERROR )
      {
-	sprintf( buf, "Can't load %s.", name );
-	clientfb( buf );
-	return;
+        sprintf( buf, "Can't load %s.", name );
+        clientfb( buf );
+        return;
      }
    
    register_module = (void *) GetProcAddress( mod, "module_register" );
    if ( !register_module )
      {
-	sprintf( buf, "Can't get the Register symbol from %s.", name );
-	clientfb( buf );
-	FreeLibrary( mod );
-	return;
+        sprintf( buf, "Can't get the Register symbol from %s.", name );
+        clientfb( buf );
+        FreeLibrary( mod );
+        return;
      }
    
    module = add_module( );
@@ -894,14 +888,14 @@ void do_reload_module( char *name )
    
    if ( !module )
      {
-	clientfb( "A module with that name was not found." );
-	return;
+        clientfb( "A module with that name was not found." );
+        return;
      }
    
    if ( !module->file_name || !module->file_name[0] )
      {
-	clientfb( "The module's file name is not known." );
-	return;
+        clientfb( "The module's file name is not known." );
+        return;
      }
    
    strcpy( file, module->file_name );
@@ -926,8 +920,8 @@ void modules_register( )
    
    for ( mod = modules; mod; mod = mod->next )
      {
-	mod->get_func = get_function;
-	(mod->register_module)( mod );
+        mod->get_func = get_function;
+        (mod->register_module)( mod );
      }
    
    update_modules( );
@@ -950,20 +944,20 @@ void module_show_version( )
    /* Copyright notices. */
    
    clientff( C_B "MudBot v" C_G "%d" C_B "." C_G "%d" C_B "%s - Copyright (C) 2004, 2005  Andrei Vasiliu.\r\n\r\n"
-	     "MudBot comes with ABSOLUTELY NO WARRANTY. This is free\r\n"
-	     "software, and you are welcome to redistribute it under\r\n"
-	     "certain conditions; See the GNU General Public License\r\n"
-	     "for more details.\r\n\r\n",
-	     main_version_major, main_version_minor, OS );
+             "MudBot comes with ABSOLUTELY NO WARRANTY. This is free\r\n"
+             "software, and you are welcome to redistribute it under\r\n"
+             "certain conditions; See the GNU General Public License\r\n"
+             "for more details.\r\n\r\n",
+             main_version_major, main_version_minor, OS );
    
    /* Mod versions and notices. */
    for ( module = modules; module; module = module->next )
      {
-	clientff( C_B "Module: %s v" C_G "%d" C_B "." C_G "%d" C_B ".\r\n",
-		  module->name, module->version_major, module->version_minor );
-	
-	if ( module->show_notice )
-	  (*module->show_notice)( module );
+        clientff( C_B "Module: %s v" C_G "%d" C_B "." C_G "%d" C_B ".\r\n",
+                  module->name, module->version_major, module->version_minor );
+        
+        if ( module->show_notice )
+          (*module->show_notice)( module );
      }
 }
 
@@ -976,8 +970,8 @@ void module_init_data( )
    
    for ( mod = modules; mod; mod = mod->next )
      {
-	if ( mod->init_data )
-	  (mod->init_data)( );
+        if ( mod->init_data )
+          (mod->init_data)( );
      }
 }
 
@@ -992,8 +986,8 @@ void strip_unprint( char *string, char *dest )
    for ( a = string, b = dest; *a; a++ )
      if ( isprint( *a ) )
        {
-	  *b = *a;
-	  b++;
+          *b = *a;
+          b++;
        }
    *b = 0;
 }
@@ -1010,12 +1004,12 @@ void strip_colors( char *string, char *dest )
    
    for ( a = string, b = dest; *a; a++ )
      {
-	if ( *a == '\33' )
-	  ignore = 1;
-	else if ( ignore && *a == 'm' )
-	  ignore = 0;
-	else if ( !ignore )
-	  *b = *a, b++;
+        if ( *a == '\33' )
+          ignore = 1;
+        else if ( ignore && *a == 'm' )
+          ignore = 0;
+        else if ( !ignore )
+          *b = *a, b++;
      }
    *b = 0;
 }
@@ -1056,24 +1050,24 @@ void module_process_server_line( char *rawline, char *colorless, char *stripped 
    
    for ( module = modules; module; module = module->next )
      {
-	if ( module->process_server_line_prefix )
-	  (module->process_server_line_prefix)( colorless, stripped, rawline );
+        if ( module->process_server_line_prefix )
+          (module->process_server_line_prefix)( colorless, stripped, rawline );
      }
    
    /* Must also gag the new line, don't set to 0 here. */
    if ( !gag_line_value )
      {
-	/* Add an extra \n, so the line won't come right after the prompt. */
-	if ( colorless[0] && current_line == 1 && !sent_something )
-	  clientf( "\r\n" );
-	
-	clientf( rawline );
+        /* Add an extra \n, so the line won't come right after the prompt. */
+        if ( colorless[0] && current_line == 1 && !sent_something )
+          clientf( "\r\n" );
+        
+        clientf( rawline );
      }
    
    for ( module = modules; module; module = module->next )
      {
-	if ( module->process_server_line_suffix )
-	  (module->process_server_line_suffix)( colorless, stripped, rawline );
+        if ( module->process_server_line_suffix )
+          (module->process_server_line_suffix)( colorless, stripped, rawline );
      }
    
    /*
@@ -1095,8 +1089,8 @@ void module_process_server_prompt_informative( char *rawline, char *colorless )
    
    for ( module = modules; module; module = module->next )
      {
-	if ( module->process_server_prompt_informative )
-	  (module->process_server_prompt_informative)( colorless, rawline );
+        if ( module->process_server_prompt_informative )
+          (module->process_server_prompt_informative)( colorless, rawline );
      }
 }
 
@@ -1109,8 +1103,8 @@ void module_process_server_prompt_action( char *line )
    
    for ( module = modules; module; module = module->next )
      {
-	if ( module->process_server_prompt_action )
-	  (module->process_server_prompt_action)( line );
+        if ( module->process_server_prompt_action )
+          (module->process_server_prompt_action)( line );
      }
 }
 
@@ -1127,9 +1121,9 @@ int module_process_client_command( char *rawcmd )
    
    for ( module = modules; module; module = module->next )
      {
-	if ( module->process_client_command )
-	  if ( !(module->process_client_command)( cmd ) )
-	    return 0;
+        if ( module->process_client_command )
+          if ( !(module->process_client_command)( cmd ) )
+            return 0;
      }
      
    return 1;
@@ -1153,8 +1147,8 @@ int module_process_client_aliases( char *line )
    
    for ( module = modules; module; module = module->next )
      {
-	if ( module->process_client_aliases )
-	  used = (module->process_client_aliases)( cmd ) || used;
+        if ( module->process_client_aliases )
+          used = (module->process_client_aliases)( cmd ) || used;
      }
    
    buffer_send_to_server = 0;
@@ -1174,12 +1168,12 @@ char *module_build_custom_prompt( )
    
    for ( module = modules; module; module = module->next )
      {
-	if ( module->build_custom_prompt )
-	  {
-	     prompt = (module->build_custom_prompt)( );
-	     if ( prompt )
-	       return prompt;
-	  }
+        if ( module->build_custom_prompt )
+          {
+             prompt = (module->build_custom_prompt)( );
+             if ( prompt )
+               return prompt;
+          }
      }
    
    return NULL;
@@ -1196,10 +1190,10 @@ void show_modules( )
    clientfb( "Modules:" );
    for ( module = modules; module; module = module->next )
      {
-	sprintf( buf, C_B " - %-10s v" C_G "%d" C_B "." C_G "%d" C_B ".\r\n" C_0,
-		 module->name, module->version_major, module->version_minor );
-	
-	clientf( buf );
+        sprintf( buf, C_B " - %-10s v" C_G "%d" C_B "." C_G "%d" C_B ".\r\n" C_0,
+                 module->name, module->version_major, module->version_minor );
+        
+        clientf( buf );
      }
 }
 
@@ -1249,11 +1243,11 @@ void logff( char *type, char *string, ... )
    gettimeofday( &tv, NULL );
    
    if ( type )
-     fprintf( fl, "(%3ld.%2ld) [%s]: %s\n", tv.tv_sec % 1000,
-	      tv.tv_usec / 10000, type, string );
+     fprintf( fl, "(%3ld.%2ld) [%s]: %s", tv.tv_sec % 1000,
+              tv.tv_usec / 10000, type, string );
    else
-     fprintf( fl, "(%3ld.%2ld) %s\n", tv.tv_sec % 1000,
-	      tv.tv_usec / 10000, string );
+     fprintf( fl, "(%3ld.%2ld) %s", tv.tv_sec % 1000,
+              tv.tv_usec / 10000, string );
    
    fclose( fl );
 }
@@ -1268,10 +1262,10 @@ void start_log( )
    
    if ( fl )
      {
-	debugf( "Log file found! Logging everything in it." );
-	logging = 1;
-	logff( NULL, "-= LOG STARTED =-" );
-	fclose( fl );
+        debugf( "Log file found! Logging everything in it." );
+        logging = 1;
+        logff( NULL, "-= LOG STARTED =-\n" );
+        fclose( fl );
      }
    else
      logging = 0;
@@ -1292,36 +1286,36 @@ int init_socket( int port )
    
    if ( WSAStartup( wVersionRequested, &wsaData ) )
      {
-	return -1;
+        return -1;
      }
    
    if ( LOBYTE( wsaData.wVersion ) != 1 ||
-	HIBYTE( wsaData.wVersion ) != 0 )
+        HIBYTE( wsaData.wVersion ) != 0 )
      {
-	WSACleanup( );
-	return -1;
+        WSACleanup( );
+        return -1;
      }
    /* End of Win stuff. */
 #endif
    
    if ( ( fd = socket( AF_INET, SOCK_STREAM, 0 ) ) < 0 )
      {
-	debugerr( "Init_socket: socket" );
+        debugerr( "Init_socket: socket" );
 #if defined( FOR_WINDOWS )
-	WSACleanup( );
+        WSACleanup( );
 #endif
-	exit( 1 );
+        exit( 1 );
      }
    
    if ( setsockopt( fd, SOL_SOCKET, SO_REUSEADDR,
-		    (char *) &x, sizeof( x ) ) < 0 )
+                    (char *) &x, sizeof( x ) ) < 0 )
      {
-	debugerr( "Init_socket: SO_REUSEADDR" );
-	c_close( fd );
+        debugerr( "Init_socket: SO_REUSEADDR" );
+        c_close( fd );
 #if defined( FOR_WINDOWS )
-	WSACleanup( );
+        WSACleanup( );
 #endif
-	exit( 1 );
+        exit( 1 );
      }
    
    sa              = sa_zero;
@@ -1330,22 +1324,22 @@ int init_socket( int port )
 
    if ( bind( fd, (struct sockaddr *) &sa, sizeof( sa ) ) < 0 )
      {
-	debugerr( "Init_socket: bind" );
-	c_close( fd );
+        debugerr( "Init_socket: bind" );
+        c_close( fd );
 #if defined( FOR_WINDOWS )
-	WSACleanup( );
+        WSACleanup( );
 #endif
-	exit( 1 );
+        exit( 1 );
      }
 
    if ( listen( fd, 1 ) < 0 )
      {
-	debugerr( "Init_socket: listen" );
-	c_close( fd );
+        debugerr( "Init_socket: listen" );
+        c_close( fd );
 #if defined( FOR_WINDOWS )
-	WSACleanup( );
+        WSACleanup( );
 #endif
-	exit( 1 );
+        exit( 1 );
      }
 
    return fd;
@@ -1378,8 +1372,8 @@ void new_descriptor( int control )
    size = sizeof( sock );
    if ( ( desc = accept( control, (struct sockaddr *) &sock, &size) ) < 0 )
      {
-	debugerr( "New_descriptor: accept" );
-	return;
+        debugerr( "New_descriptor: accept" );
+        return;
      }
    
    addr = ntohl( sock.sin_addr.s_addr );
@@ -1391,98 +1385,131 @@ void new_descriptor( int control )
    sprintf( buf, "%d.%d.%d.%d", ip1, ip2, ip3, ip4 );
    
    from = gethostbyaddr( (char *) &sock.sin_addr,
-			 sizeof(sock.sin_addr), AF_INET );
+                         sizeof(sock.sin_addr), AF_INET );
    
    debugf( "Sock.sinaddr:  %s (%s)", buf, from ? from->h_name : buf );
    
    if ( client )
      {
-	char *msg = "Only one connection accepted.\r\n";
-	debugf( "Refusing." );
-	c_write( desc, msg, strlen( msg ) );
-	c_close( desc );
-	
-	/* Let's inform the real one, just in case. */
-	clientf( C_B "\r\n[" C_R "Connection attempt from: " C_B );
-	clientf( buf );
-	if ( from )
-	  {
-	     clientf( C_R " (" C_B );
-	     clientf( from->h_name );
-	     clientf( C_R ")" );
-	  }
-	clientf( C_B "]\r\n" C_0 );
-	
-	/* Return the same, don't change it. */
-	return;
+        char *msg = "Only one connection accepted.\r\n";
+        debugf( "Refusing." );
+        c_write( desc, msg, strlen( msg ) );
+        c_close( desc );
+        
+        /* Let's inform the real one, just in case. */
+        clientf( C_B "\r\n[" C_R "Connection attempt from: " C_B );
+        clientf( buf );
+        if ( from )
+          {
+             clientf( C_R " (" C_B );
+             clientf( from->h_name );
+             clientf( C_R ")" );
+          }
+        clientf( C_B "]\r\n" C_0 );
+        
+        /* Return the same, don't change it. */
+        return;
      }
    else if ( !server )
      {
-	strcpy( client_hostname, from ? from->h_name : buf );
-	
-	assign_client( desc );
-	
-	module_show_version( );
-	
-	if ( default_port && default_host[0] )
-	  {
-	     int sock;
-	     
-	     debugf( "Connecting to: %s %d.", default_host, default_port );
-	     clientff( C_B "Connecting to %s:%d... " C_0, default_host, default_port );
-	     
-	     sock = mb_connect( default_host, default_port );
-	     
-	     if ( sock < 0 )
-	       {
-		  debugf( "Failed (%s)", get_connect_error( ) );
-		  clientff( C_B "%s.\r\n" C_0, get_connect_error( ) );
-		  server = 0;
-		  
-		  /* Don't return. Let it display the Syntax line. */
-	       }
-	     else
-	       {
-		  debugf( "Connected." );
-		  clientf( C_B "Done.\r\n" C_0 );
-		  clientfb( "Send `help to get some help." );
-		  
-		  strcpy( server_hostname, default_host );
-		  
-		  assign_server( sock );
-		  
-		  return;
-	       }
-	  }
-	
-	clientf( C_B "[" C_R "Syntax: connect hostname portnumber" C_B "]\r\n" C_0 );
+        strcpy( client_hostname, from ? from->h_name : buf );
+        
+        assign_client( desc );
+        
+        module_show_version( );
+        
+        if ( default_port && default_host[0] )
+          {
+             int sock;
+             
+             debugf( "Connecting to: %s %d.", default_host, default_port );
+             clientff( C_B "Connecting to %s:%d... " C_0, default_host, default_port );
+             
+             sock = mb_connect( default_host, default_port );
+             
+             if ( sock < 0 )
+               {
+                  debugf( "Failed (%s)", get_connect_error( ) );
+                  clientff( C_B "%s.\r\n" C_0, get_connect_error( ) );
+                  server = 0;
+                  
+                  /* Don't return. Let it display the Syntax line. */
+               }
+             else
+               {
+                  debugf( "Connected." );
+                  clientf( C_B "Done.\r\n" C_0 );
+                  clientfb( "Send `help to get some help." );
+                  
+                  strcpy( server_hostname, default_host );
+                  
+                  assign_server( sock );
+                  
+                  return;
+               }
+          }
+        
+        clientf( C_B "[" C_R "Syntax: connect hostname portnumber" C_B "]\r\n" C_0 );
      }
    else
      {
-	char msg[256];
-	sprintf( msg, C_B "[" C_R "Welcome back." C_B "]\r\n" C_0 );
-	c_write( desc, msg, strlen( msg ) );
-	
-	if ( buffer_noclient[0] )
-	  {
-	     sprintf( msg, C_B "[" C_R "Buffered data:" C_B "]\r\n" C_0 );
-	     c_write( desc, msg, strlen( msg ) );
-	     c_write( desc, buffer_noclient, strlen( buffer_noclient ) );
-	     buffer_noclient[0] = 0;
-	     sprintf( msg, "\r\n" C_B "[" C_R "EOB" C_B "]\r\n" C_0 );
-	     c_write( desc, msg, strlen( msg ) );
-	  }
-	else
-	  {
-	     sprintf( msg, C_B "[" C_R "Nothing happened meanwhile." C_B "]\r\n" C_0 );
-	     c_write( desc, msg, strlen( msg ) );
-	  }
-	
-	strcpy( client_hostname, from ? from->h_name : buf );
-	
-	assign_client( desc );
+        char msg[256];
+        sprintf( msg, C_B "[" C_R "Welcome back." C_B "]\r\n" C_0 );
+        c_write( desc, msg, strlen( msg ) );
+        
+        if ( buffer_noclient[0] )
+          {
+             sprintf( msg, C_B "[" C_R "Buffered data:" C_B "]\r\n" C_0 );
+             c_write( desc, msg, strlen( msg ) );
+             c_write( desc, buffer_noclient, strlen( buffer_noclient ) );
+             buffer_noclient[0] = 0;
+             sprintf( msg, "\r\n" C_B "[" C_R "EOB" C_B "]\r\n" C_0 );
+             c_write( desc, msg, strlen( msg ) );
+          }
+        else
+          {
+             sprintf( msg, C_B "[" C_R "Nothing happened meanwhile." C_B "]\r\n" C_0 );
+             c_write( desc, msg, strlen( msg ) );
+          }
+        
+        strcpy( client_hostname, from ? from->h_name : buf );
+        
+        assign_client( desc );
      }
 }
+
+
+
+/* Send it slowly, and only if we can. */
+void write_error_buffer( DESCRIPTOR *self )
+{
+   int length, bytes, free_buffer = 0;
+   
+   length = strlen( buffer_write_error );
+   if ( length > 4096 )
+     length = 4096;
+   else
+     {
+	free_buffer = 1;
+     }
+   
+   bytes = c_write( client, buffer_write_error, length );
+   
+   if ( bytes < 0 )
+     {
+	return;
+     }
+   
+   buffer_write_error += length;
+   
+   if ( free_buffer )
+     {
+	unable_to_write = 0;
+	self->callback_out = NULL;
+	free( initial_big_buffer );
+     }
+}
+
 
 
 void clientf( char *string )
@@ -1492,14 +1519,21 @@ void clientf( char *string )
    
    if ( buffer_output )
      {
-	strcat( buffer_data, string );
-	return;
+        strcat( buffer_data, string );
+        return;
      }
    
    /* Client crashed, or something? Then we'll remember what the server said. */
    if ( server && !client )
      {
-	strcat( buffer_noclient, string );
+        strcat( buffer_noclient, string );
+        return;
+     }
+   
+   if ( unable_to_write )
+     {
+	if ( unable_to_write == 1 )
+	  strcat( buffer_write_error, string );
 	return;
      }
    
@@ -1509,8 +1543,29 @@ void clientf( char *string )
    
    if ( bytes < 0 )
      {
-	debugerr( "client" );
-	exit( 1 );
+	DESCRIPTOR *desc;
+	
+        debugf( "Unable to write to the client! Buffering until we can." );
+	
+	/* Get 16 Mb of memory. We'll need a lot. */
+	buffer_write_error = malloc( 1048576 * 16 );
+	initial_big_buffer = buffer_write_error;
+	if ( !buffer_write_error )
+	  unable_to_write = 2;
+	else
+	  {
+	     unable_to_write = 1;
+	     strcpy( buffer_write_error, string );
+	     
+	     for ( desc = descs; desc; desc = desc->next )
+	       if ( *desc->fd == client )
+		 break;
+	     
+	     if ( !desc )
+	       exit( 1 );
+	     
+	     desc->callback_out = write_error_buffer;
+	  }
      }
 }
 
@@ -1552,8 +1607,8 @@ void send_to_server( char *string )
    
    if ( buffer_send_to_server )
      {
-	strcat( send_buffer, string );
-	return;
+        strcat( send_buffer, string );
+        return;
      }
    
    if ( !server )
@@ -1567,8 +1622,8 @@ void send_to_server( char *string )
    
    if ( bytes < 0 )
      {
-	debugerr( "send_to_server" );
-	exit( 1 );
+        debugerr( "send_to_server" );
+        exit( 1 );
      }
    
    sent_something = 1;
@@ -1597,27 +1652,28 @@ void log_bytes( char *type, char *string, int bytes )
    
    while ( i < bytes )
      {
-	if ( ( string[i] >= 'a' && string[i] <= 'z' ) ||
-	     ( string[i] >= 'A' && string[i] <= 'Z' ) ||
-	     ( string[i] >= '0' && string[i] <= '9' ) ||
-	     string[i] == ' ' || string[i] == '.' ||
-	     string[i] == ',' || string[i] == ':' ||
-	     string[i] == '(' || string[i] == ')' )
-	  {
-	     *(b++) = string[i++];
-	  }
-	else
-	  {
-	     *(b++) = '[';
-	     sprintf( buf2, "%d", (int) string[i++] );
-	     s = buf2;
-	     while ( *s )
-	       *(b++) = *(s++);
-	     *(b++) = ']';
-	  }
+        if ( ( string[i] >= 'a' && string[i] <= 'z' ) ||
+             ( string[i] >= 'A' && string[i] <= 'Z' ) ||
+             ( string[i] >= '0' && string[i] <= '9' ) ||
+             string[i] == ' ' || string[i] == '.' ||
+             string[i] == ',' || string[i] == ':' ||
+             string[i] == '(' || string[i] == ')' )
+          {
+             *(b++) = string[i++];
+          }
+        else
+          {
+             *(b++) = '[';
+             sprintf( buf2, "%d", (int) string[i++] );
+             s = buf2;
+             while ( *s )
+               *(b++) = *(s++);
+             *(b++) = ']';
+          }
      }
    
    *(b++) = '\'';
+   *(b++) = '\n';
    *(b++) = 0;
    
    logff( NULL, buf );
@@ -1647,16 +1703,16 @@ int mb_connect( char *hostname, int port )
    
    if ( hostname[0] == '\0' || port < 1 || port > 65535 )
      {
-	connection_error = "Host name or port number invalid";
-	return -1;
+        connection_error = "Host name or port number invalid";
+        return -1;
      }
    
    host = gethostbyname( hostname );
    
    if ( !host )
      {
-	connection_error = "Host not found";
-	return -2;
+        connection_error = "Host not found";
+        return -2;
      }
    
    /* Build host IP. */
@@ -1672,8 +1728,8 @@ int mb_connect( char *hostname, int port )
    
    if ( sock < 0 )
      {
-	connection_error = "Unable to create a network socket";
-	return -3;
+        connection_error = "Unable to create a network socket";
+        return -3;
      }
    
    i = connect( sock, (struct sockaddr*) &saddr, sizeof( saddr ) );
@@ -1681,79 +1737,79 @@ int mb_connect( char *hostname, int port )
    if ( i )
      {
 #if !defined( FOR_WINDOWS )
-	switch( errno )
-	  {
-	   case ECONNREFUSED:
-	     connection_error = "Connection refused"; break;
-	   case ETIMEDOUT:
-	     connection_error = "Connection timed out"; break;
-	   case ENETUNREACH:
-	     connection_error = "Network unreachable"; break;
-	   case EHOSTUNREACH:
-	     connection_error = "Host unreachable"; break;
-	   case EINPROGRESS: /* We didn't make it non-blocking. */
-	     connection_error = "Impossible error!!"; break;
-	   default:
-	     connection_error = "Unable to connect"; break;
-	  }
+        switch( errno )
+          {
+           case ECONNREFUSED:
+             connection_error = "Connection refused"; break;
+           case ETIMEDOUT:
+             connection_error = "Connection timed out"; break;
+           case ENETUNREACH:
+             connection_error = "Network unreachable"; break;
+           case EHOSTUNREACH:
+             connection_error = "Host unreachable"; break;
+           case EINPROGRESS: /* We didn't make it non-blocking. */
+             connection_error = "Impossible error!!"; break;
+           default:
+             connection_error = "Unable to connect"; break;
+          }
 #else
-	switch( WSAGetLastError( ) )
-	  {
-	   case WSANOTINITIALISED:
-	     connection_error = "Unable to initialise socket"; break;
-	   case WSAEAFNOSUPPORT:
-	     connection_error = "The specified address family is not supported"; break;
-	   case WSAEADDRNOTAVAIL:
-	     connection_error = "Specified address is not available from the local machine"; break;
-	   case WSAENETUNREACH:
-	     connection_error = "Network unreachable"; break;
-	   case WSAECONNREFUSED:
-	     connection_error = "Connection refused"; break;
-	   case WSAEDESTADDRREQ:
-	     connection_error = "Destination address is required"; break;
-	   case WSAEFAULT:
-	     connection_error = "The namelen argument is incorrect"; break;
-	   case WSAEINVAL:
-	     connection_error = "The socket is not already bound to an address"; break;
-	   case WSAEISCONN:
-	     connection_error = "The socket is already connected"; break;
-	   case WSAEADDRINUSE:
-	     connection_error = "The specified address is already in use"; break;
-	   case WSAEMFILE:
-	     connection_error = "No more file descriptors are available"; break;
-	   case WSAENOBUFS:
-	     connection_error = "No buffer space available"; break;
-	   case WSAEPROTONOSUPPORT:
-	     connection_error = "Protocol not supported"; break;
-	   case WSAEPROTOTYPE:
-	     connection_error = "Wrong type protocol for this socket"; break;
-	   case WSAENOTSOCK:
-	     connection_error = "The descriptor is not a socket"; break;
-	   case WSAETIMEDOUT:
-	     connection_error = "Connection timed out"; break;
-	   case WSAESOCKTNOSUPPORT:
-	     connection_error = "Socket type is not supported in this address family"; break;
-	   case WSAENETDOWN:
-	     connection_error = "Network subsystem failure"; break;
-	   case WSAHOST_NOT_FOUND:
-	     connection_error = "Authoritative Answer Host not found"; break;
-	   case WSATRY_AGAIN:
-	     connection_error = "Non-Authoritative Host not found or SERVERFAIL"; break;
-	   case WSANO_RECOVERY:
-	     connection_error = "Non recoverable errors, FORMERR, REFUSED, NOTIMP"; break;
-	   case WSANO_DATA:
-	     connection_error = "Valid name, no data record of requested type"; break;
-	   case WSAEINPROGRESS:
-	     connection_error = "Impossible error!"; break;
-	   case WSAEINTR:
-	     connection_error = "The (blocking) call was canceled via WSACancelBlockingCall()"; break;
-	   default:
-	     connection_error = "Unable to connect"; break;
-	  }
+        switch( WSAGetLastError( ) )
+          {
+           case WSANOTINITIALISED:
+             connection_error = "Unable to initialise socket"; break;
+           case WSAEAFNOSUPPORT:
+             connection_error = "The specified address family is not supported"; break;
+           case WSAEADDRNOTAVAIL:
+             connection_error = "Specified address is not available from the local machine"; break;
+           case WSAENETUNREACH:
+             connection_error = "Network unreachable"; break;
+           case WSAECONNREFUSED:
+             connection_error = "Connection refused"; break;
+           case WSAEDESTADDRREQ:
+             connection_error = "Destination address is required"; break;
+           case WSAEFAULT:
+             connection_error = "The namelen argument is incorrect"; break;
+           case WSAEINVAL:
+             connection_error = "The socket is not already bound to an address"; break;
+           case WSAEISCONN:
+             connection_error = "The socket is already connected"; break;
+           case WSAEADDRINUSE:
+             connection_error = "The specified address is already in use"; break;
+           case WSAEMFILE:
+             connection_error = "No more file descriptors are available"; break;
+           case WSAENOBUFS:
+             connection_error = "No buffer space available"; break;
+           case WSAEPROTONOSUPPORT:
+             connection_error = "Protocol not supported"; break;
+           case WSAEPROTOTYPE:
+             connection_error = "Wrong type protocol for this socket"; break;
+           case WSAENOTSOCK:
+             connection_error = "The descriptor is not a socket"; break;
+           case WSAETIMEDOUT:
+             connection_error = "Connection timed out"; break;
+           case WSAESOCKTNOSUPPORT:
+             connection_error = "Socket type is not supported in this address family"; break;
+           case WSAENETDOWN:
+             connection_error = "Network subsystem failure"; break;
+           case WSAHOST_NOT_FOUND:
+             connection_error = "Authoritative Answer Host not found"; break;
+           case WSATRY_AGAIN:
+             connection_error = "Non-Authoritative Host not found or SERVERFAIL"; break;
+           case WSANO_RECOVERY:
+             connection_error = "Non recoverable errors, FORMERR, REFUSED, NOTIMP"; break;
+           case WSANO_DATA:
+             connection_error = "Valid name, no data record of requested type"; break;
+           case WSAEINPROGRESS:
+             connection_error = "Impossible error!"; break;
+           case WSAEINTR:
+             connection_error = "The (blocking) call was canceled via WSACancelBlockingCall()"; break;
+           default:
+             connection_error = "Unable to connect"; break;
+          }
 #endif
-	
-	c_close( sock );
-	return -4;
+        
+        c_close( sock );
+        return -4;
      }
    
    connection_error = "Success";
@@ -1777,17 +1833,17 @@ void check_for_server( void )
    
    if ( bytes == 0 )
      {
-	debugf( "Eof on read." );
+        debugf( "Eof on read." );
      }
    else if ( bytes < 0 )
      {
-	debugerr( "Error on read" );
+        debugerr( "Error on read" );
      }
    if ( bytes <= 0 )
      {
-	assign_server( 0 );
-	assign_client( 0 );
-	return;
+        assign_server( 0 );
+        assign_client( 0 );
+        return;
      }
    
    buf[bytes] = '\0';
@@ -1802,54 +1858,54 @@ void check_for_server( void )
    /* Search for a newline */
    for ( pos = c; *pos; pos++ )
      {
-	if ( *pos == '\n' )
-	  {
-	     found = 1;
-	     break;
-	  }
+        if ( *pos == '\n' )
+          {
+             found = 1;
+             break;
+          }
      }
    
    if ( found && ( pos = strstr( c, "connect" ) ) )
      {
-	int sock;
-	
-	sscanf( pos + 8, "%s %d", hostname, &port );
-	
-	if ( hostname[0] == '\0' || port < 1 || port > 65535 )
-	  {
-	     debugf( "Host name or port number invalid." );
-	     clientfb( "Host name or port number invalid." );
-	     request[0] = '\0';
-	     return;
-	  }
-	
-	debugf( "Connecting to: %s %d.", hostname, port );
-	clientf( C_B "Connecting... " C_0 );
-	
-	sock = mb_connect( hostname, port );
-	
-	if ( sock < 0 )
-	  {
-	     debugf( "Failed (%s)", get_connect_error( ) );
-	     clientff( C_B "%s.\r\n" C_0, get_connect_error( ) );
-	     request[0] = '\0';
-	     server = 0;
-	     return;
-	  }
-	
-	debugf( "Connected." );
-	clientf( C_B "Done.\r\n" C_0 );
-	clientfb( "Send `help to get some help." );
-	request[0] = '\0';
-	
-	strcpy( server_hostname, hostname );
-	
-	assign_server( sock );
+        int sock;
+        
+        sscanf( pos + 8, "%s %d", hostname, &port );
+        
+        if ( hostname[0] == '\0' || port < 1 || port > 65535 )
+          {
+             debugf( "Host name or port number invalid." );
+             clientfb( "Host name or port number invalid." );
+             request[0] = '\0';
+             return;
+          }
+        
+        debugf( "Connecting to: %s %d.", hostname, port );
+        clientf( C_B "Connecting... " C_0 );
+        
+        sock = mb_connect( hostname, port );
+        
+        if ( sock < 0 )
+          {
+             debugf( "Failed (%s)", get_connect_error( ) );
+             clientff( C_B "%s.\r\n" C_0, get_connect_error( ) );
+             request[0] = '\0';
+             server = 0;
+             return;
+          }
+        
+        debugf( "Connected." );
+        clientf( C_B "Done.\r\n" C_0 );
+        clientfb( "Send `help to get some help." );
+        request[0] = '\0';
+        
+        strcpy( server_hostname, hostname );
+        
+        assign_server( sock );
      }
    else if ( found )
      {
-	clientfb( "Bad connection string, try again..." );
-	request[0] = '\0';
+        clientfb( "Bad connection string, try again..." );
+        request[0] = '\0';
      }
 }
 
@@ -1863,13 +1919,13 @@ void copy_over( char *reason )
    /* Close all unneeded descriptors. */
    for ( d = descs; d; d = d->next )
      {
-	if ( *d->fd < 1 )
-	  continue;
-	
-	if ( *d->fd == control || *d->fd == client || *d->fd == server )
-	  continue;
-	
-	c_close( *d->fd );
+        if ( *d->fd < 1 )
+          continue;
+        
+        if ( *d->fd == control || *d->fd == client || *d->fd == server )
+          continue;
+        
+        c_close( *d->fd );
      }
    
    sprintf( cpo1, "%d", control );
@@ -1904,10 +1960,10 @@ void remove_timer( TIMER *timer )
    else
      for ( t = timers; t; t = t->next )
        if ( t->next == timer )
-	 {
-	    t->next = timer->next;
-	    break;
-	 }
+         {
+            t->next = timer->next;
+            break;
+         }
    
    /* Free it. */
    if ( timer->name )
@@ -1929,8 +1985,8 @@ void update_timers( TIMER *except )
    
    for ( t = timers; t; t = t->next )
      {
-	if ( t != except )
-	  t->delay -= diff;
+        if ( t != except )
+          t->delay -= diff;
      }
 }
 
@@ -1944,23 +2000,23 @@ void check_timers( )
    /* Check the timers. */
    for ( t = timers; t; t = t_next )
      {
-	t_next = t->next;
-	
-	if ( t->delay <= 0 )
-	  {
-	     /* Put it -1. In case it will be 0 again, don't delete it. */
-	     t->delay = -1;
-	     exec_timer( t );
-	     if ( t->delay == -1 )
-	       remove_timer( t );
-	  }
+        t_next = t->next;
+        
+        if ( t->delay <= 0 )
+          {
+             /* Put it -1. In case it will be 0 again, don't delete it. */
+             t->delay = -1;
+             exec_timer( t );
+             if ( t->delay == -1 )
+               remove_timer( t );
+          }
      }
 }
 
 
 
 void add_timer( char *name, int delay, void (*cb)( TIMER *timer ),
-		int d0, int d1, int d2 )
+                int d0, int d1, int d2 )
 {
    TIMER *t = NULL;
    
@@ -1972,16 +2028,16 @@ void add_timer( char *name, int delay, void (*cb)( TIMER *timer ),
    /* Check if we already have it in the list. */
    for ( t = timers; t; t = t->next )
      {
-	if ( !strcmp( t->name, name ) )
-	  break;
+        if ( !strcmp( t->name, name ) )
+          break;
      }
    
    if ( !t )
      {
-	t = calloc( sizeof( TIMER ), 1 );
-	t->name = strdup( name );
-	t->next = timers;
-	timers = t;
+        t = calloc( sizeof( TIMER ), 1 );
+        t->name = strdup( name );
+        t->next = timers;
+        timers = t;
      }
    
    t->delay = delay;
@@ -2002,8 +2058,8 @@ void del_timer( char *name )
    for ( t = timers; t; t = t->next )
      if ( !strcmp( name, t->name ) )
        {
-	  remove_timer( t );
-	  break;
+          remove_timer( t );
+          break;
        }
 }
 
@@ -2017,12 +2073,12 @@ int atcp_authfunc( char *seed )
    
    for ( i = 0; i < len; i++ )
      {
-	int n = seed[i] - 96;
-	
-	if ( i % 2 == 0 )
-	  a += n * ( i | 0xd );
-	else
-	  a -= n * ( i | 0xb );
+        int n = seed[i] - 96;
+        
+        if ( i % 2 == 0 )
+          a += n * ( i | 0xd );
+        else
+          a -= n * ( i | 0xb );
      }
    
    return a;
@@ -2050,71 +2106,71 @@ void handle_atcp( char *msg )
    
    if ( !strcmp( act, "Auth.Request" ) )
      {
-	msg = get_string( msg, opt, 256 );
-	
-	a_on = 0;
-	
-	if ( !strncmp( opt, "CH", 2 ) )
-	  {
-	     char buf[1024];
-	     char sb_atcp[] = { IAC, SB, ATCP, 0 };
-	     char se[] = { IAC, SE, 0 };
-	     
-	     if ( body )
-	       {
-		  if ( !atcp_login_as[0] || !strcmp( atcp_login_as, "default" ) )
-		    sprintf( atcp_login_as, "MudBot %d.%d", main_version_major, main_version_minor );
-		  
-		  sprintf( buf, "%s" "auth %d %s" "%s",
-			   sb_atcp, atcp_authfunc( body ),
-			   atcp_login_as, se );
-		  send_to_server( buf );
-	       }
-	     else
-	       debugf( "atcp: No body sent to authenticate." );
-	  }
-	
-	if ( !strncmp( opt, "ON", 2 ) )
-	  {
-//	     sprintf( buf, "%s" "file get javaclient_settings2 Settings" "%s",
-//		      sb_atcp, se_atcp );
-//	     send_to_server( buf );
-	     
-	     debugf( "atcp: Authenticated." );
-	     
-	     a_on = 1;
-	  }
-	if ( !strncmp( opt, "OFF", 3 ) )
-	  {
-	     a_on = 0;
-	     debugf( "atcp: Authentication failed." );
-	  }
+        msg = get_string( msg, opt, 256 );
+        
+        a_on = 0;
+        
+        if ( !strncmp( opt, "CH", 2 ) )
+          {
+             char buf[1024];
+             char sb_atcp[] = { IAC, SB, ATCP, 0 };
+             char se[] = { IAC, SE, 0 };
+             
+             if ( body )
+               {
+                  if ( !atcp_login_as[0] || !strcmp( atcp_login_as, "default" ) )
+                    sprintf( atcp_login_as, "MudBot %d.%d", main_version_major, main_version_minor );
+                  
+                  sprintf( buf, "%s" "auth %d %s" "%s",
+                           sb_atcp, atcp_authfunc( body ),
+                           atcp_login_as, se );
+                  send_to_server( buf );
+               }
+             else
+               debugf( "atcp: No body sent to authenticate." );
+          }
+        
+        if ( !strncmp( opt, "ON", 2 ) )
+          {
+//             sprintf( buf, "%s" "file get javaclient_settings2 Settings" "%s",
+//                      sb_atcp, se_atcp );
+//             send_to_server( buf );
+             
+             debugf( "atcp: Authenticated." );
+             
+             a_on = 1;
+          }
+        if ( !strncmp( opt, "OFF", 3 ) )
+          {
+             a_on = 0;
+             debugf( "atcp: Authentication failed." );
+          }
      }
    
    /* Bleh, has a newline after it too. */
    if ( !strncmp( act, "Char.Vitals", 10 ) )
      {
-	if ( !a_on )
-	  a_on = 1;
-	
-	if ( !body )
-	  {
-	     debugf( "No Body!" );
-	     return;
-	  }
-	
-	sscanf( body, "H:%d/%d M:%d/%d E:%d/%d W:%d/%d NL:%d/100",
-		&a_hp, &a_max_hp, &a_mana, &a_max_mana,
-		&a_end, &a_max_end, &a_will, &a_max_will, &a_exp );
+        if ( !a_on )
+          a_on = 1;
+        
+        if ( !body )
+          {
+             debugf( "No Body!" );
+             return;
+          }
+        
+        sscanf( body, "H:%d/%d M:%d/%d E:%d/%d W:%d/%d NL:%d/100",
+                &a_hp, &a_max_hp, &a_mana, &a_max_mana,
+                &a_end, &a_max_end, &a_will, &a_max_will, &a_exp );
      }
    
    else if ( !strncmp( act, "Char.Name", 9 ) )
      {
-	if ( !a_on )
-	  a_on = 1;
-	
-	sscanf( msg, "%s", a_name );
-	strcpy( a_title, body );
+        if ( !a_on )
+          a_on = 1;
+        
+        sscanf( msg, "%s", a_name );
+        strcpy( a_title, body );
      }
    
 //   else
@@ -2141,115 +2197,115 @@ void debug_telnet( char *buf, char *dst, char *who, int *bytes )
    
    for ( i = 0, j = 0; i < *bytes; i++ )
      {
-	/* Interpret As Command! */
-	if ( buf[i] == (char) IAC )
-	  {
-//	     debugf( "Entering IAC." );
-	     
-	     in_iac = 1;
-	     
-	     iac_string[0] = buf[i];
-	     iac_string[1] = 0;
-	     iac_string[2] = 0;
-	     
-	     continue;
-	  }
-	
-	if ( in_iac )
-	  {
-	     iac_string[in_iac] = buf[i];
-	     
-	     /* These need another byte. Wait for one more... */
-	     if ( buf[i] == (char) WILL ||
-		  buf[i] == (char) WONT ||
-		  buf[i] == (char) DO ||
-		  buf[i] == (char) DONT ||
-		  buf[i] == (char) SB )
-	       {
-		  in_iac = 2;
-		  continue;
-	       }
-	     
-	     /* We have everything? Let's see what, then. */
-	     
-	     if ( !memcmp( iac_string, will_compress2, 3 ) )
-	       {
+        /* Interpret As Command! */
+        if ( buf[i] == (char) IAC )
+          {
+//             debugf( "Entering IAC." );
+             
+             in_iac = 1;
+             
+             iac_string[0] = buf[i];
+             iac_string[1] = 0;
+             iac_string[2] = 0;
+             
+             continue;
+          }
+        
+        if ( in_iac )
+          {
+             iac_string[in_iac] = buf[i];
+             
+             /* These need another byte. Wait for one more... */
+             if ( buf[i] == (char) WILL ||
+                  buf[i] == (char) WONT ||
+                  buf[i] == (char) DO ||
+                  buf[i] == (char) DONT ||
+                  buf[i] == (char) SB )
+               {
+                  in_iac = 2;
+                  continue;
+               }
+             
+             /* We have everything? Let's see what, then. */
+             
+             if ( !memcmp( iac_string, will_compress2, 3 ) )
+               {
 #if !defined( DISABLE_MCCP )
-		  const char do_compress2[] =
-		    { IAC, DO, TELOPT_COMPRESS2, 0 };
-		  
-		  /* Send it for ourselves. */
-		  send_to_server( (char *) do_compress2 );
-		  
-		  debugf( "mccp: Sent IAC DO COMPRESS2." );
-		  skip_mccp_msg = 1;
+                  const char do_compress2[] =
+                    { IAC, DO, TELOPT_COMPRESS2, 0 };
+                  
+                  /* Send it for ourselves. */
+                  send_to_server( (char *) do_compress2 );
+                  
+                  debugf( "mccp: Sent IAC DO COMPRESS2." );
+                  skip_mccp_msg = 1;
 #else
-		  debugf( "mccp: Internally disabled, ignoring." );
+                  debugf( "mccp: Internally disabled, ignoring." );
 #endif
-	       }
-	     
-	     else if ( !memcmp( iac_string, will_atcp, 3 ) &&
-		       strcmp( atcp_login_as, "none" ) )
-	       {
-		  char buf[256];
-		  char sb_atcp[] = { IAC, SB, ATCP, 0 };
-		  char se[] = { IAC, SE, 0 };
-		  
-		  /* Send it for ourselves. */
-		  send_to_server( (char *) do_atcp );
-		  
-		  debugf( "atcp: Sent IAC DO ATCP." );
-		  
-		  if ( !atcp_login_as[0] || !strcmp( atcp_login_as, "default" ) )
-		    sprintf( atcp_login_as, "MudBot %d.%d", main_version_major, main_version_minor );
-		  
-		  sprintf( buf, "%s" "hello %s\nauth 1\ncomposer 0\nchar_name 1\nchar_vitals 1\nroom_brief 0\nroom_exits 0" "%s",
-			   sb_atcp, atcp_login_as, se );
-		  send_to_server( buf );
-		  
-		  if ( default_user[0] && default_pass[0] )
-		    {
-		       sprintf( buf, "%s" "login %s %s" "%s",
-				sb_atcp, default_user, default_pass, se );
-		       send_to_server( buf );
-		       debugf( "atcp: Requested login with '%s'.", default_user );
-		    }
-	       }
-	     
-	     else if ( !memcmp( iac_string, sb_atcp, 3 ) &&
-		       strcmp( atcp_login_as, "none" ) )
-	       {
-		  in_atcp = 1;
-		  k = 0;
-	       }
-	     
-	     /* This one only has two bytes. */
-	     else if ( in_atcp && !memcmp( iac_string, se, 2 ) )
-	       {
-		  atcp_msg[k] = 0;
-		  handle_atcp( atcp_msg );
-		  in_atcp = 0;
-	       }
-	     
-	     else
-	       {
-		  /* Nothing we know about? Send it further then. */
-		  dst[j++] = iac_string[0];
-		  dst[j++] = iac_string[1];
-		  if ( in_iac == 2 )
-		    dst[j++] = iac_string[2];
-	       }
-	     
-	     in_iac = 0;
-	     
-	     continue;
-	  }
-	
-	if ( in_atcp )
-	  atcp_msg[k++] = buf[i];
-	else
-	  /* Copy, one by one. */
-	  dst[j++] = buf[i];
+               }
+             
+             else if ( !memcmp( iac_string, will_atcp, 3 ) &&
+                       strcmp( atcp_login_as, "none" ) )
+               {
+                  char buf[256];
+                  char sb_atcp[] = { IAC, SB, ATCP, 0 };
+                  char se[] = { IAC, SE, 0 };
+                  
+                  /* Send it for ourselves. */
+                  send_to_server( (char *) do_atcp );
+                  
+                  debugf( "atcp: Sent IAC DO ATCP." );
+                  
+                  if ( !atcp_login_as[0] || !strcmp( atcp_login_as, "default" ) )
+                    sprintf( atcp_login_as, "MudBot %d.%d", main_version_major, main_version_minor );
+                  
+                  sprintf( buf, "%s" "hello %s\nauth 1\ncomposer 0\nchar_name 1\nchar_vitals 1\nroom_brief 0\nroom_exits 0" "%s",
+                           sb_atcp, atcp_login_as, se );
+                  send_to_server( buf );
+                  
+                  if ( default_user[0] && default_pass[0] )
+                    {
+                       sprintf( buf, "%s" "login %s %s" "%s",
+                                sb_atcp, default_user, default_pass, se );
+                       send_to_server( buf );
+                       debugf( "atcp: Requested login with '%s'.", default_user );
+                    }
+               }
+             
+             else if ( !memcmp( iac_string, sb_atcp, 3 ) &&
+                       strcmp( atcp_login_as, "none" ) )
+               {
+                  in_atcp = 1;
+                  k = 0;
+               }
+             
+             /* This one only has two bytes. */
+             else if ( in_atcp && !memcmp( iac_string, se, 2 ) )
+               {
+                  atcp_msg[k] = 0;
+                  handle_atcp( atcp_msg );
+                  in_atcp = 0;
+               }
+             
+             else
+               {
+                  /* Nothing we know about? Send it further then. */
+                  dst[j++] = iac_string[0];
+                  dst[j++] = iac_string[1];
+                  if ( in_iac == 2 )
+                    dst[j++] = iac_string[2];
+               }
+             
+             in_iac = 0;
+             
+             continue;
+          }
+        
+        if ( in_atcp )
+          atcp_msg[k++] = buf[i];
+        else
+          /* Copy, one by one. */
+          dst[j++] = buf[i];
      }
    
    *bytes = j;
@@ -2274,15 +2330,15 @@ char *get_string( char *argument, char *arg_first, int max )
    
    while ( *argument != '\0' && max )
      {
-	if ( *argument == cEnd )
-	  {
-	     argument++;
-	     break;
-	  }
-	*arg_first = *argument;
-	arg_first++;
-	argument++;
-	max--;
+        if ( *argument == cEnd )
+          {
+             argument++;
+             break;
+          }
+        *arg_first = *argument;
+        arg_first++;
+        argument++;
+        max--;
      }
    
    *arg_first = '\0';
@@ -2297,10 +2353,9 @@ char *get_string( char *argument, char *arg_first, int max )
 
 void do_test( )
 {
+   int *p = 0;
    
-   
-   
-   
+   *p = 0;
    
 }
 
@@ -2312,9 +2367,9 @@ void force_off_mccp( )
    /* Mccp. */
    if ( compressed )
      {
-	inflateEnd( zstream );
-	compressed = 0;
-	debugf( "mccp: Forced off." );
+        inflateEnd( zstream );
+        compressed = 0;
+        debugf( "mccp: Forced off." );
      }
 #endif
 }
@@ -2324,343 +2379,343 @@ void process_client_line( char *buf )
 {
    if ( buf[0] == '`' ) /* Command */
      {
-	char *b;
-	
-	/* Strip the newline. */
-	for ( b = buf; *b; b++ )
-	  if ( *b == '\n' )
-	    {
-	       *b = 0;
-	       break;
-	    }
-	
-	if ( !strcmp( buf, "`quit" ) )
-	  {
-	     clientfb( "Farewell." );
-	     exit( 0 );
-	  }
-	else if ( !strcmp( buf, "`disconnect" ) )
-	  {
-	     /* This will c_close it and set to 0. */
-	     assign_server( 0 );
-	     
-	     force_off_mccp( );
-	     
-	     clientfb( "Disconnected." );
-	     clientfb( "Syntax: connect hostname portnumber" );
-	     last_prompt[0] = 0;
-	  }
-	else if ( !strcmp( buf, "`reboot" ) )
-	  {
-	     char buf2[1024];
-	     
+        char *b;
+        
+        /* Strip the newline. */
+        for ( b = buf; *b; b++ )
+          if ( *b == '\n' )
+            {
+               *b = 0;
+               break;
+            }
+        
+        if ( !strcmp( buf, "`quit" ) )
+          {
+             clientfb( "Farewell." );
+             exit( 0 );
+          }
+        else if ( !strcmp( buf, "`disconnect" ) )
+          {
+             /* This will c_close it and set to 0. */
+             assign_server( 0 );
+             
+             force_off_mccp( );
+             
+             clientfb( "Disconnected." );
+             clientfb( "Syntax: connect hostname portnumber" );
+             last_prompt[0] = 0;
+          }
+        else if ( !strcmp( buf, "`reboot" ) )
+          {
+             char buf2[1024];
+             
 #if defined( FOR_WINDOWS )
-	     clientfb( "Rebooting on Windows will just result in a very happy crash. Don't." );
+             clientfb( "Rebooting on Windows will just result in a very happy crash. Don't." );
 #else
-	     if ( compressed )
-	       clientfb( "Can't reboot, while server is sending compressed data. Use `mccp stop, first." );
-	     else
-	       {
-		  clientfb( "Copyover in progress." );
-		  debugf( "Attempting a copyover." );
-		  
-		  copy_over( "copyover" );
-		  
-		  sprintf( buf2, "Failed copyover! (%s)", strerror( errno ) );
-		  clientfb( buf2 );
-	       }
+             if ( compressed )
+               clientfb( "Can't reboot, while server is sending compressed data. Use `mccp stop, first." );
+             else
+               {
+                  clientfb( "Copyover in progress." );
+                  debugf( "Attempting a copyover." );
+                  
+                  copy_over( "copyover" );
+                  
+                  sprintf( buf2, "Failed copyover! (%s)", strerror( errno ) );
+                  clientfb( buf2 );
+               }
 #endif
-	  }
-	else if ( !strcmp( buf, "`mccp start" ) )
-	  {
-	     char mccp_start[] = 
-	       { IAC, DO, TELOPT_COMPRESS2, 0 };
-	     
+          }
+        else if ( !strcmp( buf, "`mccp start" ) )
+          {
+             char mccp_start[] = 
+               { IAC, DO, TELOPT_COMPRESS2, 0 };
+             
 #if defined( DISABLE_MCCP )
-	     clientfb( "The MCCP protocol has been internally disabled." );
-	     clientfb( "Recompile the sources with a zlib library linked.." );
-	     return;
+             clientfb( "The MCCP protocol has been internally disabled." );
+             clientfb( "Recompile the sources with a zlib library linked.." );
+             return;
 #endif
-	     
-	     if ( safe_mode )
-	       {
-		  clientfb( "Not while in safe mode." );
-	       }
-	     else if ( !compressed )
-	       {	     
-		  clientfb( "Attempting to start decompression." );
-		  send_to_server( mccp_start );
-		  return;
-	       }
-	     else
-	       {
-		  clientfb( "Compression already started by server." );
-	       }
-	  }
-	else if ( !strcmp( buf, "`mccp stop" ) )
-	  {
-	     char mccp_stop[] = 
-	       { IAC, DONT, TELOPT_COMPRESS2, 0 };
-	     
-	     clientfb( "Attempting to stop decompression." );
-	     send_to_server( mccp_stop );
-	     
-	     return;
-	  }
-	else if ( !strncmp( buf, "`mccp", 5 ) )
-	  {
-	     clientfb( "Use either `mccp start, or `mccp stop." );
-	  }
-	else if ( !strcmp( buf, "`atcp" ) )
-	  {
-	     clientfb( "ATCP info:" );
-	     clientff( "Logged on: " C_G "%s" C_0 ".\r\n",
-		       a_on ? "Yes" : "No" );
-	     
-	     if ( a_on )
-	       {
-		  clientff( "Name: " C_G "%s" C_0 ".\r\n", a_name[0] ? a_name : "Unknown" );
-		  clientff( "Full name: " C_G "%s" C_0 ".\r\n", a_title[0] ? a_title : "Unknown" );
-		  clientff( "H:" C_G "%d" C_0 "/" C_G "%d" C_0 "  "
-			    "M:" C_G "%d" C_0 "/" C_G "%d" C_0 ".\r\n",
-			    a_hp, a_max_hp, a_mana, a_max_mana );
-		  clientff( "E:" C_G "%d" C_0 "/" C_G "%d" C_0 "  "
-			    "W:" C_G "%d" C_0 "/" C_G "%d" C_0 ".\r\n",
-			    a_end, a_max_end, a_will, a_max_will );
-	       }
-	  }
-	else if ( !strcmp( buf, "`mods" ) )
-	  {
-	     show_modules( );
-	  }
-	else if ( !strncmp( buf, "`load", 5 ) )
-	  {
-	     if ( buf[5] == ' ' && buf[6] )
-	       load_module( buf+6 );
-	     else
-	       clientfb( "What module to load? Specify a file name." );
-	  }
-	else if ( !strncmp( buf, "`unload", 7 ) )
-	  {
-	     if ( buf[7] == ' ' && buf[8] )
-	       do_unload_module( buf+8 );
-	     else
-	       clientfb( "What module to unload? Use `mods for a list." );
-	  }
-	else if ( !strncmp( buf, "`reload", 7 ) )
-	  {
-	     if ( buf[7] == ' ' && buf[8] )
-	       do_reload_module( buf+8 );
-	     else
-	       clientfb( "What module to reload? Use `mods for a list." );
-	  }
-	else if ( !strcmp( buf, "`timers" ) )
-	  {
-	     TIMER *t;
-	     
-	     update_timers( NULL );
-	     
-	     if ( !timers )
-	       clientfb( "No timers." );
-	     else
-	       {
-		  clientfb( "Timers:" );
-		  for ( t = timers; t; t = t->next )
-		    clientff( " - '%s' (%d)\r\n", t->name, t->delay );
-	       }
-	  }
-	else if ( !strcmp( buf, "`desc" ) )
-	  {
-	     if ( !descs )
-	       clientfb( "No descriptors... ?! (impossible)" );
-	     else
-	       {
-		  DESCRIPTOR *d;
-		  
-		  clientfb( "Descriptors:" );
-		  for ( d = descs; d; d = d->next )
-		    {
-		       clientff( " - " C_B "%s" C_0 " (%s)\r\n",
-				 d->name, d->description ? d->description : "No description" );
-		       clientff( "   fd: " C_G "%d" C_0 " in: %s out: %s exc: %s\r\n",
-				 *d->fd,
-				 d->callback_in ? C_G "Yes" C_0 : C_R "No" C_0,
-				 d->callback_out ? C_G "Yes" C_0 : C_R "No" C_0,
-				 d->callback_exc ? C_G "Yes" C_0 : C_R "No" C_0 );
-		    }
-	       }
-	  }
-	else if ( !strcmp( buf, "`status" ) )
-	  {
-	     clientfb( "Status:" );
-	     
-	     clientff( "Bytes sent: " C_G "%d" C_0 " (" C_G "%d" C_0 "Kb).\r\n",
-		       bytes_sent, bytes_sent / 1024 );
-	     clientff( "Bytes received: " C_G "%d" C_0 " (" C_G "%d" C_0 "Kb).\r\n",
-		       bytes_received, bytes_received / 1024 );
-	     clientff( "Uncompressed: " C_G "%d" C_0 " (" C_G "%d" C_0 "Kb).\r\n",
-		       bytes_uncompressed, bytes_uncompressed / 1024 );
-	     if ( bytes_uncompressed )
-	       clientff( "Compression ratio: " C_G "%d%%" C_0 ".\r\n", ( bytes_received * 100 ) / bytes_uncompressed );
-	     clientff( "MCCP: " C_G "%s" C_0 ".\r\n", compressed ? "On" : "Off" );
-	     clientff( "ATCP: " C_G "%s" C_0 ".\r\n", a_on ? "On" : "Off" );
-	  }
-	else if ( !strncmp( buf, "`echo ", 6 ) )
-	  {
-	     if ( safe_mode )
-	       {
-		  clientfb( "Impossible in safe mode." );
-	       }
-	     /*else if ( !strcmp( buf+6, "prompt" ) )
-	       {
-	      * Not really possible, since last_prompt contains the user built one.
-		  clientfb( "Processing the last prompt again." );
-		  module_process_server_prompt_informative( last_prompt );
-		  module_process_server_prompt_action( last_prompt );
-	       }*/
-	     else
-	       {
-		  char *p = buf + 6;
-		  
-		  /* Find the new line, and end the string there. */
-		  while ( *p )
-		    {
-		       if ( *p == '\n' )
-			 {
-			    *p = 0;
-			    break;
-			 }
-		       p++;
-		    }
-		  
-		  clientfb( "Processing line.." );
-		  /* It's safe to assume it's all stripped and colorless. */
-		  module_process_server_line( buf+6, buf+6, buf+6 );
-	       }
-	  }
-	else if ( !strcmp( buf, "`echo" ) )
-	  {
-	     clientfb( "Usage: `echo <string> or `echo prompt." );
-	  }
-	else if ( !strncmp( buf, "`sendatcp", 9 ) )
-	  {
-	     const char sb_atcp[] = { IAC, SB, ATCP, 0 };
-	     const char se[] = { IAC, SE, 0 };
-	     char buf[1024];
-	     
-	     sprintf( buf, "%s%s%s", sb_atcp, buf + 10, se );
-	     send_to_server( buf );
-	  }
+             
+             if ( safe_mode )
+               {
+                  clientfb( "Not while in safe mode." );
+               }
+             else if ( !compressed )
+               {             
+                  clientfb( "Attempting to start decompression." );
+                  send_to_server( mccp_start );
+                  return;
+               }
+             else
+               {
+                  clientfb( "Compression already started by server." );
+               }
+          }
+        else if ( !strcmp( buf, "`mccp stop" ) )
+          {
+             char mccp_stop[] = 
+               { IAC, DONT, TELOPT_COMPRESS2, 0 };
+             
+             clientfb( "Attempting to stop decompression." );
+             send_to_server( mccp_stop );
+             
+             return;
+          }
+        else if ( !strncmp( buf, "`mccp", 5 ) )
+          {
+             clientfb( "Use either `mccp start, or `mccp stop." );
+          }
+        else if ( !strcmp( buf, "`atcp" ) )
+          {
+             clientfb( "ATCP info:" );
+             clientff( "Logged on: " C_G "%s" C_0 ".\r\n",
+                       a_on ? "Yes" : "No" );
+             
+             if ( a_on )
+               {
+                  clientff( "Name: " C_G "%s" C_0 ".\r\n", a_name[0] ? a_name : "Unknown" );
+                  clientff( "Full name: " C_G "%s" C_0 ".\r\n", a_title[0] ? a_title : "Unknown" );
+                  clientff( "H:" C_G "%d" C_0 "/" C_G "%d" C_0 "  "
+                            "M:" C_G "%d" C_0 "/" C_G "%d" C_0 ".\r\n",
+                            a_hp, a_max_hp, a_mana, a_max_mana );
+                  clientff( "E:" C_G "%d" C_0 "/" C_G "%d" C_0 "  "
+                            "W:" C_G "%d" C_0 "/" C_G "%d" C_0 ".\r\n",
+                            a_end, a_max_end, a_will, a_max_will );
+               }
+          }
+        else if ( !strcmp( buf, "`mods" ) )
+          {
+             show_modules( );
+          }
+        else if ( !strncmp( buf, "`load", 5 ) )
+          {
+             if ( buf[5] == ' ' && buf[6] )
+               load_module( buf+6 );
+             else
+               clientfb( "What module to load? Specify a file name." );
+          }
+        else if ( !strncmp( buf, "`unload", 7 ) )
+          {
+             if ( buf[7] == ' ' && buf[8] )
+               do_unload_module( buf+8 );
+             else
+               clientfb( "What module to unload? Use `mods for a list." );
+          }
+        else if ( !strncmp( buf, "`reload", 7 ) )
+          {
+             if ( buf[7] == ' ' && buf[8] )
+               do_reload_module( buf+8 );
+             else
+               clientfb( "What module to reload? Use `mods for a list." );
+          }
+        else if ( !strcmp( buf, "`timers" ) )
+          {
+             TIMER *t;
+             
+             update_timers( NULL );
+             
+             if ( !timers )
+               clientfb( "No timers." );
+             else
+               {
+                  clientfb( "Timers:" );
+                  for ( t = timers; t; t = t->next )
+                    clientff( " - '%s' (%d)\r\n", t->name, t->delay );
+               }
+          }
+        else if ( !strcmp( buf, "`desc" ) )
+          {
+             if ( !descs )
+               clientfb( "No descriptors... ?! (impossible)" );
+             else
+               {
+                  DESCRIPTOR *d;
+                  
+                  clientfb( "Descriptors:" );
+                  for ( d = descs; d; d = d->next )
+                    {
+                       clientff( " - " C_B "%s" C_0 " (%s)\r\n",
+                                 d->name, d->description ? d->description : "No description" );
+                       clientff( "   fd: " C_G "%d" C_0 " in: %s out: %s exc: %s\r\n",
+                                 *d->fd,
+                                 d->callback_in ? C_G "Yes" C_0 : C_R "No" C_0,
+                                 d->callback_out ? C_G "Yes" C_0 : C_R "No" C_0,
+                                 d->callback_exc ? C_G "Yes" C_0 : C_R "No" C_0 );
+                    }
+               }
+          }
+        else if ( !strcmp( buf, "`status" ) )
+          {
+             clientfb( "Status:" );
+             
+             clientff( "Bytes sent: " C_G "%d" C_0 " (" C_G "%d" C_0 "Kb).\r\n",
+                       bytes_sent, bytes_sent / 1024 );
+             clientff( "Bytes received: " C_G "%d" C_0 " (" C_G "%d" C_0 "Kb).\r\n",
+                       bytes_received, bytes_received / 1024 );
+             clientff( "Uncompressed: " C_G "%d" C_0 " (" C_G "%d" C_0 "Kb).\r\n",
+                       bytes_uncompressed, bytes_uncompressed / 1024 );
+             if ( bytes_uncompressed )
+               clientff( "Compression ratio: " C_G "%d%%" C_0 ".\r\n", ( bytes_received * 100 ) / bytes_uncompressed );
+             clientff( "MCCP: " C_G "%s" C_0 ".\r\n", compressed ? "On" : "Off" );
+             clientff( "ATCP: " C_G "%s" C_0 ".\r\n", a_on ? "On" : "Off" );
+          }
+        else if ( !strncmp( buf, "`echo ", 6 ) )
+          {
+             if ( safe_mode )
+               {
+                  clientfb( "Impossible in safe mode." );
+               }
+             /*else if ( !strcmp( buf+6, "prompt" ) )
+               {
+              * Not really possible, since last_prompt contains the user built one.
+                  clientfb( "Processing the last prompt again." );
+                  module_process_server_prompt_informative( last_prompt );
+                  module_process_server_prompt_action( last_prompt );
+               }*/
+             else
+               {
+                  char *p = buf + 6;
+                  
+                  /* Find the new line, and end the string there. */
+                  while ( *p )
+                    {
+                       if ( *p == '\n' )
+                         {
+                            *p = 0;
+                            break;
+                         }
+                       p++;
+                    }
+                  
+                  clientfb( "Processing line.." );
+                  /* It's safe to assume it's all stripped and colorless. */
+                  module_process_server_line( buf+6, buf+6, buf+6 );
+               }
+          }
+        else if ( !strcmp( buf, "`echo" ) )
+          {
+             clientfb( "Usage: `echo <string> or `echo prompt." );
+          }
+        else if ( !strncmp( buf, "`sendatcp", 9 ) )
+          {
+             const char sb_atcp[] = { IAC, SB, ATCP, 0 };
+             const char se[] = { IAC, SE, 0 };
+             char buf[1024];
+             
+             sprintf( buf, "%s%s%s", sb_atcp, buf + 10, se );
+             send_to_server( buf );
+          }
 #if defined( FOR_WINDOWS )
-	else if ( !strcmp( buf, "`edit" ) )
-	  {
-	     void win_show_editor( );
-	     win_show_editor( );
-	  }
+        else if ( !strcmp( buf, "`edit" ) )
+          {
+             void win_show_editor( );
+             win_show_editor( );
+          }
 #endif
-	else if ( !strncmp( buf, "`license", 8 ) )
-	  {
-	     if ( !strcmp( buf, "`license w" ) )
-	       {
-		  
-		  
-	       }
-	     else if ( !strcmp( buf, "`license c" ) )
-	       {
-		  
-		  
-		  
-	       }
-	     else
-	       {
-		  clientf( C_W " Copyright (C) 2004, 2005  Andrei Vasiliu\r\n"
-			   "\r\n"
-			   " This program is free software; you can redistribute it and/or modify\r\n"
-			   " it under the terms of the GNU General Public License as published by\r\n"
-			   " the Free Software Foundation; either version 2 of the License, or\r\n"
-			   " (at your option) any later version.\r\n"
-			   "\r\n"
-			   " This program is distributed in the hope that it will be useful,\r\n"
-			   " but WITHOUT ANY WARRANTY; without even the implied warranty of\r\n"
-			   " MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\r\n"
-			   " GNU General Public License for more details.\r\n"
-			   "\r\n"
-			   " You should have received a copy of the GNU General Public License\r\n"
-			   " along with this program; if not, write to the Free Software\r\n"
-			   " Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA\r\n" C_0 );
-	       }
-	  }
-	else if ( !strcmp( buf, "`ptime" ) )
-	  {
-	     show_processing_time = show_processing_time ? 0 : 1;
-	     
-	     if ( show_processing_time )
-	       clientfb( "Enabled." );
-	     else
-	       clientfb( "Disabled." );
-	  }
-	else if ( !strcmp( buf, "`test" ) )
-	  {
-	     do_test( );
-	  }
-	else if ( !strcmp( buf, "`help" ) )
-	  {
-	     clientff( C_B "[" C_R "MudBot v" C_G "%d" C_R "." C_G "%d"
-		       C_R " Help" C_B "]\r\n" C_0,
-		       main_version_major, main_version_minor );
-	     clientfb( "Commands:" );
-	     clientf( C_B
-		      " `help       - This thing.\r\n"
-		      " `reboot     - Copyover, keeping descriptors alive.\r\n"
-		      " `disconnect - Disconnects, giving you a chance to connect again.\r\n"
-		      " `mccp start - This will ask the server to begin compression.\r\n"
-		      " `mccp stop  - Stop the Mud Client Compression Protocol.\r\n"
-		      " `atcp       - Show any ATCP info.\r\n"
-		      " `mods       - Show the modules currently built in.\r\n"
-		      " `load <m>   - Attempt to load a module from a file 'm'.\r\n"
-		      " `unload <m> - Unload the module named 'm'.\r\n"
-		      " `reload <m> - Unload and attempt to reload a module named 'm'.\r\n"
-		      " `timers     - Show all registered timers.\r\n"
-		      " `desc       - Show all registered descriptors.\r\n"
-		      " `status     - Show some things that might be useful.\r\n"
-		      " `echo <s>   - Process a string, as if it came from the server.\r\n"
+        else if ( !strncmp( buf, "`license", 8 ) )
+          {
+             if ( !strcmp( buf, "`license w" ) )
+               {
+                  
+                  
+               }
+             else if ( !strcmp( buf, "`license c" ) )
+               {
+                  
+                  
+                  
+               }
+             else
+               {
+                  clientf( C_W " Copyright (C) 2004, 2005  Andrei Vasiliu\r\n"
+                           "\r\n"
+                           " This program is free software; you can redistribute it and/or modify\r\n"
+                           " it under the terms of the GNU General Public License as published by\r\n"
+                           " the Free Software Foundation; either version 2 of the License, or\r\n"
+                           " (at your option) any later version.\r\n"
+                           "\r\n"
+                           " This program is distributed in the hope that it will be useful,\r\n"
+                           " but WITHOUT ANY WARRANTY; without even the implied warranty of\r\n"
+                           " MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\r\n"
+                           " GNU General Public License for more details.\r\n"
+                           "\r\n"
+                           " You should have received a copy of the GNU General Public License\r\n"
+                           " along with this program; if not, write to the Free Software\r\n"
+                           " Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA\r\n" C_0 );
+               }
+          }
+        else if ( !strcmp( buf, "`ptime" ) )
+          {
+             show_processing_time = show_processing_time ? 0 : 1;
+             
+             if ( show_processing_time )
+               clientfb( "Enabled." );
+             else
+               clientfb( "Disabled." );
+          }
+        else if ( !strcmp( buf, "`test" ) )
+          {
+             do_test( );
+          }
+        else if ( !strcmp( buf, "`help" ) )
+          {
+             clientff( C_B "[" C_R "MudBot v" C_G "%d" C_R "." C_G "%d"
+                       C_R " Help" C_B "]\r\n" C_0,
+                       main_version_major, main_version_minor );
+             clientfb( "Commands:" );
+             clientf( C_B
+                      " `help       - This thing.\r\n"
+                      " `reboot     - Copyover, keeping descriptors alive.\r\n"
+                      " `disconnect - Disconnects, giving you a chance to connect again.\r\n"
+                      " `mccp start - This will ask the server to begin compression.\r\n"
+                      " `mccp stop  - Stop the Mud Client Compression Protocol.\r\n"
+                      " `atcp       - Show any ATCP info.\r\n"
+                      " `mods       - Show the modules currently built in.\r\n"
+                      " `load <m>   - Attempt to load a module from a file 'm'.\r\n"
+                      " `unload <m> - Unload the module named 'm'.\r\n"
+                      " `reload <m> - Unload and attempt to reload a module named 'm'.\r\n"
+                      " `timers     - Show all registered timers.\r\n"
+                      " `desc       - Show all registered descriptors.\r\n"
+                      " `status     - Show some things that might be useful.\r\n"
+                      " `echo <s>   - Process a string, as if it came from the server.\r\n"
 #if defined( FOR_WINDOWS )
-		      " `edit       - Open the Editor.\r\n"
+                      " `edit       - Open the Editor.\r\n"
 #endif
-		      " `license    - GNU GPL notice.\r\n"
-		      " `quit       - Ends the program, for good.\r\n" C_0 );
-	     clientfb( "Rebooting or crashing will keep the connection alive." );
-	     clientfb( "Everything in blue brackets belongs to the MudBot engine." );
-	     clientfb( "Things in red brackets are module specific." );
-	  }
-	else
-	  {
-	     if ( !safe_mode )
-	       {
-		  if ( module_process_client_command( buf ) )
-		    clientfb( "What?" );
-	       }
-	     else
-	       clientfb( "Not while in safe mode." );
-	  }
-	
-	clientf( last_prompt );
+                      " `license    - GNU GPL notice.\r\n"
+                      " `quit       - Ends the program, for good.\r\n" C_0 );
+             clientfb( "Rebooting or crashing will keep the connection alive." );
+             clientfb( "Everything in blue brackets belongs to the MudBot engine." );
+             clientfb( "Things in red brackets are module specific." );
+          }
+        else
+          {
+             if ( !safe_mode )
+               {
+                  if ( module_process_client_command( buf ) )
+                    clientfb( "What?" );
+               }
+             else
+               clientfb( "Not while in safe mode." );
+          }
+        
+        clientf( last_prompt );
      }
    else
      {
-	/* A one character line? Imperian refuses to read them. */
-	/* Kmud likes to send one char lines. */
-	if ( !buf[1] )
-	  {
-	     if ( buf[0] == '\n' )
-	       {
-		  buf[1] = '\r';
-		  buf[2] = 0;
-	       }
-	  }
-	
-	if ( safe_mode || !module_process_client_aliases( buf ) )
-	  send_to_server( buf );
+        /* A one character line? Imperian refuses to read them. */
+        /* Kmud likes to send one char lines. */
+        if ( !buf[1] )
+          {
+             if ( buf[0] == '\n' )
+               {
+                  buf[1] = '\r';
+                  buf[2] = 0;
+               }
+          }
+        
+        if ( safe_mode || !module_process_client_aliases( buf ) )
+          send_to_server( buf );
      }
    
    return;
@@ -2681,46 +2736,43 @@ int process_client( void )
    
    if ( bytes < 0 )
      {
-	debugerr( "process_client" );
-	debugf( "Restarting." );
-	return 1;
+        debugerr( "process_client" );
+        debugf( "Restarting." );
+        return 1;
      }
    else if ( bytes == 0 )
      {
-	debugf( "Client closed connection." );
-	return 1;
+        debugf( "Client closed connection." );
+        return 1;
      }
    
    buf[bytes] = '\0';
    
    log_bytes( "c->m", buf, bytes );
    
-//   send_to_server( buf );
-//#if 0
    for ( i = 0; i < bytes; i++ )
      {
-	/* Anything usually gets dumped here. */
-	last_client_line[last_client_pos] = buf[i];
-	last_client_line[++last_client_pos] = 0;
-	
-	if ( buf[i] == '\n' )
-	  {
-	     last_client_line[last_client_pos] = '\r';
-	     last_client_line[++last_client_pos] = 0;
-	
-	     process_client_line( last_client_line );
-	     
-	     /* Clear the line. */
-	     last_client_line[0] = 0;
-	     last_client_pos = 0;
-	  }
-	else if ( buf[i] == '\r' )
-	  {
-	     /* Ignore them. */
-	     last_client_line[--last_client_pos] = 0;
-	  }
+        /* Anything usually gets dumped here. */
+        last_client_line[last_client_pos] = buf[i];
+        last_client_line[++last_client_pos] = 0;
+        
+        if ( buf[i] == '\n' )
+          {
+             last_client_line[last_client_pos] = '\r';
+             last_client_line[++last_client_pos] = 0;
+        
+             process_client_line( last_client_line );
+             
+             /* Clear the line. */
+             last_client_line[0] = 0;
+             last_client_pos = 0;
+          }
+        else if ( buf[i] == '\r' )
+          {
+             /* Ignore them. */
+             last_client_line[--last_client_pos] = 0;
+          }
      }
-//#endif
    
    return 0;
 }
@@ -2739,7 +2791,6 @@ void process_buffer( char *raw_buf, int bytes )
    int ignore = 0;
    int i;
    struct timeval tvold, tvnew;
-   int in_sub_iac = 0;
    
    bytes_uncompressed += bytes;
    
@@ -2753,138 +2804,120 @@ void process_buffer( char *raw_buf, int bytes )
    buffer_output = 1;
    for ( i = 0; i < bytes; i++ )
      {
-	if ( buf[i] == '\n' && !in_sub_iac )
-	  {
-	     current_line++;
-	     
-	     if ( !safe_mode )
-	       module_process_server_line( last_line, last_colorless_line, last_printable_line );
-	     else
-	       {
-		  clientf( last_line );
-		  clientf( "\r\n" );
-	       }
-	     
-	     sent_something = 0;
-	     
-	     /* Clear the line. */
-	     last_line[0] = 0;
-	     last_pos = 0;
-	     
-	     last_colorless_line[0] = 0;
-	     last_c_pos = 0;
-	     
-	     last_printable_line[0] = 0;
-	     last_p_pos = 0;
-	  }
-	else if ( buf[i] == '\r' && !in_sub_iac )
-	  {
-	     /* Just skip it. */
-	  }
-	else if ( buf[i] == (char) SB )
-	  {
-	     in_sub_iac = 1;
-	     last_line[last_pos] = buf[i];
-	     last_line[++last_pos] = 0;
-	  }
-	else if ( buf[i] == (char) SE )
-	  {
-	     in_sub_iac = 0;
-	     
-	     last_line[last_pos] = buf[i];
-	     last_line[++last_pos] = 0;
-	     
-	     clientf( last_line );
-	     
-	     last_pos = 0;
-	     last_line[last_pos] = 0;
-	  }
-	else if ( buf[i] == (char) GA || buf[i] == (char) EOR )
-	  {
-	     char *custom_prompt;
-	     
-	     /* Telnet GoAhead or EndOfRecord received. (Prompt) */
-	     last_line[last_pos] = buf[i];
-	     last_line[++last_pos] = 0;
-	     
-	     /* End gagging, we don't want to gag -everything-. */
-	     if ( gag_line_value )
-	       gag_line_value = 0;
-	     
-	     /* It won't print that echo_off, so I'll force it. */
-	     if ( strstr( last_line, "password" ) )
-	       {
-		  char telnet_echo_off[ ] = 
-		    { IAC, WILL, TELOPT_ECHO, '\0' };
-		  clientf( telnet_echo_off );
-	       }
-	     
-	     /* Might print some info right before a prompt is displayed. */
-	     if ( !safe_mode )
-	       module_process_server_prompt_informative( last_line, last_colorless_line );
-	     
-	     custom_prompt = module_build_custom_prompt( );
-	     
-	     if ( !custom_prompt )
-	       custom_prompt = last_line;
-	     
-	     if ( !gag_prompt_value )
-	       {
-		  /* Add an extra \n, so the prompt won't come right after the last prompt. */
-		  if ( current_line == 0 && !sent_something )
-		    clientf( "\r\n" );
-		  
-		  clientf( custom_prompt );
-	       }
-	     
-	     sent_something = 0;
-	     
-	     /* Might send commands, displaying them after the prompt. */
-	     if ( !safe_mode )
-	       module_process_server_prompt_action( last_line );
-	     
-	     /* The modules no longer need it. */
-	     if ( gag_prompt_value )
-	       gag_prompt_value = 0;
-	     
-	     current_line = 0;
-	     
-	     /* For use with show_prompt. */
-	     strcpy( last_prompt, custom_prompt );
-	     
-	     last_line[0] = 0;
-	     last_pos = 0;
-	     
-	     last_colorless_line[0] = 0;
-	     last_c_pos = 0;
-	     
-	     last_printable_line[0] = 0;
-	     last_p_pos = 0;
-	  }
-	else
-	  {
-	     /* Anything usually gets dumped here. */
-	     last_line[last_pos] = buf[i];
-	     last_line[++last_pos] = 0;
-	     
-	     /* Strip colors. */
-	     if ( buf[i] == '\33' )
-	       ignore = 1;
-	     else if ( ignore && buf[i] == 'm' )
-	       ignore = 0;
-	     else if ( !ignore && buf[i] >= 32 && buf[i] <= 126 )
-	       {
-		  last_colorless_line[last_c_pos] = buf[i];
-		  last_colorless_line[++last_c_pos] = 0;
-	       }
-	     
-	     /* isprint( buf[i] ) */
-	     if ( buf[i] >= 32 && buf[i] <= 126 )
-	       {
-		  last_printable_line[last_p_pos] = buf[i];
-		  last_printable_line[++last_p_pos] = 0;
-	       }
-	  }
+        if ( buf[i] == '\n' )
+          {
+             current_line++;
+             
+             if ( !safe_mode )
+               module_process_server_line( last_line, last_colorless_line, last_printable_line );
+             else
+               {
+                  clientf( last_line );
+                  clientf( "\r\n" );
+               }
+             
+             sent_something = 0;
+             
+             /* Clear the line. */
+             last_line[0] = 0;
+             last_pos = 0;
+             
+             last_colorless_line[0] = 0;
+             last_c_pos = 0;
+             
+             last_printable_line[0] = 0;
+             last_p_pos = 0;
+          }
+        else if ( buf[i] == '\r' )
+          {
+             /* Just skip it. */
+          }
+        else if ( buf[i] == (char) GA || buf[i] == (char) EOR )
+          {
+             char *custom_prompt;
+             
+             /* Telnet GoAhead or EndOfRecord received. (Prompt) */
+             last_line[last_pos] = buf[i];
+             last_line[++last_pos] = 0;
+             
+             /* End gagging, we don't want to gag -everything-. */
+             if ( gag_line_value )
+               gag_line_value = 0;
+             
+             /* It won't print that echo_off, so I'll force it. */
+             if ( strstr( last_line, "password" ) )
+               {
+                  char telnet_echo_off[ ] = 
+                    { IAC, WILL, TELOPT_ECHO, '\0' };
+                  clientf( telnet_echo_off );
+               }
+             
+             /* Might print some info right before a prompt is displayed. */
+             if ( !safe_mode )
+               module_process_server_prompt_informative( last_line, last_colorless_line );
+             
+             custom_prompt = module_build_custom_prompt( );
+             
+             if ( !custom_prompt )
+               custom_prompt = last_line;
+             
+             if ( !gag_prompt_value )
+               {
+                  /* Add an extra \n, so the prompt won't come right after the last prompt. */
+                  if ( current_line == 0 && !sent_something )
+                    clientf( "\r\n" );
+                  
+                  clientf( custom_prompt );
+               }
+             
+             sent_something = 0;
+             
+             /* Might send commands, displaying them after the prompt. */
+             if ( !safe_mode )
+               module_process_server_prompt_action( last_line );
+             
+             /* The modules no longer need it. */
+             if ( gag_prompt_value )
+               gag_prompt_value = 0;
+             
+             current_line = 0;
+             
+             /* For use with show_prompt. */
+             strcpy( last_prompt, custom_prompt );
+             
+             last_line[0] = 0;
+             last_pos = 0;
+             
+             last_colorless_line[0] = 0;
+             last_c_pos = 0;
+             
+             last_printable_line[0] = 0;
+             last_p_pos = 0;
+          }
+        else
+          {
+             /* Anything usually gets dumped here. */
+             last_line[last_pos] = buf[i];
+             last_line[++last_pos] = 0;
+             
+             /* Strip colors. */
+             if ( buf[i] == '\33' )
+               ignore = 1;
+             else if ( ignore && buf[i] == 'm' )
+               ignore = 0;
+             else if ( !ignore && buf[i] >= 32 && buf[i] <= 126 )
+               {
+                  last_colorless_line[last_c_pos] = buf[i];
+                  last_colorless_line[++last_c_pos] = 0;
+               }
+             
+             /* isprint( buf[i] ) */
+             if ( buf[i] >= 32 && buf[i] <= 126 )
+               {
+                  last_printable_line[last_p_pos] = buf[i];
+                  last_printable_line[++last_p_pos] = 0;
+               }
+          }
      }
    
    buffer_output = 0;
@@ -2897,12 +2930,12 @@ void process_buffer( char *raw_buf, int bytes )
    
    if ( show_processing_time )
      {
-	int usec, sec;
-	
-	usec = tvnew.tv_usec - tvold.tv_usec;
-	sec = tvnew.tv_sec - tvold.tv_sec;
-	
-	clientff( "(%d)", usec + ( sec * 1000000 ) );
+        int usec, sec;
+        
+        usec = tvnew.tv_usec - tvold.tv_usec;
+        sec = tvnew.tv_sec - tvold.tv_sec;
+        
+        clientff( "(%d)", usec + ( sec * 1000000 ) );
      }
 }
 
@@ -2917,8 +2950,8 @@ char *find_bytes( char *src, int src_bytes, char *find, int bytes )
    
    for ( p = src; src_bytes >= 0; src_bytes--, p++ )
      {
-	if ( !memcmp( p, find, bytes ) )
-	  return p;
+        if ( !memcmp( p, find, bytes ) )
+          return p;
      }
    
    return NULL;
@@ -2947,56 +2980,56 @@ int mccp_decompress( char *src, int src_bytes )
    
    if ( !compressed )
      {
-	/* Compressed data starts somewhere here? */
-	if ( ( p = find_bytes( src, src_bytes, c2_start, 5 ) ) )
-	  {
-	     debugf( "mccp: Starting decompression." );
-	     
-	     if ( !skip_mccp_msg )
-	       {
-		  clientfb( "Server is now sending compressed data." );
-		  clientf( last_prompt );
-	       }
-	     else
-	       skip_mccp_msg = 0;
-	     
-	     /* Copy and process whatever is uncompressed. */
-	     if ( p - src > 0 )
-	       {
-		  memcpy( buf, src, p - src );
-		  process_buffer( buf, p - src );
-	       }
-	     
-	     src_bytes -= ( p - src + 5 );
-	     src = p + 5; /* strlen( c2_start ) = 5 */
-	     
-	     /* Initialize zlib. */
-	     
-	     zstream = calloc( sizeof( z_stream ), 1 );
-	     zstream->zalloc = NULL;
-	     zstream->zfree = NULL;
-	     zstream->opaque = NULL;
-	     zstream->next_in = Z_NULL;
-	     zstream->avail_in = 0;
-	     
-	     if ( inflateInit( zstream ) != Z_OK )
-	       {
-		  debugf( "mccp: error at inflateInit." );
-		  exit( 1 );
-	       }
-	     
-	     compressed = 1;
-	     
-	     /* Nothing more after it? */
-	     if ( !src_bytes )
-	       return 0;
-	  }
-	else
-	  {
-	     /* Normal data, with nothing compressed. Just move along... */
-	     process_buffer( src, src_bytes );
-	     return 0;
-	  }
+        /* Compressed data starts somewhere here? */
+        if ( ( p = find_bytes( src, src_bytes, c2_start, 5 ) ) )
+          {
+             debugf( "mccp: Starting decompression." );
+             
+             if ( !skip_mccp_msg )
+               {
+                  clientfb( "Server is now sending compressed data." );
+                  clientf( last_prompt );
+               }
+             else
+               skip_mccp_msg = 0;
+             
+             /* Copy and process whatever is uncompressed. */
+             if ( p - src > 0 )
+               {
+                  memcpy( buf, src, p - src );
+                  process_buffer( buf, p - src );
+               }
+             
+             src_bytes -= ( p - src + 5 );
+             src = p + 5; /* strlen( c2_start ) = 5 */
+             
+             /* Initialize zlib. */
+             
+             zstream = calloc( sizeof( z_stream ), 1 );
+             zstream->zalloc = NULL;
+             zstream->zfree = NULL;
+             zstream->opaque = NULL;
+             zstream->next_in = Z_NULL;
+             zstream->avail_in = 0;
+             
+             if ( inflateInit( zstream ) != Z_OK )
+               {
+                  debugf( "mccp: error at inflateInit." );
+                  exit( 1 );
+               }
+             
+             compressed = 1;
+             
+             /* Nothing more after it? */
+             if ( !src_bytes )
+               return 0;
+          }
+        else
+          {
+             /* Normal data, with nothing compressed. Just move along... */
+             process_buffer( src, src_bytes );
+             return 0;
+          }
      }
    
    /* We have compressed data, beginning at *src. */
@@ -3006,46 +3039,46 @@ int mccp_decompress( char *src, int src_bytes )
    
    while ( zstream->avail_in )
      {
-	zstream->next_out = buf;
-	zstream->avail_out = INPUT_BUF;
-	
-	status = inflate( zstream, Z_SYNC_FLUSH );
-	
-	if ( status != Z_OK && status != Z_STREAM_END )
-	  {
-	     switch ( status )
-	       {
-		case Z_DATA_ERROR:
-		  debugf( "mccp: inflate: data error." ); break;
-		case Z_STREAM_ERROR:
-		  debugf( "mccp: inflate: stream error." ); break;
-		case Z_BUF_ERROR:
-		  debugf( "mccp: inflate: buf error." ); break;
-		case Z_MEM_ERROR:
-		  debugf( "mccp: inflate: mem error." ); break;
-	       }
-	     
-	     compressed = 0;
-	     clientfb( "MCCP error." ); 
-	     send_to_server( c2_stop );
-	     break;
-	  }
-	
-	/* I believe here avail_in is zero. If not, error. */
-	if ( status == Z_STREAM_END )
-	  {
-	     debugf( "mccp: Decompression ended." );
-	     clientfb( "Server no longer sending compressed data." );
-	     clientf( last_prompt );
-	     compressed = 0;
-	     
-	     /* Copy whatever is after it. */
-	     memcpy( buf, zstream->next_in, zstream->avail_in );
-	     inflateEnd( zstream );
-	     zstream->avail_in = 0;
-	  }
-	
-	process_buffer( buf, INPUT_BUF - zstream->avail_out );
+        zstream->next_out = buf;
+        zstream->avail_out = INPUT_BUF;
+        
+        status = inflate( zstream, Z_SYNC_FLUSH );
+        
+        if ( status != Z_OK && status != Z_STREAM_END )
+          {
+             switch ( status )
+               {
+                case Z_DATA_ERROR:
+                  debugf( "mccp: inflate: data error." ); break;
+                case Z_STREAM_ERROR:
+                  debugf( "mccp: inflate: stream error." ); break;
+                case Z_BUF_ERROR:
+                  debugf( "mccp: inflate: buf error." ); break;
+                case Z_MEM_ERROR:
+                  debugf( "mccp: inflate: mem error." ); break;
+               }
+             
+             compressed = 0;
+             clientfb( "MCCP error." ); 
+             send_to_server( c2_stop );
+             break;
+          }
+        
+        /* I believe here avail_in is zero. If not, error. */
+        if ( status == Z_STREAM_END )
+          {
+             debugf( "mccp: Decompression ended." );
+             clientfb( "Server no longer sending compressed data." );
+             clientf( last_prompt );
+             compressed = 0;
+             
+             /* Copy whatever is after it. */
+             memcpy( buf, zstream->next_in, zstream->avail_in );
+             inflateEnd( zstream );
+             zstream->avail_in = 0;
+          }
+        
+        process_buffer( buf, INPUT_BUF - zstream->avail_out );
      }
    
    return 1;
@@ -3065,18 +3098,18 @@ int process_server( void )
    
    if ( bytes < 0 )
      {
-	debugerr( "process_server" );
-	clientfb( "Error while reading from server..." );
-	debugf( "Restarting." );
-	force_off_mccp( );
-	return 1;
+        debugerr( "process_server" );
+        clientfb( "Error while reading from server..." );
+        debugf( "Restarting." );
+        force_off_mccp( );
+        return 1;
      }
    else if ( bytes == 0 )
      {
-	clientfb( "Server closed connection." );
-	debugf( "Server closed connection." );
-	force_off_mccp( );
-	return 1;
+        clientfb( "Server closed connection." );
+        debugf( "Server closed connection." );
+        force_off_mccp( );
+        return 1;
      }
    
    bytes_received += bytes;
@@ -3100,8 +3133,8 @@ void fd_client_in( DESCRIPTOR *self )
      check_for_server( );
    else
      {
-	if ( process_client( ) )
-	  assign_client( 0 );
+        if ( process_client( ) )
+          assign_client( 0 );
      }
 }
 
@@ -3118,9 +3151,9 @@ void fd_server_in( DESCRIPTOR *self )
 {
    if ( process_server( ) )
      {
-	assign_client( 0 );
-	assign_server( 0 );
-	return;
+        assign_client( 0 );
+        assign_server( 0 );
+        return;
      }
 }
 
@@ -3129,8 +3162,8 @@ void fd_server_exc( DESCRIPTOR *self )
 {
    if ( client )
      {
-	clientfb( "Exception raised on the server's connection. Closing." );
-	c_close( client );
+        clientfb( "Exception raised on the server's connection. Closing." );
+        c_close( client );
      }
    debugf( "Connection error from the server." );
    /* Return, and listen again. */
@@ -3152,13 +3185,13 @@ void add_descriptor( DESCRIPTOR *desc )
    
    if ( !descs )
      {
-	descs = desc;
+        descs = desc;
      }
    else
      {
-	for ( d = descs; d->next; d = d->next );
-	
-	d->next = desc;
+        for ( d = descs; d->next; d = d->next );
+        
+        d->next = desc;
      }
    
    update_descriptors( );
@@ -3171,24 +3204,24 @@ void remove_descriptor( DESCRIPTOR *desc )
    
    if ( !desc )
      {
-	debugf( "remove_descriptor: Called with null argument." );
-	return;
+        debugf( "remove_descriptor: Called with null argument." );
+        return;
      }
    
    /* Unlink it from the chain. */
    
    if ( descs == desc )
      {
-	descs = descs->next;
+        descs = descs->next;
      }
    else
      {
-	for ( d = descs; d; d = d->next )
-	  if ( d->next == desc )
-	    {
-	       d->next = desc->next;
-	       break;
-	    }
+        for ( d = descs; d; d = d->next )
+          if ( d->next == desc )
+            {
+               d->next = desc->next;
+               break;
+            }
      }
    
    /* This is so we know if it was removed, while processing it. */
@@ -3254,12 +3287,12 @@ void remove_newline( char *string )
    
    while( *p )
      {
-	if ( *p == '\n' || *p == '\r' )
-	  {
-	     *p = '\0';
-	     return;
-	  }
-	p++;
+        if ( *p == '\n' || *p == '\r' )
+          {
+             *p = '\0';
+             return;
+          }
+        p++;
      }
 }
 
@@ -3275,31 +3308,31 @@ void sig_segv_handler( int sig )
    debugf( "History:" );
    for ( i = 0; i < 6; i++ )
      {
-	if ( !debug[i] )
-	  break;
-	debugf( " (%d) %s", i, debug[i] );
+        if ( !debug[i] )
+          break;
+        debugf( " (%d) %s", i, debug[i] );
      }
    
 #if !defined( FOR_WINDOWS )
    if ( !client || !server )
      {
-	debugf( "No client or no server. No reason to enter safe mode." );
-	raise( sig );
-	return;
+        debugf( "No client or no server. No reason to enter safe mode." );
+        raise( sig );
+        return;
      }
    
    debugf( "Attempting to keep connection alive." );
    
    if ( compressed )
      {
-	char mccp_stop[] = { IAC, DONT, TELOPT_COMPRESS2 };
-	
-	debugf( "Warning! Server is sending compressed data, right now!" );
-	debugf( "Attempting to send IAC DONT COMPRESS2, but might not work." );
-	
-	send_to_server( mccp_stop );
-	
-	force_off_mccp( );
+        char mccp_stop[] = { IAC, DONT, TELOPT_COMPRESS2 };
+        
+        debugf( "Warning! Server is sending compressed data, right now!" );
+        debugf( "Attempting to send IAC DONT COMPRESS2, but might not work." );
+        
+        send_to_server( mccp_stop );
+        
+        force_off_mccp( );
      }
    
    /* Go in safe mode, so the connection can be kept alive until something is done. */
@@ -3351,73 +3384,73 @@ void main_loop( )
    
    while( 1 )
      {
-	FD_ZERO( &in_set  );
-	FD_ZERO( &out_set );
-	FD_ZERO( &exc_set );
-	
-	/* What descriptors do we want to select? */
-	for ( d = descs; d; d = d->next )
-	  {
-	     if ( *d->fd < 1 )
-	       continue;
-	     
-	     if ( d->callback_in )
-	       FD_SET( *d->fd, &in_set );
-	     if ( d->callback_out )
-	       FD_SET( *d->fd, &out_set );
-	     if ( d->callback_exc )
-	       FD_SET( *d->fd, &exc_set );
-	     
-	     if ( maxdesc < *d->fd )
-	       maxdesc = *d->fd;
-	  }
-	
-	/* If there's one or more timers, don't sleep more than 0.25 seconds. */
-	pulsetime.tv_sec = 0;
-	pulsetime.tv_usec = 250000;
-	
-	if ( select( maxdesc+1, &in_set, &out_set, &exc_set, timers ? &pulsetime : NULL ) < 0 )
-	  {
-	     if ( errno != EINTR )
-	       {
-		  debugerr( "main_loop: select: poll" );
-		  exit( 1 );
-	       }
-	     else
-	       continue;
-	  }
-	
-	/* Check timers. */
-	check_timers( );
-	
-	DEBUG( "main_loop - descriptors" );
-	
-	/* Go through the descriptor list. */
-	for ( d = descs; d; d = d_next )
-	  {
-	     d_next = d->next;
-	     
-	     /* Do we have a valid descriptor? */
-	     if ( *d->fd < 1 )
-	       continue;
-	     
-	     current_descriptor = d;
-	     
-	     if ( d->callback_in && FD_ISSET( *d->fd, &in_set ) )
-	       (*d->callback_in)( d );
-	     
-	     if ( !current_descriptor )
-	       continue;
-	     
-	     if ( d->callback_out && FD_ISSET( *d->fd, &out_set ) )
-	       (*d->callback_out)( d );
-	     
-	     if ( !current_descriptor )
-	       continue;
-	     
-	     if ( d->callback_exc && FD_ISSET( *d->fd, &exc_set ) )
-	       (*d->callback_exc)( d );
-	  }
+        FD_ZERO( &in_set  );
+        FD_ZERO( &out_set );
+        FD_ZERO( &exc_set );
+        
+        /* What descriptors do we want to select? */
+        for ( d = descs; d; d = d->next )
+          {
+             if ( *d->fd < 1 )
+               continue;
+             
+             if ( d->callback_in )
+               FD_SET( *d->fd, &in_set );
+             if ( d->callback_out )
+               FD_SET( *d->fd, &out_set );
+             if ( d->callback_exc )
+               FD_SET( *d->fd, &exc_set );
+             
+             if ( maxdesc < *d->fd )
+               maxdesc = *d->fd;
+          }
+        
+        /* If there's one or more timers, don't sleep more than 0.25 seconds. */
+        pulsetime.tv_sec = 0;
+        pulsetime.tv_usec = 250000;
+        
+        if ( select( maxdesc+1, &in_set, &out_set, &exc_set, timers ? &pulsetime : NULL ) < 0 )
+          {
+             if ( errno != EINTR )
+               {
+                  debugerr( "main_loop: select: poll" );
+                  exit( 1 );
+               }
+             else
+               continue;
+          }
+        
+        /* Check timers. */
+        check_timers( );
+        
+        DEBUG( "main_loop - descriptors" );
+        
+        /* Go through the descriptor list. */
+        for ( d = descs; d; d = d_next )
+          {
+             d_next = d->next;
+             
+             /* Do we have a valid descriptor? */
+             if ( *d->fd < 1 )
+               continue;
+             
+             current_descriptor = d;
+             
+             if ( d->callback_in && FD_ISSET( *d->fd, &in_set ) )
+               (*d->callback_in)( d );
+             
+             if ( !current_descriptor )
+               continue;
+             
+             if ( d->callback_out && FD_ISSET( *d->fd, &out_set ) )
+               (*d->callback_out)( d );
+             
+             if ( !current_descriptor )
+               continue;
+             
+             if ( d->callback_exc && FD_ISSET( *d->fd, &exc_set ) )
+               (*d->callback_exc)( d );
+          }
      }
 }
 
@@ -3436,87 +3469,87 @@ int main( int argc, char **argv )
    
    if ( argv[1] )
      {
-	if ( !strcmp( argv[1], "copyover" ) )
-	  copyover = 1;
-	else if ( !strcmp( argv[1], "safemode" ) )
-	  copyover = 2;
-	
-	if ( copyover )
-	  {
-	     /* Recover from a copyover. */
-	     if ( !( argv[2] && argv[3] && argv[4] ) )
-	       {
-		  debugf( "Couldn't recover from a %s,"
-			  " as some arguments were not passes.",
-			  copyover == 1 ? "copyover" : "crash" );
-		  return 1;
-	       }
-	     
-	     control = atoi( argv[2] );
-	     assign_client( atoi( argv[3] ) );
-	     assign_server( atoi( argv[4] ) );
-	     
-	     if ( control < 1 || client < 1 || server < 1 )
-	       {
-		  debugf( "Couldn't recover from a %s,"
-			  " as some invalid arguments were passed.",
-			  copyover == 1 ? "copyover" : "crash" );
-		  return 1;
-	       }
-	     
-	     /* Just to look nice in PS. ;) */
-	     argv[2][0] = 0;
-	     argv[3][0] = 0;
-	     argv[4][0] = 0;
-	  }
-	else
-	  {
-	     if ( !( port = atoi( argv[1] ) ) )
-	       {
-		  debugf( "Port number invalid." );
-		  return 1;
-	       }
-	     
-		  if ( port < 1 || port > 65535 )
-	       {
-		  debugf( "Port range must be between 1 and 65535." );
-		  return 1;
-	       }
-	  }
+        if ( !strcmp( argv[1], "copyover" ) )
+          copyover = 1;
+        else if ( !strcmp( argv[1], "safemode" ) )
+          copyover = 2;
+        
+        if ( copyover )
+          {
+             /* Recover from a copyover. */
+             if ( !( argv[2] && argv[3] && argv[4] ) )
+               {
+                  debugf( "Couldn't recover from a %s,"
+                          " as some arguments were not passes.",
+                          copyover == 1 ? "copyover" : "crash" );
+                  return 1;
+               }
+             
+             control = atoi( argv[2] );
+             assign_client( atoi( argv[3] ) );
+             assign_server( atoi( argv[4] ) );
+             
+             if ( control < 1 || client < 1 || server < 1 )
+               {
+                  debugf( "Couldn't recover from a %s,"
+                          " as some invalid arguments were passed.",
+                          copyover == 1 ? "copyover" : "crash" );
+                  return 1;
+               }
+             
+             /* Just to look nice in PS. ;) */
+             argv[2][0] = 0;
+             argv[3][0] = 0;
+             argv[4][0] = 0;
+          }
+        else
+          {
+             if ( !( port = atoi( argv[1] ) ) )
+               {
+                  debugf( "Port number invalid." );
+                  return 1;
+               }
+             
+                  if ( port < 1 || port > 65535 )
+               {
+                  debugf( "Port range must be between 1 and 65535." );
+                  return 1;
+               }
+          }
      }
    
    if ( !copyover )
      {
-	debugf( "Getting ready on port %d, and initializing.", port );
-	control = init_socket( port );
+        debugf( "Getting ready on port %d, and initializing.", port );
+        control = init_socket( port );
      }
    else if ( copyover == 1 )
      {
-	debugf( "Copyover finished. Initializing, again." );
-	clientfb( "Initializing." );
+        debugf( "Copyover finished. Initializing, again." );
+        clientfb( "Initializing." );
      }
    else
      {
-	debugf( "Recovering from a crash, starting in safe mode." );
-	clientf( "\r\n" );
-	clientfb( "Recovering from a crash, starting in safe mode." );
-	clientfb( "Use `reboot to start again, normally." );
-	safe_mode = 1;
+        debugf( "Recovering from a crash, starting in safe mode." );
+        clientf( "\r\n" );
+        clientfb( "Recovering from a crash, starting in safe mode." );
+        clientfb( "Use `reboot to start again, normally." );
+        safe_mode = 1;
      }
    
    if ( !safe_mode )
      {
-	/* Signal handling. */
-	signal( SIGSEGV, sig_segv_handler );
-	
-	/* Check if a log file exists. */
-	start_log( );
-	
-	/* Load and register all modules. */
-	modules_register( );
-	
-	/* Initialize all modules. */
-	module_init_data( );
+        /* Signal handling. */
+        signal( SIGSEGV, sig_segv_handler );
+        
+        /* Check if a log file exists. */
+        start_log( );
+        
+        /* Load and register all modules. */
+        modules_register( );
+        
+        /* Initialize all modules. */
+        module_init_data( );
      }
    
    if ( copyover == 1 )
@@ -3527,25 +3560,25 @@ int main( int argc, char **argv )
    
    /* Look for a main_loop in a module. */
      {
-	MODULE *module;
-	
-	for ( module = modules; module; module = module->next )
-	  {
-	     if ( !module->main_loop )
-	       continue;
-	     
-	     debugf( "Using a module to enter main loop. All ready." );
-	     (*module->main_loop)( argc, argv );
-	     
-	     return 0;
-	  }
+        MODULE *module;
+        
+        for ( module = modules; module; module = module->next )
+          {
+             if ( !module->main_loop )
+               continue;
+             
+             debugf( "Using a module to enter main loop. All ready." );
+             (*module->main_loop)( argc, argv );
+             
+             return 0;
+          }
      }
    
    /* If it wasn't found, use ours. */
    while( 1 )
      {
-	debugf( "Entering main loop. All ready." );
-	main_loop( );
+        debugf( "Entering main loop. All ready." );
+        main_loop( );
      }
 }
 
@@ -3573,67 +3606,67 @@ int cmp( char *trigger, char *string )
    /* Ready.. get set.. Go! */
    while ( 1 )
      {
-	/* Are we checking in reverse? */
-	if ( !reverse )
-	  {
-	     /* The end? */
-	     if ( !*t && !*s )
-	       return 0;
-	     
-	     /* One got faster to the end? */
-	     if ( ( !*t || !*s ) && *t != '*' )
-	       return 1;
-	  }
-	else
-	  {
-	     /* End of reverse? */
-	     if ( t >= trigger && *t == '*' )
-	       return 0;
-	     
-	     /* No '*' found? */
-	     if ( s < string )
-	       return 1;
-	  }
-	
+        /* Are we checking in reverse? */
+        if ( !reverse )
+          {
+             /* The end? */
+             if ( !*t && !*s )
+               return 0;
+             
+             /* One got faster to the end? */
+             if ( ( !*t || !*s ) && *t != '*' )
+               return 1;
+          }
+        else
+          {
+             /* End of reverse? */
+             if ( t >= trigger && *t == '*' )
+               return 0;
+             
+             /* No '*' found? */
+             if ( s < string )
+               return 1;
+          }
+        
         if ( *t == '^' )
-	  {
-	     if ( !reverse )
-	       {
-		  while ( isalnum( *s ) )
-		    s++;
-		  t++;
-	       }
-	     else
-	       {
-		  while( s >= string && isalnum( *s ) )
-		    s--;
-		  t--;
-	       }
-	  }
-	
-	if ( *t != *s )
-	  {
-	     if ( *t == '*' )
-	       {
-		  /* Wildcard found, reversing search. */
-		  reverse = 1;
-		  
-		  /* Move them at the end. */
-		  t = t + strlen( t );
-		  s = s + strlen( s );
-	       }
-	     else
-	       {
-		  /* Chars differ, strings don't match. */
-		  return 1;
-	       }
-	  }
-	
-	/* Run. Backwards if needed. */
-	if ( !reverse )
-	  t++, s++;
-	else
-	  t--, s--;
+          {
+             if ( !reverse )
+               {
+                  while ( isalnum( *s ) )
+                    s++;
+                  t++;
+               }
+             else
+               {
+                  while( s >= string && isalnum( *s ) )
+                    s--;
+                  t--;
+               }
+          }
+        
+        if ( *t != *s )
+          {
+             if ( *t == '*' )
+               {
+                  /* Wildcard found, reversing search. */
+                  reverse = 1;
+                  
+                  /* Move them at the end. */
+                  t = t + strlen( t );
+                  s = s + strlen( s );
+               }
+             else
+               {
+                  /* Chars differ, strings don't match. */
+                  return 1;
+               }
+          }
+        
+        /* Run. Backwards if needed. */
+        if ( !reverse )
+          t++, s++;
+        else
+          t--, s--;
      }
 }
 
