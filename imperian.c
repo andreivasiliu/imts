@@ -5413,6 +5413,8 @@ int imperian_process_client_command( char *cmd )
 	     balance_cureelix = 0;
 	     balance_toadstool = 0;
 	     balance_tree = 0;
+	     balance_purge = 0;
+	     balance_focus = 0;
 	     balance_left_arm = 0;
 	     balance_right_arm = 0;
 	     for ( i = 0; defences[i].name; i++ )
