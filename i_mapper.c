@@ -3927,8 +3927,8 @@ void parse_who( char *line, char *colorless )
    /* Initialize these two, so we won't do them each time. */
    if ( first_time )
      {
-	len1 = 9 + strlen( C_D ) + strlen( C_G ) + strlen( C_D );
-	len2 = 9 + strlen( C_D ) + strlen( C_R ) + strlen( C_D );
+	len1 = 9 + strlen( C_D C_G C_D );
+	len2 = 9 + strlen( C_D C_R C_D );
 	first_time = 0;
      }
    
