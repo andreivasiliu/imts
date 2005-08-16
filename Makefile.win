@@ -2,14 +2,16 @@
 
 CC      = gcc.exe
 WINDRES = windres.exe
+DLLTOOL = dlltool.exe
 DLLWRAP = dllwrap.exe
-LIBS    = -L"D:/Programs/Dev-Cpp/lib"
-INCS    = -I"D:/Programs/Dev-Cpp/include"
+LIBS    = -L"D:/Programs/Dev-Cpp/lib" -L../zlib
+INCS    = -I"D:/Programs/Dev-Cpp/include" -I../zlib
 BIN     = mb-core.exe
-CFLAGS  = $(INCS) -DFOR_WINDOWS -I../zlib
+CFLAGS  = $(INCS) -DFOR_WINDOWS
 
 MAKERES = $(WINDRES) --input-format=rc -O coff
-MAKEDLL = $(DLLWRAP) $(LIBS) --no-export-all-symbols --add-stdcall-alias
+MAKEDEF = $(DLLTOOL)
+MAKEDLL = $(DLLWRAP) $(LIBS) --quiet --no-export-all-symbols --add-stdcall-alias
 MAKEOBJ = $(CC) $(CFLAGS) -c
 MAKEEXE = $(CC) $(LIBS) -mwindows
 
@@ -18,15 +20,19 @@ FILES   = $(BIN) i_mapper.dll imperian.dll mmchat.dll voter.dll
 all: $(FILES)
 
 clean:
-	rm -f *~ *.o *.res $(BIN) *.dll
+	rm -f *~ *.o *.res *.def $(BIN) *.dll
 
 $(BIN): main.o winmain.o winres.res
 	@echo Making '$@' from '$^'...
 	@$(MAKEEXE) -o $@ main.o winmain.o winres.res ../zlib/libz.a -lwsock32 -lcomctl32
 
-%.dll: %.o
+%.dll: %.o %.def
 	@echo Making '$@' from '$^'...
-	@$(MAKEDLL) -o $@ $<
+	@$(MAKEDLL) -o $@ $< --def $*.def
+
+%.def: %.o
+	@echo Making '$@' from '$^'...
+	@$(MAKEDEF) -z $@ $< --dllname $*.dll
 
 main.o: main.c header.h
 	@echo Making '$@' from '$^'...

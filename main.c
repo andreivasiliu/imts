@@ -34,7 +34,7 @@
 #if defined( FOR_WINDOWS )
 # include <winsock2.h>    /* All winsock2 stuff. */
 # if !defined( DISABLE_MCCP )
-#  include "../zlib/zlib.h"  /* needed for MCCP */
+#  include <zlib.h>  /* needed for MCCP */
 # endif
 #else
 # include <sys/socket.h>  /* All socket stuff */
