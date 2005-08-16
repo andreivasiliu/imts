@@ -4148,7 +4148,9 @@ void keep_up_defences( )
 	     
 	     if ( defences[i].takesmoke )
 	       {
-		  add_timer( "smoke_balance_reset", reset_time, balance_reset, 4, 0, 0 );
+		  /* Safe to assume that the only thing we can smoke is linseed. */
+		  /* That one has a longer salve balance. */
+		  add_timer( "smoke_balance_reset", reset_time + 2, balance_reset, 4, 0, 0 );
 		  balance_smoke = 1;
 	       }
 	     
