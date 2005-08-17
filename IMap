@@ -61,6 +61,72 @@ GSE: 716 "portals" "of the Gods to rescue you."
 AREA
 Name: Northern Celidon.
 
+ROOM v60
+Name: A muddy track of dirt. (path)
+Type: Path
+E: northeast 61
+E: southeast 59
+E: northwest 1069
+ES: northwest 1
+
+ROOM v61
+Name: A path skirting the Celidon. (path)
+Type: Path
+E: northeast 62
+E: southwest 60
+
+ROOM v62
+Name: Light path between plains and forest. (path)
+Type: Path
+E: north 63
+E: southwest 61
+
+ROOM v63
+Name: Passing a small lake. (path)
+Type: Path
+E: south 62
+E: northwest 64
+
+ROOM v64
+Name: Rounding a clear lake. (path)
+Type: Path
+E: north 65
+E: southeast 63
+
+ROOM v65
+Name: West of a vast, grassy plain. (path)
+Type: Path
+E: northeast 66
+E: south 64
+E: southwest 1055
+ES: southwest 1
+
+ROOM v66
+Name: West of a vast, grassy plain. (path)
+Type: Path
+E: north 67
+E: southeast 2401
+E: southwest 65
+
+ROOM v67
+Name: Path on the plains. (path)
+Type: Path
+E: south 66
+E: northwest 68
+
+ROOM v68
+Name: Path outside the Celidon. (path)
+Type: Path
+E: east 2391
+E: southeast 67
+E: northwest 69
+
+ROOM v69
+Name: Path outside the Celidon. (path)
+Type: Path
+E: southeast 68
+E: northwest 70
+
 ROOM v1214
 Name: Wide stream through northern Celidon.
 Type: River
@@ -423,6 +489,7 @@ ROOM v1055
 Name: Within the Celidon.
 Type: Forest
 E: northeast 65
+ES: northeast 1
 E: west 1051
 
 ROOM v1056
@@ -515,6 +582,7 @@ ROOM v1069
 Name: Stream on the edge of Celidon forest.
 Type: Forest
 E: southeast 60
+ES: southeast 1
 E: west 1068
 
 ROOM v1070
@@ -862,6 +930,56 @@ E: southeast 1133
 
 AREA
 Name: Western Celidon.
+
+ROOM v446
+Name: Nearing the Western Celidon. (path)
+Type: Path
+E: northeast 447
+E: west 445
+
+ROOM v447
+Name: Outskirts of the Western Celidon. (path)
+Type: Path
+E: north 448
+E: northeast 915
+E: southwest 446
+
+ROOM v453
+Name: Garden of Meditation.
+Type: Garden
+E: east 450
+
+ROOM v452
+Name: Pool of Enlightenment.
+Type: Garden
+E: west 450
+
+ROOM v451
+Name: The Sanctuary of Light.
+Type: Garden
+E: south 450
+
+ROOM v450
+Name: A ring of crystal pillars.
+Type: Garden
+E: north 451
+E: east 452
+E: south 449
+E: west 453
+
+ROOM v449
+Name: A garden of golden light.
+Type: Garden
+E: north 450
+E: south 448
+ES: south 1
+
+ROOM v448
+Name: Inside a small cave.
+Type: Natural underground
+E: north 449
+ES: north 1
+E: south 447
 
 ROOM v1562
 Name: Sloping Pine forest.
@@ -3867,16 +3985,6 @@ E: south 676
 EL: south 1
 E: west 4509
 
-ROOM v674
-Name: Southern old road nearing desert. (path)
-Type: Path
-E: east 673
-E: southwest 2150
-ES: southwest 1
-E: west 2149
-ES: west 1
-E: northwest 505
-
 ROOM v673
 Name: Edge of Desert amid hills.
 Type: Desert
@@ -6136,6 +6244,104 @@ E: south 7119
 AREA
 Name: Ravana Hills.
 
+ROOM v270
+Name: Outside the gates of Stavenn. (road)
+Type: Road
+E: northeast 267
+E: west 271
+
+ROOM v267
+Name: Near a large city. (road)
+Type: Road
+E: northeast 266
+E: southeast 268
+E: southwest 270
+E: northwest 347
+ES: northwest 1
+
+ROOM v266
+Name: Twisting highway track in hills. (road)
+Type: Road
+E: northeast 265
+E: southeast 413
+ES: southeast 1
+E: southwest 267
+
+ROOM v265
+Name: Winding highway. (road)
+Type: Road
+E: north 257
+E: southwest 266
+
+ROOM v5865
+Name: A brightly detailed office.
+Type: Urban
+E: southwest 261
+
+ROOM v264
+Name: Clan Headquarters of the Hall.
+Type: Urban
+E: east 261
+
+ROOM v263
+Name: The Bloodline Registry.
+Type: Urban
+E: west 261
+
+ROOM v262
+Name: A large meeting room.
+Type: Urban
+E: south 261
+
+ROOM v261
+Name: Main room of the Hall of Records.
+Type: Urban
+E: north 262
+E: northeast 5865
+E: east 263
+E: south 260
+E: west 264
+
+ROOM v260
+Name: A small garden before an entryway.
+Type: Garden
+E: north 261
+E: south 259
+
+ROOM v259
+Name: Path leading to the Hall of Records. (road)
+Type: Road
+E: north 260
+E: down 258
+
+ROOM v258
+Name: A small path climbing a hill. (road)
+Type: Road
+E: east 257
+E: up 259
+
+ROOM v257
+Name: Highway in the Shamutot. (road)
+Type: Road
+E: south 265
+E: west 258
+E: down 256
+UE: down east
+
+ROOM v256
+Name: Highway climbing the Ravana hills. (road)
+Type: Road
+E: northeast 255
+E: up 257
+UE: up west
+
+ROOM v255
+Name: Highway beneath the Shamutot. (road)
+Type: Road
+E: east 254
+E: southeast 1287
+E: southwest 256
+
 ROOM v5864
 Name: Cave of crystals.
 Type: Natural underground
@@ -6572,6 +6778,7 @@ Name: Ravana Hills overlooking Modin Valley.
 Type: Hills
 E: north 349
 E: southeast 267
+ES: southeast 1
 E: west 348
 
 ROOM v398
@@ -6681,6 +6888,7 @@ E: east 415
 E: south 414
 E: southwest 412
 E: northwest 266
+ES: northwest 1
 
 ROOM v414
 Name: Descending hill over Modin valley.
@@ -6729,26 +6937,6 @@ E: north 410
 E: northeast 416
 E: east 417
 E: west 404
-
-
-
-AREA
-Name: Southern Wilderness.
-
-ROOM v267
-Name: Near a large city. (road)
-Type: Road
-E: northeast 266
-E: southeast 268
-E: southwest 270
-E: northwest 347
-
-ROOM v266
-Name: Twisting highway track in hills. (road)
-Type: Road
-E: northeast 265
-E: southeast 413
-E: southwest 267
 
 
 
@@ -7290,9 +7478,7 @@ E: northwest 284
 ROOM v271
 Name: Entering the gates of Stavenn.
 Type: Urban
-E: north 8377
 E: east 270
-E: south 8379
 E: west 8376
 
 ROOM v5860
@@ -7463,28 +7649,6 @@ Type: Urban
 E: east 271
 E: northwest 272
 
-ROOM v8377
-Name: A well worn path.
-Type: Urban
-E: south 271
-E: in 8378
-
-ROOM v8378
-Name: Within a dimly lit tower.
-Type: Urban
-E: out 8377
-
-ROOM v8379
-Name: Near the city walls.
-Type: Urban
-E: north 271
-E: in 8380
-
-ROOM v8380
-Name: Inside the southern tower.
-Type: Urban
-E: out 8379
-
 ROOM v8381
 Name: The stonework portico of a commanding estate.
 Type: Urban
@@ -7519,6 +7683,30 @@ EL: northeast 1
 
 AREA
 Name: Modin Valley.
+
+ROOM v254
+Name: Passing through the meadows. (road)
+Type: Road
+E: east 253
+E: west 255
+
+ROOM v247
+Name: A twisting highway in the valley. (road)
+Type: Road
+E: north 246
+E: west 249
+
+ROOM v246
+Name: A bend in the highway. (road)
+Type: Road
+E: east 245
+E: south 247
+
+ROOM v245
+Name: The edges of the Modin valley. (road)
+Type: Road
+E: northeast 244
+E: west 246
 
 ROOM v1394
 Name: Inside a small weapon shop.
@@ -8128,12 +8316,6 @@ E: north 1244
 E: southeast 250
 E: south 251
 E: northwest 1242
-
-ROOM v270
-Name: Outside the gates of Stavenn. (road)
-Type: Road
-E: northeast 267
-E: west 271
 
 ROOM v862
 Name: Eastern bank of the Ederith.
@@ -9260,6 +9442,35 @@ E: west 131
 AREA
 Name: Vardarian Highlands.
 
+ROOM v74
+Name: Transk Exports.
+Type: Urban
+E: south 72
+
+ROOM v73
+Name: Dirt road north of a forest. (road)
+Type: Road
+E: north 719
+E: east 72
+E: southwest 935
+
+ROOM v72
+Name: Dirt road north of a forest. (road)
+Type: Road
+E: north 74
+E: east 70
+E: southwest 940
+E: west 73
+
+ROOM v70
+Name: Dirt road nearing hills. (road)
+Type: Road
+E: northeast 75
+E: east 942
+E: southeast 69
+E: southwest 941
+E: west 72
+
 ROOM v5947
 Name: Endless field of stars.
 Type: Undefined
@@ -10352,284 +10563,6 @@ E: northwest 7200
 AREA
 Name: Northern Wilderness.
 
-ROOM v943
-Name: Nearing a descent down to the lake. (road)
-Type: Road
-E: north 2278
-E: southeast 2277
-E: west 942
-
-ROOM v942
-Name: Nearing a large lake. (road)
-Type: Road
-E: east 943
-E: west 70
-
-ROOM v74
-Name: Transk Exports.
-Type: Urban
-E: south 72
-
-ROOM v73
-Name: Dirt road north of a forest. (road)
-Type: Road
-E: north 719
-E: east 72
-E: southwest 935
-
-ROOM v72
-Name: Dirt road north of a forest. (road)
-Type: Road
-E: north 74
-E: east 70
-E: southwest 940
-E: west 73
-
-ROOM v70
-Name: Dirt road nearing hills. (road)
-Type: Road
-E: northeast 75
-E: east 942
-E: southeast 69
-E: southwest 941
-E: west 72
-
-ROOM v69
-Name: Path outside the Celidon. (path)
-Type: Path
-E: southeast 68
-E: northwest 70
-
-ROOM v68
-Name: Path outside the Celidon. (path)
-Type: Path
-E: east 2391
-E: southeast 67
-E: northwest 69
-
-ROOM v67
-Name: Path on the plains. (path)
-Type: Path
-E: south 66
-E: northwest 68
-
-ROOM v66
-Name: West of a vast, grassy plain. (path)
-Type: Path
-E: north 67
-E: southeast 2401
-E: southwest 65
-
-ROOM v65
-Name: West of a vast, grassy plain. (path)
-Type: Path
-E: northeast 66
-E: south 64
-E: southwest 1055
-
-ROOM v436
-Name: A poorly maintained path near the Celidon. (path)
-Type: Path
-E: north 437
-E: northeast 1417
-E: east 435
-E: west 438
-
-ROOM v437
-Name: An ancient trailhead. (path)
-Type: Path
-E: northeast 1416
-E: south 436
-E: southwest 439
-
-ROOM v444
-Name: Nearing Lake Ildsam. (path)
-Type: Path
-E: northeast 445
-E: south 443
-E: west 454
-
-ROOM v445
-Name: Lakeside highway. (path)
-Type: Path
-E: east 446
-E: south 442
-E: southwest 444
-
-ROOM v446
-Name: Nearing the Western Celidon. (path)
-Type: Path
-E: northeast 447
-E: west 445
-
-ROOM v447
-Name: Outskirts of the Western Celidon. (path)
-Type: Path
-E: north 448
-E: northeast 915
-E: southwest 446
-
-ROOM v448
-Name: Inside a small cave.
-Type: Natural underground
-E: north 449
-ES: north 1
-E: south 447
-
-ROOM v449
-Name: A garden of golden light.
-Type: Garden
-E: north 450
-E: south 448
-ES: south 1
-
-ROOM v450
-Name: A ring of crystal pillars.
-Type: Garden
-E: north 451
-E: east 452
-E: south 449
-E: west 453
-
-ROOM v451
-Name: The Sanctuary of Light.
-Type: Garden
-E: south 450
-
-ROOM v452
-Name: Pool of Enlightenment.
-Type: Garden
-E: west 450
-
-ROOM v453
-Name: Garden of Meditation.
-Type: Garden
-E: east 450
-
-ROOM v454
-Name: Highway north of the Sienna. (path)
-Type: Path
-E: east 444
-E: south 2592
-E: west 455
-
-ROOM v455
-Name: South of the Celidon forest. (path)
-Type: Path
-E: east 454
-E: southwest 456
-
-ROOM v456
-Name: Between the Sienna and Celidon Forest. (path)
-Type: Path
-E: northeast 455
-E: southwest 457
-
-ROOM v457
-Name: Skirting the Sienna Forest. (path)
-Type: Path
-E: north 458
-E: northeast 456
-E: south 2600
-E: northwest 459
-
-ROOM v458
-Name: The garden of Rythanis.
-Type: Garden
-E: south 457
-
-ROOM v459
-Name: A forked path. (path)
-Type: Path
-E: southeast 457
-E: west 460
-
-ROOM v460
-Name: A natural bridge between two forests. (path)
-Type: Path
-E: east 459
-E: southwest 461
-
-ROOM v461
-Name: North of the Egeria forest. (path)
-Type: Path
-E: northeast 460
-E: southwest 2402
-E: northwest 462
-
-ROOM v462
-Name: Forked intersection. (road)
-Type: Road
-E: north 463
-E: southeast 461
-E: south 2404
-E: southwest 476
-E: northwest 473
-
-ROOM v463
-Name: Dirt road north of an intersection. (road)
-Type: Road
-E: northeast 464
-E: south 462
-
-ROOM v464
-Name: A dirt road. (road)
-Type: Road
-E: northeast 465
-E: southwest 463
-
-ROOM v465
-Name: A ridge overlooking a ruined coliseum. (road)
-Type: Road
-E: southeast 466
-E: southwest 464
-E: down 467
-
-ROOM v466
-Name: Dirt road south of a bog. (road)
-Type: Road
-E: north 2272
-E: northwest 465
-
-ROOM v467
-Name: A path leading down the cliff. (path)
-Type: Path
-E: east 468
-E: up 465
-
-ROOM v468
-Name: Overlooking the ruined coliseum. (path)
-Type: Path
-E: west 467
-E: down 469
-UE: down southeast
-
-ROOM v469
-Name: At the foot of a ridge. (path)
-Type: Path
-E: south 470
-E: up 468
-UE: up northwest
-
-ROOM v470
-Name: Nearing the ruined walls of an ancient coliseum. (path)
-Type: Path
-E: north 469
-E: south 471
-
-ROOM v471
-Name: Outside the shattered walls of the coliseum. (path)
-Type: Path
-E: north 470
-E: up 472
-UE: up northwest
-
-ROOM v472
-Name: Overlooking the ruins of the coliseum.
-Type: Hills
-E: down 471
-UE: down southeast
-
 ROOM v473
 Name: Before the Great Tower of Madness.
 Type: Grasslands
@@ -10647,562 +10580,6 @@ Name: Beneath the Tower of Madness.
 Type: Undefined
 E: up 474
 E: in 7612
-
-ROOM v476
-Name: Old road along the Egeria Forest. (path)
-Type: Path
-E: northeast 462
-E: west 477
-
-ROOM v477
-Name: Old road passing a deep canyon. (path)
-Type: Path
-E: east 476
-E: southwest 478
-
-ROOM v478
-Name: Passing the Egeria Forest. (path)
-Type: Path
-E: northeast 477
-E: south 479
-
-ROOM v479
-Name: Passing the Egeria Forest. (path)
-Type: Path
-E: north 478
-E: east 2424
-E: southwest 480
-
-ROOM v480
-Name: Old road nearing plains. (path)
-Type: Path
-E: northeast 479
-E: south 481
-
-ROOM v481
-Name: Road through dusty plains. (path)
-Type: Path
-E: north 480
-E: east 973
-E: south 482
-
-ROOM v482
-Name: Road through dusty plains. (path)
-Type: Path
-E: north 481
-E: southeast 483
-
-ROOM v483
-Name: Road through dusty plains. (path)
-Type: Path
-E: south 484
-E: northwest 482
-
-ROOM v484
-Name: Road through dusty plains. (path)
-Type: Path
-E: north 483
-E: south 485
-
-ROOM v485
-Name: Fork in road through dusty plains. (path)
-Type: Path
-E: north 484
-E: east 977
-E: southeast 490
-E: southwest 486
-
-ROOM v490
-Name: Bend in road through dusty plains. (path)
-Type: Path
-E: south 491
-E: northwest 485
-
-ROOM v491
-Name: Road through dusty plain. (path)
-Type: Path
-E: north 490
-E: southeast 492
-
-ROOM v492
-Name: Old road through dusty plain. (path)
-Type: Path
-E: east 493
-E: northwest 491
-
-ROOM v493
-Name: Old road through a dusty plain. (path)
-Type: Path
-E: southeast 494
-E: west 492
-
-ROOM v494
-Name: Dirt track through a dusty plain. (path)
-Type: Path
-E: south 495
-E: northwest 493
-
-ROOM v495
-Name: Old dirt track through grasslands. (path)
-Type: Path
-E: north 494
-E: south 496
-
-ROOM v496
-Name: Old dirt track through grasslands. (path)
-Type: Path
-E: north 495
-E: east 974
-ES: east 1
-E: southwest 497
-
-ROOM v497
-Name: Old dirt Track through grasslands. (path)
-Type: Path
-E: northeast 496
-E: southeast 498
-
-
-
-AREA
-Name: Central Wilderness.
-
-ROOM v5865
-Name: A brightly detailed office.
-Type: Urban
-E: southwest 261
-
-ROOM v3875
-Name: The Eye of the Wheel.
-Type: Garden
-E: north 3873
-EL: north 1
-E: east 3872
-EL: east 1
-E: south 3871
-EL: south 1
-E: west 3874
-EL: west 1
-
-ROOM v3874
-Name: The Garden of Experience and Growth.
-Type: Garden
-E: east 3875
-EL: east 1
-E: southeast 3871
-EL: southeast 1
-
-ROOM v3873
-Name: The Vale of the Origins and Reincarnation.
-Type: Garden
-E: southwest 3874
-EL: southwest 1
-
-ROOM v3872
-Name: The Valley of Rest and Contemplation.
-Type: Garden
-E: northwest 3873
-EL: northwest 1
-
-ROOM v3871
-Name: The Glade of Completion and Fulfillment.
-Type: Garden
-E: northeast 3872
-EL: northeast 1
-E: south 1323
-
-ROOM v1323
-Name: A natural archway before the Temple of the Seasons.
-Type: Garden
-E: north 3871
-E: south 1322
-ES: south 1
-
-ROOM v1322
-Name: A quiet garden off the road.
-Type: Forest
-E: north 1323
-ES: north 1
-E: south 425
-
-ROOM v265
-Name: Winding highway. (road)
-Type: Road
-E: north 257
-E: southwest 266
-
-ROOM v264
-Name: Clan Headquarters of the Hall.
-Type: Urban
-E: east 261
-
-ROOM v263
-Name: The Bloodline Registry.
-Type: Urban
-E: west 261
-
-ROOM v262
-Name: A large meeting room.
-Type: Urban
-E: south 261
-
-ROOM v261
-Name: Main room of the Hall of Records.
-Type: Urban
-E: north 262
-E: northeast 5865
-E: east 263
-E: south 260
-E: west 264
-
-ROOM v260
-Name: A small garden before an entryway.
-Type: Garden
-E: north 261
-E: south 259
-
-ROOM v259
-Name: Path leading to the Hall of Records. (road)
-Type: Road
-E: north 260
-E: down 258
-
-ROOM v258
-Name: A small path climbing a hill. (road)
-Type: Road
-E: east 257
-E: up 259
-
-ROOM v257
-Name: Highway in the Shamutot. (road)
-Type: Road
-E: south 265
-E: west 258
-E: down 256
-UE: down east
-
-ROOM v256
-Name: Highway climbing the Ravana hills. (road)
-Type: Road
-E: northeast 255
-E: up 257
-UE: up west
-
-ROOM v255
-Name: Highway beneath the Shamutot. (road)
-Type: Road
-E: east 254
-E: southeast 1287
-E: southwest 256
-
-ROOM v254
-Name: Passing through the meadows. (road)
-Type: Road
-E: east 253
-E: west 255
-
-ROOM v247
-Name: A twisting highway in the valley. (road)
-Type: Road
-E: north 246
-E: west 249
-
-ROOM v246
-Name: A bend in the highway. (road)
-Type: Road
-E: east 245
-E: south 247
-
-ROOM v245
-Name: The edges of the Modin valley. (road)
-Type: Road
-E: northeast 244
-E: west 246
-
-ROOM v244
-Name: Southeast of the Nolmine. (road)
-Type: Road
-E: northeast 243
-E: southwest 245
-E: northwest 1361
-
-ROOM v243
-Name: Skirting the Nolmine mountains. (road)
-Type: Road
-E: north 242
-E: southwest 244
-
-ROOM v242
-Name: On the Southern Highway. (road)
-Type: Road
-E: north 241
-E: south 243
-
-ROOM v241
-Name: Passing the Nolmine mountains. (road)
-Type: Road
-E: south 242
-E: northwest 240
-
-ROOM v240
-Name: Southern Highway near Caanae. (road)
-Type: Road
-E: southeast 241
-E: northwest 238
-
-ROOM v239
-Name: Cerise's Gazebo.
-Type: Garden
-E: north 237
-
-ROOM v238
-Name: Start of the Southern Highway. (road)
-Type: Road
-E: northeast 48
-E: southeast 240
-E: west 237
-E: in 2819
-
-ROOM v237
-Name: A dusty highway. (road)
-Type: Road
-E: east 238
-E: south 239
-E: west 236
-
-ROOM v236
-Name: South of Caanae ruins. (road)
-Type: Road
-E: north 235
-E: east 237
-
-ROOM v235
-Name: A narrow road near a ruined wall. (road)
-Type: Road
-E: south 236
-E: northwest 234
-
-ROOM v234
-Name: West of the Ruins of Caanae. (path)
-Type: Path
-E: southeast 235
-E: west 233
-
-ROOM v233
-Name: A sharp turning highway. (path)
-Type: Path
-E: north 232
-E: east 234
-
-ROOM v232
-Name: Highway bordering ruins. (path)
-Type: Path
-E: south 233
-E: northwest 231
-
-ROOM v231
-Name: West of the ancient ruins. (path)
-Type: Path
-E: north 230
-E: southeast 232
-
-ROOM v230
-Name: Skirting the edge of Caanae ruins. (path)
-Type: Path
-E: north 229
-E: south 231
-
-ROOM v229
-Name: Approaching the Ruins of Caanae. (path)
-Type: Path
-E: northeast 27
-E: south 230
-E: west 420
-
-ROOM v64
-Name: Rounding a clear lake. (path)
-Type: Path
-E: north 65
-E: southeast 63
-
-ROOM v63
-Name: Passing a small lake. (path)
-Type: Path
-E: south 62
-E: northwest 64
-
-ROOM v62
-Name: Light path between plains and forest. (path)
-Type: Path
-E: north 63
-E: southwest 61
-
-ROOM v61
-Name: A path skirting the Celidon. (path)
-Type: Path
-E: northeast 62
-E: southwest 60
-
-ROOM v60
-Name: A muddy track of dirt. (path)
-Type: Path
-E: northeast 61
-E: southeast 59
-E: northwest 1069
-
-ROOM v59
-Name: A narrow road amidst sparse trees. (path)
-Type: Path
-E: south 58
-E: northwest 60
-
-ROOM v58
-Name: East of the Celidon. (path)
-Type: Path
-E: north 59
-E: south 57
-
-ROOM v57
-Name: A bend in the path. (path)
-Type: Path
-E: north 58
-E: west 56
-
-ROOM v56
-Name: A large rock in the path. (path)
-Type: Path
-E: east 57
-E: southeast 55
-
-ROOM v55
-Name: Southeast of the Celidon forest. (path)
-Type: Path
-E: southwest 54
-E: west 1070
-E: northwest 56
-
-ROOM v54
-Name: An old road, northeast of Caanae. (path)
-Type: Path
-E: northeast 55
-E: south 53
-
-ROOM v53
-Name: An unmaintained road. (path)
-Type: Path
-E: north 54
-E: southwest 52
-
-ROOM v52
-Name: Outside the Eastern gates. (path)
-Type: Path
-E: northeast 53
-E: west 32
-
-ROOM v420
-Name: A ruined highway, west of Caanae. (path)
-Type: Path
-E: east 229
-E: southwest 421
-
-ROOM v421
-Name: An ancient, broken road. (path)
-Type: Path
-E: northeast 420
-E: west 422
-
-ROOM v422
-Name: Dirt road near a swampy lake. (path)
-Type: Path
-E: east 421
-E: southwest 423
-
-ROOM v423
-Name: Skirting a shallow lake. (path)
-Type: Path
-E: northeast 422
-E: northwest 424
-
-ROOM v424
-Name: A crumbling, overgrown road. (path)
-Type: Path
-E: southeast 423
-E: southwest 425
-
-ROOM v425
-Name: A narrow road, north of the Nolmine mountains. (path)
-Type: Path
-E: north 1322
-E: northeast 424
-E: west 426
-
-ROOM v426
-Name: Dry grasslands near mountains. (path)
-Type: Path
-E: east 425
-E: west 427
-
-ROOM v427
-Name: North of Nolmine Heights. (path)
-Type: Path
-E: east 426
-E: southwest 428
-
-ROOM v428
-Name: A narrow path rounding mountains. (path)
-Type: Path
-E: north 429
-E: northeast 427
-
-ROOM v429
-Name: A sharp turn in the path. (path)
-Type: Path
-E: south 428
-E: southwest 430
-
-ROOM v430
-Name: Climbing the outskirts of Nolmine. (path)
-Type: Path
-E: northeast 429
-E: south 1383
-E: northwest 432
-
-ROOM v432
-Name: Steep hills north of mountains. (path)
-Type: Path
-E: southeast 430
-E: northwest 433
-
-ROOM v433
-Name: A dusty path in shallow foothills. (path)
-Type: Path
-E: southeast 432
-E: west 434
-
-ROOM v434
-Name: South of the Celidon forests. (path)
-Type: Path
-E: north 435
-E: east 433
-
-ROOM v435
-Name: An indistinct path. (path)
-Type: Path
-E: south 434
-E: west 436
-E: in 961
-UE: in east
-
-ROOM v961
-Name: Eredyane's Reliquary. (path)
-Type: Path
-E: out 435
-UE: out west
-
-ROOM v2819
-Name: Inside a small tent.
-Type: Hills
-E: out 238
 
 
 
@@ -11996,6 +11373,193 @@ E: west 3803
 
 AREA
 Name: Heartlands.
+
+ROOM v497
+Name: Old dirt Track through grasslands. (path)
+Type: Path
+E: northeast 496
+E: southeast 498
+
+ROOM v496
+Name: Old dirt track through grasslands. (path)
+Type: Path
+E: north 495
+E: east 974
+ES: east 1
+E: southwest 497
+
+ROOM v495
+Name: Old dirt track through grasslands. (path)
+Type: Path
+E: north 494
+E: south 496
+
+ROOM v494
+Name: Dirt track through a dusty plain. (path)
+Type: Path
+E: south 495
+E: northwest 493
+
+ROOM v493
+Name: Old road through a dusty plain. (path)
+Type: Path
+E: southeast 494
+E: west 492
+
+ROOM v492
+Name: Old road through dusty plain. (path)
+Type: Path
+E: east 493
+E: northwest 491
+
+ROOM v491
+Name: Road through dusty plain. (path)
+Type: Path
+E: north 490
+E: southeast 492
+
+ROOM v490
+Name: Bend in road through dusty plains. (path)
+Type: Path
+E: south 491
+E: northwest 485
+
+ROOM v485
+Name: Fork in road through dusty plains. (path)
+Type: Path
+E: north 484
+E: east 977
+ES: east 1
+E: southeast 490
+E: southwest 486
+
+ROOM v484
+Name: Road through dusty plains. (path)
+Type: Path
+E: north 483
+E: south 485
+
+ROOM v483
+Name: Road through dusty plains. (path)
+Type: Path
+E: south 484
+E: northwest 482
+
+ROOM v482
+Name: Road through dusty plains. (path)
+Type: Path
+E: north 481
+E: southeast 483
+
+ROOM v481
+Name: Road through dusty plains. (path)
+Type: Path
+E: north 480
+E: east 973
+ES: east 1
+E: south 482
+
+ROOM v480
+Name: Old road nearing plains. (path)
+Type: Path
+E: northeast 479
+E: south 481
+
+ROOM v961
+Name: Eredyane's Reliquary. (path)
+Type: Path
+E: out 435
+UE: out west
+
+ROOM v437
+Name: An ancient trailhead. (path)
+Type: Path
+E: northeast 1416
+E: south 436
+EL: south 1
+E: southwest 439
+
+ROOM v436
+Name: A poorly maintained path near the Celidon. (path)
+Type: Path
+E: north 437
+EL: north 1
+E: northeast 1417
+E: east 435
+E: west 438
+
+ROOM v435
+Name: An indistinct path. (path)
+Type: Path
+E: south 434
+E: west 436
+E: in 961
+UE: in east
+
+ROOM v434
+Name: South of the Celidon forests. (path)
+Type: Path
+E: north 435
+E: east 433
+
+ROOM v433
+Name: A dusty path in shallow foothills. (path)
+Type: Path
+E: southeast 432
+E: west 434
+
+ROOM v3875
+Name: The Eye of the Wheel.
+Type: Garden
+E: north 3873
+EL: north 1
+E: east 3872
+EL: east 1
+E: south 3871
+EL: south 1
+E: west 3874
+EL: west 1
+
+ROOM v3874
+Name: The Vale of the Origins and Reincarnation.
+Type: Garden
+E: east 3875
+EL: east 1
+E: southeast 3871
+EL: southeast 1
+
+ROOM v3873
+Name: The Valley of Rest and Contemplation.
+Type: Garden
+E: southwest 3874
+EL: southwest 1
+
+ROOM v3872
+Name: The Glade of Completion and Fulfillment.
+Type: Garden
+E: northwest 3873
+EL: northwest 1
+
+ROOM v3871
+Name: The Garden of Experience and Growth.
+Type: Garden
+E: northeast 3872
+EL: northeast 1
+E: south 1323
+
+ROOM v1323
+Name: A natural archway before the Temple of the Seasons.
+Type: Garden
+E: north 3871
+E: south 1322
+ES: south 1
+
+ROOM v1322
+Name: A quiet garden off the road.
+Type: Forest
+E: north 1323
+ES: north 1
+E: south 425
 
 ROOM v3005
 Name: In the centre of the crater.
@@ -12997,40 +12561,6 @@ Name: Path ascending foothills. (path)
 Type: Path
 E: east 488
 
-ROOM v501
-Name: Southern old road nearing hills. (path)
-Type: Path
-E: north 500
-E: south 502
-
-ROOM v502
-Name: Southern old road through hills. (path)
-Type: Path
-E: north 501
-E: east 2963
-E: southeast 503
-
-ROOM v503
-Name: Southern old road through hills. (path)
-Type: Path
-E: south 504
-E: northwest 502
-
-ROOM v504
-Name: Southern old road through hills. (path)
-Type: Path
-E: north 503
-E: northeast 2965
-E: east 506
-E: south 505
-E: west 1787
-
-ROOM v505
-Name: Southern old road nearing desert. (path)
-Type: Path
-E: north 504
-E: southeast 674
-
 ROOM v506
 Name: A small hut off the beaten path.
 Type: Hills
@@ -13086,6 +12616,7 @@ EL: southeast 2
 E: south 977
 EL: south 2
 E: west 481
+ES: west 1
 
 ROOM v975
 Name: At the southern foot of the great rock.
@@ -13113,6 +12644,7 @@ E: east 2491
 EL: east 1
 E: southeast 976
 E: west 485
+ES: west 1
 
 ROOM v2505
 Name: Grasslands by the Egeria forest.
@@ -13176,19 +12708,6 @@ ES: west 1
 E: northwest 975
 ES: northwest 1
 
-ROOM v499
-Name: Winding track through grasslands. (path)
-Type: Path
-E: north 498
-E: southeast 500
-
-ROOM v500
-Name: Southern old road. (path)
-Type: Path
-E: east 521
-E: south 501
-E: northwest 499
-
 ROOM v7928
 Name: Before a great tree.
 Type: Grasslands
@@ -13198,6 +12717,65 @@ E: southeast 2652
 
 AREA
 Name: Graytrem hills.
+
+ROOM v674
+Name: Southern old road nearing desert. (path)
+Type: Path
+E: east 673
+E: southwest 2150
+ES: southwest 1
+E: west 2149
+ES: west 1
+E: northwest 505
+
+ROOM v505
+Name: Southern old road nearing desert. (path)
+Type: Path
+E: north 504
+E: southeast 674
+
+ROOM v504
+Name: Southern old road through hills. (path)
+Type: Path
+E: north 503
+E: northeast 2965
+ES: northeast 1
+E: east 506
+E: south 505
+E: west 1787
+
+ROOM v503
+Name: Southern old road through hills. (path)
+Type: Path
+E: south 504
+E: northwest 502
+
+ROOM v502
+Name: Southern old road through hills. (path)
+Type: Path
+E: north 501
+E: east 2963
+ES: east 1
+E: southeast 503
+
+ROOM v501
+Name: Southern old road nearing hills. (path)
+Type: Path
+E: north 500
+E: south 502
+
+ROOM v500
+Name: Southern old road. (path)
+Type: Path
+E: east 521
+E: south 501
+E: northwest 499
+
+ROOM v499
+Name: Winding track through grasslands. (path)
+Type: Path
+E: north 498
+E: southeast 500
 
 ROOM v3782
 Name: Hilltop approaching mountains.
@@ -13309,6 +12887,7 @@ Name: Sparsely wooded foothills.
 Type: Hills
 E: north 2964
 E: southwest 504
+ES: southwest 1
 
 ROOM v2964
 Name: Sparsely wooded foothills.
@@ -13324,6 +12903,7 @@ E: northeast 2962
 E: southeast 3777
 E: south 2964
 E: west 502
+ES: west 1
 
 ROOM v2962
 Name: Mountain foothill.
@@ -16557,6 +16137,55 @@ UE: out west
 AREA
 Name: Eastern Celidon.
 
+ROOM v52
+Name: Outside the Eastern gates. (path)
+Type: Path
+E: northeast 53
+E: west 32
+
+ROOM v53
+Name: An unmaintained road. (path)
+Type: Path
+E: north 54
+E: southwest 52
+
+ROOM v54
+Name: An old road, northeast of Caanae. (path)
+Type: Path
+E: northeast 55
+E: south 53
+
+ROOM v55
+Name: Southeast of the Celidon forest. (path)
+Type: Path
+E: southwest 54
+E: west 1070
+E: northwest 56
+
+ROOM v56
+Name: A large rock in the path. (path)
+Type: Path
+E: east 57
+E: southeast 55
+
+ROOM v57
+Name: A bend in the path. (path)
+Type: Path
+E: north 58
+E: west 56
+
+ROOM v58
+Name: East of the Celidon. (path)
+Type: Path
+E: north 59
+E: south 57
+
+ROOM v59
+Name: A narrow road amidst sparse trees. (path)
+Type: Path
+E: south 58
+E: northwest 60
+
 ROOM v1208
 Name: Surrounded by maples.
 Type: Forest
@@ -17308,6 +16937,186 @@ E: down 5868
 AREA
 Name: Western Nolmine Heights.
 
+ROOM v2819
+Name: Inside a small tent.
+Type: Hills
+E: out 238
+
+ROOM v244
+Name: Southeast of the Nolmine. (road)
+Type: Road
+E: northeast 243
+E: southwest 245
+E: northwest 1361
+ES: northwest 1
+
+ROOM v243
+Name: Skirting the Nolmine mountains. (road)
+Type: Road
+E: north 242
+E: southwest 244
+
+ROOM v242
+Name: On the Southern Highway. (road)
+Type: Road
+E: north 241
+E: south 243
+
+ROOM v241
+Name: Passing the Nolmine mountains. (road)
+Type: Road
+E: south 242
+E: northwest 240
+
+ROOM v240
+Name: Southern Highway near Caanae. (road)
+Type: Road
+E: southeast 241
+E: northwest 238
+
+ROOM v432
+Name: Steep hills north of mountains. (path)
+Type: Path
+E: southeast 430
+E: northwest 433
+
+ROOM v430
+Name: Climbing the outskirts of Nolmine. (path)
+Type: Path
+E: northeast 429
+E: south 1383
+E: northwest 432
+
+ROOM v429
+Name: A sharp turn in the path. (path)
+Type: Path
+E: south 428
+E: southwest 430
+
+ROOM v428
+Name: A narrow path rounding mountains. (path)
+Type: Path
+E: north 429
+E: northeast 427
+
+ROOM v427
+Name: North of Nolmine Heights. (path)
+Type: Path
+E: east 426
+E: southwest 428
+
+ROOM v426
+Name: Dry grasslands near mountains. (path)
+Type: Path
+E: east 425
+E: west 427
+
+ROOM v425
+Name: A narrow road, north of the Nolmine mountains. (path)
+Type: Path
+E: north 1322
+E: northeast 424
+E: west 426
+
+ROOM v424
+Name: A crumbling, overgrown road. (path)
+Type: Path
+E: southeast 423
+E: southwest 425
+
+ROOM v423
+Name: Skirting a shallow lake. (path)
+Type: Path
+E: northeast 422
+E: northwest 424
+
+ROOM v422
+Name: Dirt road near a swampy lake. (path)
+Type: Path
+E: east 421
+E: southwest 423
+
+ROOM v421
+Name: An ancient, broken road. (path)
+Type: Path
+E: northeast 420
+E: west 422
+
+ROOM v420
+Name: A ruined highway, west of Caanae. (path)
+Type: Path
+E: east 229
+E: southwest 421
+
+ROOM v229
+Name: Approaching the Ruins of Caanae. (path)
+Type: Path
+E: northeast 27
+E: south 230
+E: west 420
+
+ROOM v230
+Name: Skirting the edge of Caanae ruins. (path)
+Type: Path
+E: north 229
+E: south 231
+
+ROOM v231
+Name: West of the ancient ruins. (path)
+Type: Path
+E: north 230
+E: southeast 232
+
+ROOM v232
+Name: Highway bordering ruins. (path)
+Type: Path
+E: south 233
+E: northwest 231
+
+ROOM v233
+Name: A sharp turning highway. (path)
+Type: Path
+E: north 232
+E: east 234
+
+ROOM v234
+Name: West of the Ruins of Caanae. (path)
+Type: Path
+E: southeast 235
+E: west 233
+
+ROOM v235
+Name: A narrow road near a ruined wall. (road)
+Type: Road
+E: south 236
+E: northwest 234
+
+ROOM v239
+Name: Cerise's Gazebo.
+Type: Garden
+E: north 237
+
+ROOM v236
+Name: South of Caanae ruins. (road)
+Type: Road
+E: north 235
+E: east 237
+
+ROOM v237
+Name: A dusty highway. (road)
+Type: Road
+E: east 238
+E: south 239
+E: west 236
+
+ROOM v238
+Name: Start of the Southern Highway. (road)
+Type: Road
+E: northeast 48
+E: southeast 240
+E: west 237
+E: in 2819
+
 ROOM v1379
 Name: Windy peak.
 Type: Mountains
@@ -17736,6 +17545,7 @@ Name: Southern edge of isolated crater.
 Type: Mountains
 E: northeast 1364
 E: southeast 244
+ES: southeast 1
 E: northwest 1362
 E: up 3148
 
@@ -25027,6 +24837,72 @@ ES: northwest 1
 AREA
 Name: Nogba Wetlands.
 
+ROOM v466
+Name: Dirt road south of a bog. (road)
+Type: Road
+E: north 2272
+ES: north 1
+E: northwest 465
+
+ROOM v472
+Name: Overlooking the ruins of the coliseum.
+Type: Hills
+E: down 471
+UE: down southeast
+
+ROOM v471
+Name: Outside the shattered walls of the coliseum. (path)
+Type: Path
+E: north 470
+E: up 472
+UE: up northwest
+DE: in
+
+ROOM v470
+Name: Nearing the ruined walls of an ancient coliseum. (path)
+Type: Path
+E: north 469
+E: south 471
+
+ROOM v469
+Name: At the foot of a ridge. (path)
+Type: Path
+E: south 470
+E: up 468
+UE: up northwest
+
+ROOM v468
+Name: Overlooking the ruined coliseum. (path)
+Type: Path
+E: west 467
+E: down 469
+UE: down southeast
+
+ROOM v467
+Name: A path leading down the cliff. (path)
+Type: Path
+E: east 468
+E: up 465
+
+ROOM v465
+Name: A ridge overlooking a ruined coliseum. (road)
+Type: Road
+E: southeast 466
+E: southwest 464
+E: down 467
+
+ROOM v464
+Name: A dirt road. (road)
+Type: Road
+E: northeast 465
+E: southwest 463
+
+ROOM v463
+Name: Dirt road north of an intersection. (road)
+Type: Road
+E: northeast 464
+E: south 462
+
 ROOM v7985
 Name: Deep within the Nogba.
 Type: Swamp
@@ -25610,6 +25486,7 @@ Name: At the edge of the Nogba Wetlands.
 Type: Swamp
 E: north 2273
 E: south 466
+ES: south 1
 E: southwest 4297
 E: west 4294
 EL: west 2
@@ -26464,6 +26341,19 @@ E: west 6132
 
 AREA
 Name: Sodiuar Lake.
+
+ROOM v943
+Name: Nearing a descent down to the lake. (road)
+Type: Road
+E: north 2278
+E: southeast 2277
+E: west 942
+
+ROOM v942
+Name: Nearing a large lake. (road)
+Type: Road
+E: east 943
+E: west 70
 
 ROOM v2278
 Name: A high cliff overlooking a lake.
@@ -28078,10 +27968,67 @@ E: northwest 3236
 AREA
 Name: Egeria Forest.
 
+ROOM v479
+Name: Passing the Egeria Forest. (path)
+Type: Path
+E: north 478
+E: east 2424
+ES: east 1
+E: southwest 480
+
+ROOM v478
+Name: Passing the Egeria Forest. (path)
+Type: Path
+E: northeast 477
+E: south 479
+
+ROOM v477
+Name: Old road passing a deep canyon. (path)
+Type: Path
+E: east 476
+E: southwest 478
+
+ROOM v476
+Name: Old road along the Egeria Forest. (path)
+Type: Path
+E: northeast 462
+E: west 477
+
+ROOM v462
+Name: Forked intersection. (road)
+Type: Road
+E: north 463
+E: southeast 461
+E: south 2404
+ES: south 1
+E: southwest 476
+E: northwest 473
+
+ROOM v461
+Name: North of the Egeria forest. (path)
+Type: Path
+E: northeast 460
+E: southwest 2402
+ES: southwest 1
+E: northwest 462
+
+ROOM v460
+Name: A natural bridge between two forests. (path)
+Type: Path
+E: east 459
+E: southwest 461
+
+ROOM v459
+Name: A forked path. (path)
+Type: Path
+E: southeast 457
+E: west 460
+
 ROOM v2402
 Name: At the edge of the Egeria Forest.
 Type: Forest
 E: northeast 461
+ES: northeast 1
 E: south 2406
 E: west 2403
 
@@ -28096,6 +28043,7 @@ ROOM v2404
 Name: The edge of the Egeria Forest.
 Type: Forest
 E: north 462
+ES: north 1
 E: east 2403
 E: southeast 2405
 
@@ -28227,6 +28175,7 @@ Name: Western fringes of the Egeria Forest.
 Type: Forest
 E: east 2423
 E: west 479
+ES: west 1
 
 ROOM v2425
 Name: Darkened wood.
@@ -28927,6 +28876,55 @@ E: southeast 3867
 AREA
 Name: Sienna Forest.
 
+ROOM v458
+Name: The garden of Rythanis.
+Type: Garden
+E: south 457
+
+ROOM v457
+Name: Skirting the Sienna Forest. (path)
+Type: Path
+E: north 458
+E: northeast 456
+E: south 2600
+E: northwest 459
+
+ROOM v456
+Name: Between the Sienna and Celidon Forest. (path)
+Type: Path
+E: northeast 455
+E: southwest 457
+
+ROOM v455
+Name: South of the Celidon forest. (path)
+Type: Path
+E: east 454
+EL: east 2
+E: southwest 456
+
+ROOM v454
+Name: Highway north of the Sienna. (path)
+Type: Path
+E: east 444
+E: south 2592
+EL: south 1
+E: west 455
+EL: west 2
+
+ROOM v444
+Name: Nearing Lake Ildsam. (path)
+Type: Path
+E: northeast 445
+E: south 443
+E: west 454
+
+ROOM v445
+Name: Lakeside highway. (path)
+Type: Path
+E: east 446
+E: south 442
+E: southwest 444
+
 ROOM v7250
 Name: Hufort's cottage.
 Type: Urban
@@ -29113,6 +29111,7 @@ ROOM v2592
 Name: Packed-earth path.
 Type: Forest
 E: north 454
+EL: north 1
 E: south 2590
 E: in 7250
 UE: in east
