@@ -1,0 +1,42 @@
+# The modules that MudBot will load, must be set here.
+# Since there's no other place, some options will be loaded from here too.
+# Uncomment (i.e. remove the #) anything you want to be parsed.
+
+
+# If these are commented or left empty, MudBot will ask the user where to connect.
+
+#host "imperian.com"
+#port "23"
+
+
+# Name to use on ATCP authentication. To disable ATCP use "none".
+# To login as "MudBot <actual version>" use "default" or leave it empty.
+
+atcp_login_as "default"
+#atcp_login_as "Nexus 3.0.1"
+#atcp_login_as "JavaClient 2.4.8"
+
+
+# Autologin. Requires ATCP.
+# Keep your password here at your own risk! Better just leave these empty.
+
+user ""
+pass ""
+
+
+# Linux modules: Shared object files.
+so "./imperian.so"
+so "./i_mapper.so"
+so "./i_offense.so"
+#so "./gui.so"
+so "./mmchat.so"
+so "./voter.so"
+
+
+# Windows modules: Dynamic loaded libraries.
+dll "./imperian.dll"
+dll "./i_mapper.dll"
+#dll "./i_offense.dll"
+dll "./voter.dll"
+dll "./mmchat.dll"
+
