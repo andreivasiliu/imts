@@ -149,6 +149,7 @@ int arti_pipes;
 int reset_time;
 int allow_diagdef;
 int yoth;
+int can_kipup;
 
 
 /* One little powerful thing, that deserves a comment. ;) */
@@ -496,6 +497,8 @@ void load_options( char *section )
 	       arti_pipes = value ? 1 : 0;
 	     else if ( !strcmp( name, "reset_time" ) )
 	       reset_time = value >= 1 ? value : 1;
+	     else if ( !strcmp( name, "can_kipup" ) )
+	       can_kipup = value ? 1 : 0;
 	     else if ( !strcmp( name, "outr_once" ) )
 	       {
 		  int j;
@@ -4792,29 +4795,62 @@ void imperian_process_server_prompt_action( char *line )
 	prompt_newline = 1;
      }
    
-   /* Needy things. */
-   if ( have_balance( ) && !writhing &&
+	/* Stand up and fight! */
+   if ( !writhing && 
 	partdamage[PART_LEFTLEG] == PART_HEALED &&
 	partdamage[PART_RIGHTLEG] == PART_HEALED )
      {
-	/* Stand up and fight! */
+	int unable_to_stand = 0;
+	
 	if ( keep_standing && sitting == 1 )
 	  {
-	     clientf( C_W "(" C_G "stand" C_W ") " C_0 );
-	     send_to_server_d( "stand\r\n" );
-	     sitting = 2;
-	     prompt_newline = 1;
-	     add_timer( "reset_sitting", 1, reset_sitting, 0, 0, 0 );
-	     /* Reset it, so we won't stand when we take keep_standing off. */
-	     if ( tripped )
-	       tripped = 0;
+	     if ( can_kipup &&
+		  ( partdamage[PART_LEFTARM] == PART_HEALED ||
+		    partdamage[PART_RIGHTARM] == PART_HEALED ) )
+	       {
+		  clientf( C_W "(" C_G "kipup" C_W ") " C_0 );
+		  send_to_server_d( "kipup\r\n" );
+	       }
+	     else if ( have_balance( ) )
+	       {
+		  clientf( C_W "(" C_G "stand" C_W ") " C_0 );
+		  send_to_server_d( "stand\r\n" );
+	       }
+	     else
+	       unable_to_stand = 1;
+	     
+	     if ( !unable_to_stand )
+	       {
+		  sitting = 2;
+		  prompt_newline = 1;
+		  add_timer( "reset_sitting", 2, reset_sitting, 0, 0, 0 );
+		  /* Reset it, so we won't stand when we take keep_standing off. */
+		  if ( tripped )
+		    tripped = 0;
+	       }
 	  }
 	else if ( !keep_standing && tripped )
 	  {
-	     clientf( C_W "(" C_G "stand" C_W ") " C_0 );
-	     send_to_server_d( "stand\r\n" );
-	     tripped = 0;
-	     prompt_newline = 1;
+	     if ( can_kipup &&
+		  ( partdamage[PART_LEFTARM] == PART_HEALED ||
+		    partdamage[PART_RIGHTARM] == PART_HEALED ) )
+	       {
+		  clientf( C_W "(" C_G "kipup" C_W ") " C_0 );
+		  send_to_server_d( "kipup\r\n" );
+	       }
+	     else if ( have_balance( ) )
+	       {
+		  clientf( C_W "(" C_G "stand" C_W ") " C_0 );
+		  send_to_server_d( "stand\r\n" );
+	       }
+	     else
+	       unable_to_stand = 1;
+	     
+	     if ( !unable_to_stand )
+	       {
+		  tripped = 0;
+		  prompt_newline = 1;
+	       }
 	  }
      }
    
@@ -5200,6 +5236,9 @@ int imperian_process_client_command( char *cmd )
 	clientff( C_G " Cure with focus     " C_B "%5d\r\n" C_0, cure_with_focus );
 	clientff( C_G " Cure with purge     " C_B "%5d\r\n" C_0, cure_with_purge );
 	
+	/* Can we use the ability kipup to stand? */
+	clientff( C_G " Can kipup           " C_B "%5d\r\n" C_0, can_kipup );
+	
 	/* Should we send an affliction list each time? */
 	clientff( C_G " Show afflictions    " C_B "%5d\r\n" C_0, show_afflictions );
 	
@@ -5228,7 +5267,8 @@ int imperian_process_client_command( char *cmd )
 		      " `so  - Outrift a herb only once. Useful in the Arena.\r\n"
 		      " `sat - Use the tree tattoo to cure afflictions.\r\n"
 		      " `saf - Use focus to cure afflictions.\r\n"
-		      " `sap - Use purge blood to cure afflictions.\r\n" C_0 );
+		      " `sap - Use purge blood to cure afflictions.\r\n"
+		      " `sak - Use kipup to stand, when possible.\r\n" C_0 );
 	  }
 	else if ( *(cmd+2) == 'a' )
 	  {
@@ -5255,6 +5295,14 @@ int imperian_process_client_command( char *cmd )
 		    clientf( C_R "[Purge blood will now be used to cure afflictions.]\r\n" C_0 );
 		  else
 		    clientf( C_R "[Purge blood will no longer be used to cure afflictions.]\r\n" C_0 );
+	       }
+	     else if ( *(cmd+3) == 'k' )
+	       {
+		  can_kipup = can_kipup ? 0 : 1;
+		  if ( can_kipup )
+		    clientf( C_R "[Kipup will now be used instead of stand, when possible.]\r\n" C_0 );
+		  else
+		    clientf( C_R "[Kipup will no longer be used.]\r\n" C_0 );
 	       }
 	     else
 	       {
@@ -5333,7 +5381,7 @@ int imperian_process_client_command( char *cmd )
 	  {
 	     keep_standing = keep_standing ? 0 : 1;
 	     if ( keep_standing )
-	       clientf( C_R "[You will no longer resist to be sitting.]\r\n" C_0 );
+	       clientf( C_R "[Sitting is no longer an option for you..]\r\n" C_0 );
 	     else
 	       clientf( C_R "[You may now sit freely, once again.]\r\n" C_0 );
 	  }
