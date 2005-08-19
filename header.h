@@ -130,7 +130,7 @@ struct descriptor_data
    MODULE *mod;
    
    int deleted;
-   int *fd;
+   int fd;
    
    void (*callback_in)( DESCRIPTOR *self );
    void (*callback_out)( DESCRIPTOR *self );

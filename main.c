@@ -41,6 +41,7 @@
 # include <sys/time.h>    /* For gettimeofday() */ 
 # include <netdb.h>       /* For gethostbyaddr() and others */
 # include <netinet/in.h>  /* For sockaddr_in */
+# include <arpa/inet.h>   /* For addr_aton */
 # include <dlfcn.h>	  /* For dlopen(), dlsym(), dlclose() and dlerror() */
 # if !defined( DISABLE_MCCP )
 #  include <zlib.h>	  /* needed for MCCP */
@@ -138,9 +139,9 @@ z_stream *zstream;
 int compressed;
 
 /* The three magickal numbers. */
-int control;
-int client;
-int server;
+DESCRIPTOR *control;
+DESCRIPTOR *client;
+DESCRIPTOR *server;
 
 DESCRIPTOR *current_descriptor;
 
@@ -167,6 +168,7 @@ int show_processing_time;
 int unable_to_write;
 char *buffer_write_error;
 char *initial_big_buffer;
+int bind_to_localhost;
 
 char *connection_error;
 
@@ -182,6 +184,7 @@ int default_port;
 char atcp_login_as[512];
 char default_user[512];
 char default_pass[512];
+int default_listen_port;
 
 /* ATCP. */
 int a_hp, a_mana, a_end, a_will, a_exp;
@@ -240,9 +243,9 @@ void log_write( int s, char *string, int bytes )
    if ( !s )
      return;
    
-   if ( s == client )
+   if ( client && s == client->fd )
      log_bytes( "m->c", string, bytes );
-   else if ( s == server )
+   else if ( server && s == server->fd )
      log_bytes( "m->s", string, bytes );
 }
 
@@ -505,10 +508,11 @@ void update_modules( )
 
 
 
-void load_all_modules( )
+void read_config( char *file_name, int silent )
 {
    FILE *fl;
    MODULE *module;
+   static int nested_files;
    const char *dl_error;
    void (*register_module)( MODULE *self );
    char line[256];
@@ -517,16 +521,22 @@ void load_all_modules( )
    char *p;
    void *dl_handle;
    
-   DEBUG( "load_all_modules" );
+   DEBUG( "read_config" );
    
-   fl = fopen( "modules", "r" );
-   
-   if ( !fl )
-     fl = fopen( "modules.txt", "r" );
+   fl = fopen( file_name, "r" );
    
    if ( !fl )
      {
-	debugerr( "modules" );
+	strcpy( buf, file_name );
+	strcat( buf, ".txt" );
+	
+	fl = fopen( buf, "r" );
+     }
+   
+   if ( !fl )
+     {
+	if ( !silent )
+	  debugerr( file_name );
 	return;
      }
    
@@ -544,7 +554,33 @@ void load_all_modules( )
 	p = get_string( line, cmd, 256 );
 	
 	/* This file also contains some options. Load them too. */
-	if ( !strcmp( cmd, "host" ) )
+	if ( !strcmp( cmd, "allow_foreign_connections" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     if ( !strcmp( buf, "yes" ) )
+	       bind_to_localhost = 0;
+	     else
+	       bind_to_localhost = 1;
+	  }
+	else if ( !strcmp( cmd, "listen_on" ) )
+	  {
+	     int init_socket( int port );
+	     int port;
+	     
+	     get_string( p, buf, 256 );
+	     
+	     if ( !strcmp( buf, "default" ) )
+	       port = default_listen_port;
+	     else
+	       port = atoi( buf );
+	     
+	     debugf( "Listening on port %d%s.", port, bind_to_localhost ? ", bound on localhost" : "" );
+	     
+	     if ( init_socket( port ) < 0 )
+	       exit( 1 );
+	  }
+	else if ( !strcmp( cmd, "host" ) || !strcmp( cmd, "hostname" ) )
 	  {
 	     get_string( p, buf, 256 );
 	     
@@ -562,17 +598,26 @@ void load_all_modules( )
 	     
 	     strcpy( atcp_login_as, buf );
 	  }
-	else if ( !strcmp( cmd, "user" ) )
+	else if ( !strcmp( cmd, "user" ) || !strcmp( cmd, "username" ) )
 	  {
 	     get_string( p, buf, 256 );
 	     
 	     strcpy( default_user, buf );
 	  }
-	else if ( !strcmp( cmd, "pass" ) )
+	else if ( !strcmp( cmd, "pass" ) || !strcmp( cmd, "password" ) )
 	  {
 	     get_string( p, buf, 256 );
 	     
 	     strcpy( default_pass, buf );
+	  }
+	else if ( !strcmp( cmd, "load" ) || !strcmp( cmd, "include" ) )
+	  {
+	     if ( nested_files++ > 100 )
+	       return;
+	     
+	     get_string( p, buf, 256 );
+	     
+	     read_config( buf, 1 );
 	  }
 	
 	/* Shared Object file. (.so) */
@@ -712,8 +757,8 @@ void unload_module( MODULE *module )
 	for ( d = descs; d; d = d->next )
 	  if ( d->mod == module )
 	    {
-	       if ( *d->fd > 0 )
-		 c_close( *d->fd );
+	       if ( d->fd > 0 )
+		 c_close( d->fd );
 	       remove_descriptor( d );
 	       continue;
 	    }
@@ -913,8 +958,8 @@ void modules_register( )
 {
    MODULE *mod;
    
+   read_config( "modules", 0 );
    load_builtin_modules( );
-   load_all_modules( );
    
    DEBUG( "modules_register" );
    
@@ -1198,29 +1243,6 @@ void show_modules( )
 }
 
 
-void assign_server( int fd )
-{
-   if ( server && !fd )
-     c_close( server );
-   
-   server = fd;
-   
-   update_descriptors( );
-}
-
-
-void assign_client( int fd )
-{
-   if ( client && !fd )
-     c_close( client );
-   
-   client = fd;
-   
-   update_descriptors( );
-}
-
-
-
 void logff( char *type, char *string, ... )
 {
    FILE *fl;
@@ -1272,369 +1294,6 @@ void start_log( )
 }
 
 
-int init_socket( int port )
-{
-   static struct sockaddr_in sa_zero;
-   struct sockaddr_in sa;
-   int fd, x = 1;
-   
-#if defined( FOR_WINDOWS )
-   /* Win stuff. */
-   WORD wVersionRequested;
-   WSADATA wsaData;
-   wVersionRequested = MAKEWORD( 1, 0 );
-   
-   if ( WSAStartup( wVersionRequested, &wsaData ) )
-     {
-	return -1;
-     }
-   
-   if ( LOBYTE( wsaData.wVersion ) != 1 ||
-	HIBYTE( wsaData.wVersion ) != 0 )
-     {
-	WSACleanup( );
-	return -1;
-     }
-   /* End of Win stuff. */
-#endif
-   
-   if ( ( fd = socket( AF_INET, SOCK_STREAM, 0 ) ) < 0 )
-     {
-	debugerr( "Init_socket: socket" );
-#if defined( FOR_WINDOWS )
-	WSACleanup( );
-#endif
-	exit( 1 );
-     }
-   
-   if ( setsockopt( fd, SOL_SOCKET, SO_REUSEADDR,
-		    (char *) &x, sizeof( x ) ) < 0 )
-     {
-	debugerr( "Init_socket: SO_REUSEADDR" );
-	c_close( fd );
-#if defined( FOR_WINDOWS )
-	WSACleanup( );
-#endif
-	exit( 1 );
-     }
-   
-   sa	      = sa_zero;
-   sa.sin_family   = AF_INET;
-   sa.sin_port     = htons( port );
-
-   if ( bind( fd, (struct sockaddr *) &sa, sizeof( sa ) ) < 0 )
-     {
-	debugerr( "Init_socket: bind" );
-	c_close( fd );
-#if defined( FOR_WINDOWS )
-	WSACleanup( );
-#endif
-	exit( 1 );
-     }
-
-   if ( listen( fd, 1 ) < 0 )
-     {
-	debugerr( "Init_socket: listen" );
-	c_close( fd );
-#if defined( FOR_WINDOWS )
-	WSACleanup( );
-#endif
-	exit( 1 );
-     }
-
-   return fd;
-}
-
-
-int get_timer( )
-{
-   static struct timeval tvold, tvnew;
-   int usec, sec;
-   
-   gettimeofday( &tvnew, NULL );
-   
-   usec = tvnew.tv_usec - tvold.tv_usec;
-   sec = tvnew.tv_sec - tvold.tv_sec;
-   tvold = tvnew;
-   
-   return usec + ( sec * 1000000 );
-}
-
-
-void new_descriptor( int control )
-{
-   struct sockaddr_in  sock;
-   struct hostent     *from;
-   char buf[4096];
-   int size, addr, desc;
-   int ip1, ip2, ip3, ip4;
-
-   size = sizeof( sock );
-   if ( ( desc = accept( control, (struct sockaddr *) &sock, &size) ) < 0 )
-     {
-	debugerr( "New_descriptor: accept" );
-	return;
-     }
-   
-   addr = ntohl( sock.sin_addr.s_addr );
-   ip1 = ( addr >> 24 ) & 0xFF;
-   ip2 = ( addr >> 16 ) & 0xFF;
-   ip3 = ( addr >>  8 ) & 0xFF;
-   ip4 = ( addr       ) & 0xFF;
-   
-   sprintf( buf, "%d.%d.%d.%d", ip1, ip2, ip3, ip4 );
-   
-   from = gethostbyaddr( (char *) &sock.sin_addr,
-			 sizeof(sock.sin_addr), AF_INET );
-   
-   debugf( "Sock.sinaddr:  %s (%s)", buf, from ? from->h_name : buf );
-   
-   if ( client )
-     {
-	char *msg = "Only one connection accepted.\r\n";
-	debugf( "Refusing." );
-	c_write( desc, msg, strlen( msg ) );
-	c_close( desc );
-	
-	/* Let's inform the real one, just in case. */
-	clientf( C_B "\r\n[" C_R "Connection attempt from: " C_B );
-	clientf( buf );
-	if ( from )
-	  {
-	     clientf( C_R " (" C_B );
-	     clientf( from->h_name );
-	     clientf( C_R ")" );
-	  }
-	clientf( C_B "]\r\n" C_0 );
-	
-	/* Return the same, don't change it. */
-	return;
-     }
-   else if ( !server )
-     {
-	strcpy( client_hostname, from ? from->h_name : buf );
-	
-	assign_client( desc );
-	
-	module_show_version( );
-	
-	if ( default_port && default_host[0] )
-	  {
-	     int sock;
-	     
-	     debugf( "Connecting to: %s %d.", default_host, default_port );
-	     clientff( C_B "Connecting to %s:%d... " C_0, default_host, default_port );
-	     
-	     sock = mb_connect( default_host, default_port );
-	     
-	     if ( sock < 0 )
-	       {
-		  debugf( "Failed (%s)", get_connect_error( ) );
-		  clientff( C_B "%s.\r\n" C_0, get_connect_error( ) );
-		  server = 0;
-		  
-		  /* Don't return. Let it display the Syntax line. */
-	       }
-	     else
-	       {
-		  debugf( "Connected." );
-		  clientf( C_B "Done.\r\n" C_0 );
-		  clientfb( "Send `help to get some help." );
-		  
-		  strcpy( server_hostname, default_host );
-		  
-		  assign_server( sock );
-		  
-		  return;
-	       }
-	  }
-	
-	clientf( C_B "[" C_R "Syntax: connect hostname portnumber" C_B "]\r\n" C_0 );
-     }
-   else
-     {
-	char msg[256];
-	sprintf( msg, C_B "[" C_R "Welcome back." C_B "]\r\n" C_0 );
-	c_write( desc, msg, strlen( msg ) );
-	
-	if ( buffer_noclient[0] )
-	  {
-	     sprintf( msg, C_B "[" C_R "Buffered data:" C_B "]\r\n" C_0 );
-	     c_write( desc, msg, strlen( msg ) );
-	     c_write( desc, buffer_noclient, strlen( buffer_noclient ) );
-	     buffer_noclient[0] = 0;
-	     sprintf( msg, "\r\n" C_B "[" C_R "EOB" C_B "]\r\n" C_0 );
-	     c_write( desc, msg, strlen( msg ) );
-	  }
-	else
-	  {
-	     sprintf( msg, C_B "[" C_R "Nothing happened meanwhile." C_B "]\r\n" C_0 );
-	     c_write( desc, msg, strlen( msg ) );
-	  }
-	
-	strcpy( client_hostname, from ? from->h_name : buf );
-	
-	assign_client( desc );
-     }
-}
-
-
-
-/* Send it slowly, and only if we can. */
-void write_error_buffer( DESCRIPTOR *self )
-{
-   int length, bytes, free_buffer = 0;
-   
-   length = strlen( buffer_write_error );
-   
-   while( 1 )
-     {
-	bytes = c_write( client, buffer_write_error, length > 4096 ? 4096 : length );
-	
-	if ( bytes < 0 )
-	  break;
-	
-	buffer_write_error += bytes;
-	length -= bytes;
-	
-	if ( !length )
-	  {
-	     free_buffer = 1;
-	     break;
-	  }
-     }
-   
-   if ( free_buffer )
-     {
-	debugf( "Everything sent, freeing the memory buffer." );
-	unable_to_write = 0;
-	free( initial_big_buffer );
-	self->callback_out = NULL;
-	update_descriptors( );
-     }
-}
-
-
-
-void clientf( char *string )
-{
-   int length;
-   int bytes;
-   
-   if ( buffer_output )
-     {
-	strcat( buffer_data, string );
-	return;
-     }
-   
-   /* Client crashed, or something? Then we'll remember what the server said. */
-   if ( server && !client )
-     {
-	strcat( buffer_noclient, string );
-	return;
-     }
-   
-   if ( unable_to_write )
-     {
-	if ( unable_to_write == 1 )
-	  strcat( buffer_write_error, string );
-	return;
-     }
-   
-   length = strlen( string );
-   
-   bytes = c_write( client, string, length );
-   
-   if ( bytes < 0 )
-     {
-	DESCRIPTOR *desc;
-	
-	debugf( "Unable to write to the client! Buffering until we can." );
-	
-	/* Get 16 Mb of memory. We'll need a lot. */
-	buffer_write_error = malloc( 1048576 * 16 );
-	initial_big_buffer = buffer_write_error;
-	if ( !buffer_write_error )
-	  unable_to_write = 2;
-	else
-	  {
-	     unable_to_write = 1;
-	     strcpy( buffer_write_error, string );
-	     
-	     for ( desc = descs; desc; desc = desc->next )
-	       if ( *desc->fd == client )
-		 break;
-	     
-	     if ( !desc )
-	       exit( 1 );
-	     
-	     desc->callback_out = write_error_buffer;
-	     update_descriptors( );
-	  }
-     }
-}
-
-
-void clientff( char *string, ... )
-{
-   char buf [ 4096 ];
-   
-   va_list args;
-   va_start( args, string );
-   vsnprintf( buf, 4096, string, args );
-   va_end( args );
-   
-   clientf( buf );
-}
-
-
-/* Just to avoid too much repetition. */
-void clientfb( char *string )
-{
-   clientf( C_B "[" C_R );
-   clientf( string );
-   clientf( C_B "]\r\n" C_0 );
-}
-
-
-void clientfr( char *string )    
-{
-   clientf( C_R "[" );	   
-   clientf( string );	     
-   clientf( "]\r\n" C_0 );
-}
-
-
-void send_to_server( char *string )
-{
-   int length;
-   int bytes;
-   
-   if ( buffer_send_to_server )
-     {
-	strcat( send_buffer, string );
-	return;
-     }
-   
-   if ( !server )
-     return;
-   
-   length = strlen( string );
-   
-   bytes_sent += length;
-   
-   bytes = c_write( server, string, length );
-   
-   if ( bytes < 0 )
-     {
-	debugerr( "send_to_server" );
-	exit( 1 );
-     }
-   
-   sent_something = 1;
-}
-
-
 void log_bytes( char *type, char *string, int bytes )
 {
    char buf[12288]; /* 4096*3 */
@@ -1683,6 +1342,166 @@ void log_bytes( char *type, char *string, int bytes )
    
    logff( NULL, buf );
 }
+
+
+int get_timer( )
+{
+   static struct timeval tvold, tvnew;
+   int usec, sec;
+   
+   gettimeofday( &tvnew, NULL );
+   
+   usec = tvnew.tv_usec - tvold.tv_usec;
+   sec = tvnew.tv_sec - tvold.tv_sec;
+   tvold = tvnew;
+   
+   return usec + ( sec * 1000000 );
+}
+
+
+void add_descriptor( DESCRIPTOR *desc )
+{
+   DESCRIPTOR *d;
+   
+   /* Make a few checks on the descriptor that is to be added. */
+   /* ... */
+   
+   /* Link it at the end of the main chain. */
+   
+   desc->next = NULL;
+   
+   if ( !descs )
+     {
+	descs = desc;
+     }
+   else
+     {
+	for ( d = descs; d->next; d = d->next );
+	
+	d->next = desc;
+     }
+   
+   update_descriptors( );
+}
+
+
+void remove_descriptor( DESCRIPTOR *desc )
+{
+   DESCRIPTOR *d;
+   
+   if ( !desc )
+     {
+	debugf( "remove_descriptor: Called with null argument." );
+	return;
+     }
+   
+   /* Unlink it from the chain. */
+   
+   if ( descs == desc )
+     {
+	descs = descs->next;
+     }
+   else
+     {
+	for ( d = descs; d; d = d->next )
+	  if ( d->next == desc )
+	    {
+	       d->next = desc->next;
+	       break;
+	    }
+     }
+   
+   /* This is so we know if it was removed, while processing it. */
+   if ( current_descriptor == desc )
+     current_descriptor = NULL;
+   
+   /* Free it up. */
+   
+   if ( desc->name )
+     free( desc->name );
+   if ( desc->description )
+     free( desc->description );
+   free( desc );
+   
+   update_descriptors( );
+}
+
+
+
+
+void assign_server( int fd )
+{
+   if ( server )
+     {
+	if ( server->fd && server->fd != fd )
+	  c_close( server->fd );
+	
+	if ( !fd )
+	  {
+	     remove_descriptor( server );
+	     server = NULL;
+	  }
+	else
+	  {
+	     server->fd = fd;
+	     update_descriptors( );
+	  }
+     }
+   else if ( fd )
+     {
+	void fd_server_in( DESCRIPTOR *self );
+	void fd_server_exc( DESCRIPTOR *self );
+	
+	/* Server. */
+	server = calloc( 1, sizeof( DESCRIPTOR ) );
+	server->name = strdup( "Server" );
+	server->description = strdup( "Connection to the mud server" );
+	server->mod = NULL;
+	server->fd = fd;
+	server->callback_in = fd_server_in;
+	server->callback_out = NULL;
+	server->callback_exc = fd_server_exc;
+	add_descriptor( server );
+     }
+}
+
+
+void assign_client( int fd )
+{
+   if ( client )
+     {
+	if ( client->fd && client->fd != fd )
+	  c_close( client->fd );
+	
+	if ( !fd )
+	  {
+	     remove_descriptor( client );
+	     client = NULL;
+	  }
+	else
+	  {
+	     client->fd = fd;
+	     update_descriptors( );
+	  }
+     }
+   else if ( fd )
+     {
+	void fd_client_in( DESCRIPTOR *self );
+	void fd_client_exc( DESCRIPTOR *self );
+	
+	/* Client. */
+	client = calloc( 1, sizeof( DESCRIPTOR ) );
+	client->name = strdup( "client" );
+	client->description = strdup( "Connection to the mud client" );
+	client->mod = NULL;
+	client->fd = fd;
+	client->callback_in = fd_client_in;
+	client->callback_out = NULL;
+	client->callback_exc = fd_client_exc;
+	add_descriptor( client );
+     }
+}
+
 
 
 char *get_connect_error( )
@@ -1834,7 +1653,7 @@ void check_for_server( void )
    int found = 0;
    int server;
    
-   bytes = c_read( client, buf, 4096 );
+   bytes = c_read( client->fd, buf, 4096 );
    
    if ( bytes == 0 )
      {
@@ -1916,26 +1735,360 @@ void check_for_server( void )
 
 
 
+void fd_client_in( DESCRIPTOR *self )
+{
+   int process_client( void );
+   
+   if ( !server )
+     check_for_server( );
+   else
+     {
+	if ( process_client( ) )
+	  assign_client( 0 );
+     }
+}
+
+
+void fd_client_exc( DESCRIPTOR *self )
+{
+   assign_client( 0 );
+   
+   debugf( "Exception raised on client descriptor." );
+}
+
+
+void fd_server_in( DESCRIPTOR *self )
+{
+   int process_server( void );
+   
+   if ( process_server( ) )
+     {
+	assign_client( 0 );
+	assign_server( 0 );
+	return;
+     }
+}
+
+
+void fd_server_exc( DESCRIPTOR *self )
+{
+   if ( client )
+     {
+	clientfb( "Exception raised on the server's connection. Closing." );
+	assign_client( 0 );
+     }
+   
+   debugf( "Connection error from the server." );
+   /* Return, and listen again. */
+   return;
+}
+
+
+
+void new_descriptor( int control )
+{
+   struct sockaddr_in  sock;
+   struct hostent     *from;
+   char buf[4096];
+   int size, addr, desc;
+   int ip1, ip2, ip3, ip4;
+
+   size = sizeof( sock );
+   if ( ( desc = accept( control, (struct sockaddr *) &sock, &size) ) < 0 )
+     {
+	debugerr( "New_descriptor: accept" );
+	return;
+     }
+   
+   addr = ntohl( sock.sin_addr.s_addr );
+   ip1 = ( addr >> 24 ) & 0xFF;
+   ip2 = ( addr >> 16 ) & 0xFF;
+   ip3 = ( addr >>  8 ) & 0xFF;
+   ip4 = ( addr       ) & 0xFF;
+   
+   sprintf( buf, "%d.%d.%d.%d", ip1, ip2, ip3, ip4 );
+   
+   from = gethostbyaddr( (char *) &sock.sin_addr,
+			 sizeof(sock.sin_addr), AF_INET );
+   
+   debugf( "Sock.sinaddr:  %s (%s)", buf, from ? from->h_name : buf );
+   
+   if ( client )
+     {
+	char *msg = "Only one connection accepted.\r\n";
+	debugf( "Refusing." );
+	c_write( desc, msg, strlen( msg ) );
+	c_close( desc );
+	
+	/* Let's inform the real one, just in case. */
+	clientf( C_B "\r\n[" C_R "Connection attempt from: " C_B );
+	clientf( buf );
+	if ( from )
+	  {
+	     clientf( C_R " (" C_B );
+	     clientf( from->h_name );
+	     clientf( C_R ")" );
+	  }
+	clientf( C_B "]\r\n" C_0 );
+	
+	/* Return the same, don't change it. */
+	return;
+     }
+   else if ( !server )
+     {
+	strcpy( client_hostname, from ? from->h_name : buf );
+	
+	assign_client( desc );
+	
+	module_show_version( );
+	
+	if ( default_port && default_host[0] )
+	  {
+	     int sock;
+	     
+	     debugf( "Connecting to: %s %d.", default_host, default_port );
+	     clientff( C_B "Connecting to %s:%d... " C_0, default_host, default_port );
+	     
+	     sock = mb_connect( default_host, default_port );
+	     
+	     if ( sock < 0 )
+	       {
+		  debugf( "Failed (%s)", get_connect_error( ) );
+		  clientff( C_B "%s.\r\n" C_0, get_connect_error( ) );
+		  server = 0;
+		  
+		  /* Don't return. Let it display the Syntax line. */
+	       }
+	     else
+	       {
+		  debugf( "Connected." );
+		  clientf( C_B "Done.\r\n" C_0 );
+		  clientfb( "Send `help to get some help." );
+		  
+		  strcpy( server_hostname, default_host );
+		  
+		  assign_server( sock );
+		  
+		  return;
+	       }
+	  }
+	
+	clientf( C_B "[" C_R "Syntax: connect hostname portnumber" C_B "]\r\n" C_0 );
+     }
+   else
+     {
+	char msg[256];
+	sprintf( msg, C_B "[" C_R "Welcome back." C_B "]\r\n" C_0 );
+	c_write( desc, msg, strlen( msg ) );
+	
+	if ( buffer_noclient[0] )
+	  {
+	     sprintf( msg, C_B "[" C_R "Buffered data:" C_B "]\r\n" C_0 );
+	     c_write( desc, msg, strlen( msg ) );
+	     c_write( desc, buffer_noclient, strlen( buffer_noclient ) );
+	     buffer_noclient[0] = 0;
+	     sprintf( msg, "\r\n" C_B "[" C_R "EOB" C_B "]\r\n" C_0 );
+	     c_write( desc, msg, strlen( msg ) );
+	  }
+	else
+	  {
+	     sprintf( msg, C_B "[" C_R "Nothing happened meanwhile." C_B "]\r\n" C_0 );
+	     c_write( desc, msg, strlen( msg ) );
+	  }
+	
+	strcpy( client_hostname, from ? from->h_name : buf );
+	
+	assign_client( desc );
+     }
+}
+
+
+
+void fd_control_in( DESCRIPTOR *self )
+{
+   new_descriptor( self->fd );
+}
+
+
+/* Send it slowly, and only if we can. */
+void write_error_buffer( DESCRIPTOR *self )
+{
+   int length, bytes, free_buffer = 0;
+   
+   if ( !client )
+     {
+	debugf( "No more client to write to!" );
+	exit( 1 );
+     }
+   
+   length = strlen( buffer_write_error );
+   
+   while( 1 )
+     {
+	bytes = c_write( client->fd, buffer_write_error, length > 4096 ? 4096 : length );
+	
+	if ( bytes < 0 )
+	  break;
+	
+	buffer_write_error += bytes;
+	length -= bytes;
+	
+	if ( !length )
+	  {
+	     free_buffer = 1;
+	     break;
+	  }
+     }
+   
+   if ( free_buffer )
+     {
+	debugf( "Everything sent, freeing the memory buffer." );
+	unable_to_write = 0;
+	free( initial_big_buffer );
+	self->callback_out = NULL;
+	update_descriptors( );
+     }
+}
+
+
+
+void clientf( char *string )
+{
+   int length;
+   int bytes;
+   
+   if ( buffer_output )
+     {
+	strcat( buffer_data, string );
+	return;
+     }
+   
+   if ( !client )
+     {
+	/* Client crashed, or something? Then we'll remember what the server said. */
+	if ( server )
+	  strcat( buffer_noclient, string );
+	return;
+     }
+   
+   if ( unable_to_write )
+     {
+	if ( unable_to_write == 1 )
+	  strcat( buffer_write_error, string );
+	return;
+     }
+   
+   length = strlen( string );
+   
+   bytes = c_write( client->fd, string, length );
+   
+   if ( bytes < 0 )
+     {
+	debugf( "Unable to write to the client! Buffering until we can." );
+	
+	/* Get 16 Mb of memory. We'll need a lot. */
+	buffer_write_error = malloc( 1048576 * 16 );
+	initial_big_buffer = buffer_write_error;
+	if ( !buffer_write_error )
+	  unable_to_write = 2;
+	else
+	  {
+	     unable_to_write = 1;
+	     strcpy( buffer_write_error, string );
+	     
+	     client->callback_out = write_error_buffer;
+	     update_descriptors( );
+	  }
+     }
+}
+
+
+void clientff( char *string, ... )
+{
+   char buf [ 4096 ];
+   
+   va_list args;
+   va_start( args, string );
+   vsnprintf( buf, 4096, string, args );
+   va_end( args );
+   
+   clientf( buf );
+}
+
+
+/* Just to avoid too much repetition. */
+void clientfb( char *string )
+{
+   clientf( C_B "[" C_R );
+   clientf( string );
+   clientf( C_B "]\r\n" C_0 );
+}
+
+
+void clientfr( char *string )    
+{
+   clientf( C_R "[" );	   
+   clientf( string );	     
+   clientf( "]\r\n" C_0 );
+}
+
+
+void send_to_server( char *string )
+{
+   int length;
+   int bytes;
+   
+   if ( buffer_send_to_server )
+     {
+	strcat( send_buffer, string );
+	return;
+     }
+   
+   if ( !server )
+     return;
+   
+   length = strlen( string );
+   
+   bytes_sent += length;
+   
+   bytes = c_write( server->fd, string, length );
+   
+   if ( bytes < 0 )
+     {
+	debugerr( "send_to_server" );
+	exit( 1 );
+     }
+   
+   sent_something = 1;
+}
+
+
 void copy_over( char *reason )
 {
    DESCRIPTOR *d;
    char cpo1[64], cpo2[64], cpo3[64];
    
+   if ( !control || !client || !server )
+     {
+	debugf( "Control, client or server, does not exist! Can not do a copyover." );
+	return;
+     }
+   
    /* Close all unneeded descriptors. */
    for ( d = descs; d; d = d->next )
      {
-	if ( *d->fd < 1 )
+	if ( d->fd < 1 )
 	  continue;
 	
-	if ( *d->fd == control || *d->fd == client || *d->fd == server )
+	if ( d == control || d == client || d == server )
 	  continue;
 	
-	c_close( *d->fd );
+	c_close( d->fd );
      }
    
-   sprintf( cpo1, "%d", control );
-   sprintf( cpo2, "%d", client );
-   sprintf( cpo3, "%d", server );
+   sprintf( cpo1, "%d", control->fd );
+   sprintf( cpo2, "%d", client->fd );
+   sprintf( cpo3, "%d", server->fd );
    
    /* Exec - descriptors are kept alive. */
    execl( exec_file, exec_file, reason, cpo1, cpo2, cpo3, NULL );
@@ -2426,7 +2579,7 @@ void process_client_line( char *buf )
 		  
 		  copy_over( "copyover" );
 		  
-		  sprintf( buf2, "Failed copyover! (%s)", strerror( errno ) );
+		  sprintf( buf2, "Failed copyover!" );
 		  clientfb( buf2 );
 	       }
 #endif
@@ -2543,7 +2696,7 @@ void process_client_line( char *buf )
 		       clientff( " - " C_B "%s" C_0 " (%s)\r\n",
 				 d->name, d->description ? d->description : "No description" );
 		       clientff( "   fd: " C_G "%d" C_0 " in: %s out: %s exc: %s\r\n",
-				 *d->fd,
+				 d->fd,
 				 d->callback_in ? C_G "Yes" C_0 : C_R "No" C_0,
 				 d->callback_out ? C_G "Yes" C_0 : C_R "No" C_0,
 				 d->callback_exc ? C_G "Yes" C_0 : C_R "No" C_0 );
@@ -2737,7 +2890,7 @@ int process_client( void )
    
    DEBUG( "process_client" );
    
-   bytes = c_read( client, buf, 4096 );
+   bytes = c_read( client->fd, buf, 4096 );
    
    if ( bytes < 0 )
      {
@@ -3099,7 +3252,7 @@ int process_server( void )
    
    DEBUG( "process_server" );
    
-   bytes = c_read( server, raw_buf, INPUT_BUF );
+   bytes = c_read( server->fd, raw_buf, INPUT_BUF );
    
    if ( bytes < 0 )
      {
@@ -3126,163 +3279,96 @@ int process_server( void )
 }
 
 
-void fd_control_in( DESCRIPTOR *self )
-{
-   new_descriptor( control );
-}
 
-
-void fd_client_in( DESCRIPTOR *self )
-{
-   if ( !server )
-     check_for_server( );
-   else
-     {
-	if ( process_client( ) )
-	  assign_client( 0 );
-     }
-}
-
-
-void fd_client_exc( DESCRIPTOR *self )
-{
-   assign_client( client );
-   
-   debugf( "Exception raised on client descriptor." );
-}
-
-
-void fd_server_in( DESCRIPTOR *self )
-{
-   if ( process_server( ) )
-     {
-	assign_client( 0 );
-	assign_server( 0 );
-	return;
-     }
-}
-
-
-void fd_server_exc( DESCRIPTOR *self )
-{
-   if ( client )
-     {
-	clientfb( "Exception raised on the server's connection. Closing." );
-	c_close( client );
-     }
-   debugf( "Connection error from the server." );
-   /* Return, and listen again. */
-   return;
-}
-
-
-
-void add_descriptor( DESCRIPTOR *desc )
-{
-   DESCRIPTOR *d;
-   
-   /* Make a few checks on the descriptor that is to be added. */
-   /* ... */
-   
-   /* Link it at the end of the main chain. */
-   
-   desc->next = NULL;
-   
-   if ( !descs )
-     {
-	descs = desc;
-     }
-   else
-     {
-	for ( d = descs; d->next; d = d->next );
-	
-	d->next = desc;
-     }
-   
-   update_descriptors( );
-}
-
-
-void remove_descriptor( DESCRIPTOR *desc )
-{
-   DESCRIPTOR *d;
-   
-   if ( !desc )
-     {
-	debugf( "remove_descriptor: Called with null argument." );
-	return;
-     }
-   
-   /* Unlink it from the chain. */
-   
-   if ( descs == desc )
-     {
-	descs = descs->next;
-     }
-   else
-     {
-	for ( d = descs; d; d = d->next )
-	  if ( d->next == desc )
-	    {
-	       d->next = desc->next;
-	       break;
-	    }
-     }
-   
-   /* This is so we know if it was removed, while processing it. */
-   if ( current_descriptor == desc )
-     current_descriptor = NULL;
-   
-   /* Free it up. */
-   
-   if ( desc->name )
-     free( desc->name );
-   if ( desc->description )
-     free( desc->description );
-   free( desc );
-   
-   update_descriptors( );
-}
-
-
-void register_main_descriptors( )
+int init_socket( int port )
 {
    DESCRIPTOR *desc;
+   static struct sockaddr_in sa_zero;
+   struct sockaddr_in sa;
+   int fd, x = 1;
    
-   /* Register the three sockets here. */
+#if defined( FOR_WINDOWS )
+   /* Win stuff. */
+   WORD wVersionRequested;
+   WSADATA wsaData;
+   wVersionRequested = MAKEWORD( 1, 0 );
    
-   /* Control. */
+   if ( WSAStartup( wVersionRequested, &wsaData ) )
+     {
+	return -1;
+     }
+   
+   if ( LOBYTE( wsaData.wVersion ) != 1 ||
+	HIBYTE( wsaData.wVersion ) != 0 )
+     {
+	WSACleanup( );
+	return -1;
+     }
+   /* End of Win stuff. */
+#endif
+   
+   if ( ( fd = socket( AF_INET, SOCK_STREAM, 0 ) ) < 0 )
+     {
+	debugerr( "Init_socket: socket" );
+#if defined( FOR_WINDOWS )
+	WSACleanup( );
+#endif
+	exit( 1 );
+     }
+   
+   if ( setsockopt( fd, SOL_SOCKET, SO_REUSEADDR,
+		    (char *) &x, sizeof( x ) ) < 0 )
+     {
+	debugerr( "Init_socket: SO_REUSEADDR" );
+	c_close( fd );
+#if defined( FOR_WINDOWS )
+	WSACleanup( );
+#endif
+	exit( 1 );
+     }
+   
+   sa	      = sa_zero;
+   sa.sin_family   = AF_INET;
+   sa.sin_port     = htons( port );
+   
+   if ( bind_to_localhost )
+     inet_aton( "127.0.0.1", &sa.sin_addr );
+   
+   if ( bind( fd, (struct sockaddr *) &sa, sizeof( sa ) ) < 0 )
+     {
+	debugerr( "Init_socket: bind" );
+	c_close( fd );
+#if defined( FOR_WINDOWS )
+	WSACleanup( );
+#endif
+	exit( 1 );
+     }
+
+   if ( listen( fd, 1 ) < 0 )
+     {
+	debugerr( "Init_socket: listen" );
+	c_close( fd );
+#if defined( FOR_WINDOWS )
+	WSACleanup( );
+#endif
+	exit( 1 );
+     }
+   
+   /* Control descriptor. */
    desc = calloc( 1, sizeof( DESCRIPTOR ) );
    desc->name = strdup( "Control" );
    desc->description = strdup( "Listening port" );
    desc->mod = NULL;
-   desc->fd = &control;
+   desc->fd = fd;
    desc->callback_in = fd_control_in;
    desc->callback_out = NULL;
    desc->callback_exc = NULL;
    add_descriptor( desc );
    
-   /* Client. */
-   desc = calloc( 1, sizeof( DESCRIPTOR ) );
-   desc->name = strdup( "Client" );
-   desc->description = strdup( "Connection from the mud client" );
-   desc->mod = NULL;
-   desc->fd = &client;
-   desc->callback_in = fd_client_in;
-   desc->callback_out = NULL;
-   desc->callback_exc = fd_client_exc;
-   add_descriptor( desc );
+   if ( !control )
+     control = desc;
    
-   /* Server. */
-   desc = calloc( 1, sizeof( DESCRIPTOR ) );
-   desc->name = strdup( "Server" );
-   desc->description = strdup( "Connection to the mud server" );
-   desc->mod = NULL;
-   desc->fd = &server;
-   desc->callback_in = fd_server_in;
-   desc->callback_out = NULL;
-   desc->callback_exc = fd_server_exc;
-   add_descriptor( desc );
+   return fd;
 }
 
 
@@ -3360,18 +3446,16 @@ void mudbot_init( int port )
    /* Check if a log file exists. */
    start_log( );
    
-   /* Begin listening on a port. */
-   debugf( "Getting ready on port %d, and initializing.", port );
-   control = init_socket( port );
-   
    /* Load all modules, and register them. */
    modules_register( );
    
    /* Initialize all modules. */
    module_init_data( );
    
-   /* Set the three main descriptors into the descriptor list. */
-   register_main_descriptors( );
+   if ( !control )
+     {
+	MessageBox( NULL, "At least one port to listen on must be defined!", "MudBot Warning", 0 );
+     }
 }
 
 #else
@@ -3396,18 +3480,18 @@ void main_loop( )
 	/* What descriptors do we want to select? */
 	for ( d = descs; d; d = d->next )
 	  {
-	     if ( *d->fd < 1 )
+	     if ( d->fd < 1 )
 	       continue;
 	     
 	     if ( d->callback_in )
-	       FD_SET( *d->fd, &in_set );
+	       FD_SET( d->fd, &in_set );
 	     if ( d->callback_out )
-	       FD_SET( *d->fd, &out_set );
+	       FD_SET( d->fd, &out_set );
 	     if ( d->callback_exc )
-	       FD_SET( *d->fd, &exc_set );
+	       FD_SET( d->fd, &exc_set );
 	     
-	     if ( maxdesc < *d->fd )
-	       maxdesc = *d->fd;
+	     if ( maxdesc < d->fd )
+	       maxdesc = d->fd;
 	  }
 	
 	/* If there's one or more timers, don't sleep more than 0.25 seconds. */
@@ -3436,24 +3520,24 @@ void main_loop( )
 	     d_next = d->next;
 	     
 	     /* Do we have a valid descriptor? */
-	     if ( *d->fd < 1 )
+	     if ( d->fd < 1 )
 	       continue;
 	     
 	     current_descriptor = d;
 	     
-	     if ( d->callback_in && FD_ISSET( *d->fd, &in_set ) )
+	     if ( d->callback_in && FD_ISSET( d->fd, &in_set ) )
 	       (*d->callback_in)( d );
 	     
 	     if ( !current_descriptor )
 	       continue;
 	     
-	     if ( d->callback_out && FD_ISSET( *d->fd, &out_set ) )
+	     if ( d->callback_out && FD_ISSET( d->fd, &out_set ) )
 	       (*d->callback_out)( d );
 	     
 	     if ( !current_descriptor )
 	       continue;
 	     
-	     if ( d->callback_exc && FD_ISSET( *d->fd, &exc_set ) )
+	     if ( d->callback_exc && FD_ISSET( d->fd, &exc_set ) )
 	       (*d->callback_exc)( d );
 	  }
      }
@@ -3463,83 +3547,111 @@ void main_loop( )
 int main( int argc, char **argv )
 {
    int copyover = 0;
-   int port;
+   int what = 0, help = 0;
+   int i;
    
    /* We'll need this for a copyover. */
    if ( argv[0] )
      strcpy( exec_file, argv[0] );
    
-   /* Set it as default. */
-   port = 123;
+   /* Set this as default. */
+   default_listen_port = 123;
    
-   if ( argv[1] )
+   /* Parse command-line options. */
+   for ( i = 1; i < argc; i++ )
      {
-	if ( !strcmp( argv[1], "copyover" ) )
-	  copyover = 1;
-	else if ( !strcmp( argv[1], "safemode" ) )
-	  copyover = 2;
-	
-	if ( copyover )
+	if ( !what )
 	  {
-	     /* Recover from a copyover. */
-	     if ( !( argv[2] && argv[3] && argv[4] ) )
-	       {
-		  debugf( "Couldn't recover from a %s,"
-			  " as some arguments were not passes.",
-			  copyover == 1 ? "copyover" : "crash" );
-		  return 1;
-	       }
-	     
-	     control = atoi( argv[2] );
-	     assign_client( atoi( argv[3] ) );
-	     assign_server( atoi( argv[4] ) );
-	     
-	     if ( control < 1 || client < 1 || server < 1 )
-	       {
-		  debugf( "Couldn't recover from a %s,"
-			  " as some invalid arguments were passed.",
-			  copyover == 1 ? "copyover" : "crash" );
-		  return 1;
-	       }
-	     
-	     /* Just to look nice in PS. ;) */
-	     argv[2][0] = 0;
-	     argv[3][0] = 0;
-	     argv[4][0] = 0;
+	     if ( !strcmp( argv[i], "-p" ) || !strcmp( argv[i], "--port" ) )
+	       what = 1;
+	     else if ( !strcmp( argv[i], "-c" ) || !strcmp( argv[i], "--copyover" ) )
+	       what = 2, copyover = 1;
+	     else if ( !strcmp( argv[i], "-s" ) || !strcmp( argv[i], "--safemode" ) )
+	       what = 2, copyover = 2;
+	     else if ( !strcmp( argv[i], "-h" ) || !strcmp( argv[i], "--help" ) )
+	       what = 5;
+	     else
+	       help = 1;
 	  }
 	else
 	  {
-	     if ( !( port = atoi( argv[1] ) ) )
+	     if ( what == 1 )
 	       {
-		  debugf( "Port number invalid." );
-		  return 1;
+		  default_listen_port = atoi( argv[i] );
+		  if ( default_listen_port < 1 || default_listen_port > 65535 )
+		    {
+		       debugf( "Port number invalid." );
+		       help = 1;
+		    }
 	       }
-	     
-		  if ( port < 1 || port > 65535 )
+	     else if ( what == 2 )
 	       {
-		  debugf( "Port range must be between 1 and 65535." );
-		  return 1;
+		  DESCRIPTOR *desc;
+		  
+		  /* Control descriptor. */
+		  desc = calloc( 1, sizeof( DESCRIPTOR ) );
+		  desc->name = strdup( "Control" );
+		  desc->description = strdup( "Recovered listening port" );
+		  desc->mod = NULL;
+		  desc->fd = atoi( argv[i] );
+		  desc->callback_in = fd_control_in;
+		  desc->callback_out = NULL;
+		  desc->callback_exc = NULL;
+		  add_descriptor( desc );
+		  
+		  control = desc;
+		  
+		  what = 3;
+		  continue;
 	       }
+	     else if ( what == 3 )
+	       {
+		  assign_client( atoi( argv[i] ) );
+		  what = 4;
+		  continue;
+	       }
+	     else if ( what == 4 )
+	       {
+		  assign_server( atoi( argv[i] ) );
+	       }
+	     else if ( what == 5 )
+	       {
+		  help = 1;
+	       }
+	     what = 0;
 	  }
      }
    
-   if ( !copyover )
+   if ( help || what )
      {
-	debugf( "Getting ready on port %d, and initializing.", port );
-	control = init_socket( port );
+	debugf( "Usage: %s [-p port] [-h]", argv[0] );
+	return 1;
      }
-   else if ( copyover == 1 )
+   
+   if ( copyover )
      {
-	debugf( "Copyover finished. Initializing, again." );
-	clientfb( "Initializing." );
-     }
-   else
-     {
-	debugf( "Recovering from a crash, starting in safe mode." );
-	clientf( "\r\n" );
-	clientfb( "Recovering from a crash, starting in safe mode." );
-	clientfb( "Use `reboot to start again, normally." );
-	safe_mode = 1;
+	/* Recover from a copyover. */
+	
+	if ( control->fd < 1 || client->fd < 1 || server->fd < 1 )
+	  {
+	     debugf( "Couldn't recover from a %s, as some invalid arguments were passed.",
+		     copyover == 1 ? "copyover" : "crash" );
+	     return 1;
+	  }
+	
+	if ( copyover == 1 )
+	  {
+	     debugf( "Copyover finished. Initializing, again." );
+	     clientfb( "Initializing." );
+	  }
+	else if ( copyover == 2 )
+	  {
+	     debugf( "Recovering from a crash, starting in safe mode." );
+	     clientf( "\r\n" );
+	     clientfb( "Recovering from a crash, starting in safe mode." );
+	     clientfb( "Use `reboot to start again, normally." );
+	     safe_mode = 1;
+	  }
      }
    
    if ( !safe_mode )
@@ -3560,8 +3672,11 @@ int main( int argc, char **argv )
    if ( copyover == 1 )
      clientfb( "Copyover successful, entering main loop." );
    
-   /* Put the three descriptors in the table. */
-   register_main_descriptors( );
+   if ( !control )
+     {
+	debugf( "No ports to listen on! Define at least one." );
+	return 1;
+     }
    
    /* Look for a main_loop in a module. */
      {

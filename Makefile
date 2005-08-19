@@ -4,19 +4,21 @@ NAME	= bot
 CC      = gcc
 DEBUG   = -ggdb
 O_FLAGS = #-O3
+C_FLAGS = $(O_FLAGS) $(DEBUG)
+L_FLAGS = $(O_FLAGS) $(DEBUG) -ldl -lz
 
 # Linux
 ifeq ($(shell uname),Linux)
-  C_FLAGS  = $(O_FLAGS) $(DEBUG) -Wall
-  L_FLAGS  = $(O_FLAGS) $(DEBUG) -ldl -lz
+  C_FLAGS  += -Wall
+  L_FLAGS  +=
   M_FLAGS  = -shared
   SO_FILES = imperian.so i_mapper.so i_offense.so mmchat.so voter.so
 endif
 
 # Macintosh
 ifeq ($(shell uname),Darwin)
-  C_FLAGS  = $(O_FLAGS) $(DEBUG) -I/sw/include
-  L_FLAGS  = $(O_FLAGS) $(DEBUG) -ldl -lz -L/sw/lib
+  C_FLAGS  += -I/sw/include
+  L_FLAGS  += $(O_FLAGS) $(DEBUG) -ldl -lz -L/sw/lib
   M_FLAGS  = -dynamiclib -Xlinker -single_module
   SO_FILES = imperian.so i_mapper.so mmchat.so voter.so
 endif

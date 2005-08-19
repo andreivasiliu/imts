@@ -293,7 +293,7 @@ void mm_send_packet( CONN *conn, char type, char *packet )
    
    sprintf( buf, "%c%s%c", type, packet, (char) CHAT_END_OF_COMMAND );
    
-   c_write( *conn->desc->fd, buf, strlen( buf ) );
+   c_write( conn->desc->fd, buf, strlen( buf ) );
 }
 
 
@@ -410,7 +410,7 @@ void mm_send_file_block( CONN *conn )
    block[501] = CHAT_END_OF_COMMAND;
    block[502] = 0;
    
-   c_write( *conn->desc->fd, block, 502 );
+   c_write( conn->desc->fd, block, 502 );
 }
 
 
@@ -563,25 +563,25 @@ void mm_read_from_connection( DESCRIPTOR *self )
    /* Find the connection structure. */
    for ( conn = connections; conn; conn = conn->next )
      {
-	if ( conn->fd == *self->fd )
+	if ( conn->fd == self->fd )
 	  break;
      }
    if ( !conn )
      {
 	clientfr( "Got a callback on an unregistered connection. Closing." );
-	c_close( *self->fd );
+	c_close( self->fd );
 	mm_remove_connection( conn );
 	return;
      }
    
-   bytes = c_read( *self->fd, buf, 4096 );
+   bytes = c_read( self->fd, buf, 4096 );
    
    if ( bytes == 0 )
      {
 	clientff( C_R "\r\n[Connection closed by " C_W "%s" C_R ".]\r\n" C_0,
 		  conn->name );
 	show_prompt( );
-	c_close( *self->fd );
+	c_close( self->fd );
 	mm_remove_connection( conn );
 	return;
      }
@@ -590,7 +590,7 @@ void mm_read_from_connection( DESCRIPTOR *self )
 	clientff( C_R "\r\n[Error on reading, connection to "
 		  C_R "%s" C_W " closed.]\r\n" C_0, conn->name );
 	clientfr( "Error on read." );
-	c_close( *self->fd );
+	c_close( self->fd );
 	mm_remove_connection( conn );
 	return;
      }
@@ -602,7 +602,7 @@ void mm_read_from_connection( DESCRIPTOR *self )
      {
 	clientff( C_R "\r\n[Connection rejected.]\r\n" C_0 );
 	show_prompt( );
-	c_close( *self->fd );
+	c_close( self->fd );
 	mm_remove_connection( conn );
 	return;
      }
@@ -736,7 +736,7 @@ int mm_connect( char *args )
    desc->name = strdup( "Chat" );
    desc->description = strdup( "MudMaster Chat connection." );
    desc->mod = NULL;
-   desc->fd = &conn->fd;
+   desc->fd = conn->fd;
    desc->callback_in = mm_read_from_connection;
    add_descriptor( desc );
    

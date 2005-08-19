@@ -30,8 +30,6 @@ int voter_version_minor = 5;
 
 /* Globals. */
 
-int connection_socket;
-
 DESCRIPTOR *connection_desc;
 
 #define MAX_BODY 4096*16
@@ -221,8 +219,7 @@ DESCRIPTOR *voter_connect( char *url )
    sprintf( buf, "URL: '%s'", url );
    desc->description = strdup( buf );
    desc->mod = NULL;
-   connection_socket = sock;
-   desc->fd = &connection_socket;
+   desc->fd = sock;
    desc->callback_in = voter_process_connection;
    desc->callback_exc = voter_connection_exception;
    add_descriptor( desc );
@@ -273,7 +270,7 @@ void voter_close_connection( )
 {
    if ( connection_desc )
      {
-	c_close( *connection_desc->fd );
+	c_close( connection_desc->fd );
 	remove_descriptor( connection_desc );
 	connection_desc = NULL;
      }
@@ -576,7 +573,7 @@ void voter_process_connection( DESCRIPTOR *desc )
    char buf[MAX_BODY];
    int bytes;
    
-   bytes = c_read( *desc->fd, buf, 4096 );
+   bytes = c_read( desc->fd, buf, 4096 );
    
    if ( bytes == 0 )
      {
@@ -760,6 +757,12 @@ void do_vote( char *args )
 		      "somewhere, so be careful when you specify another url/proxy.\r\n" C_0 );
 	     return;
 	  }
+     }
+   
+   if ( connection_desc )
+     {
+	clientfr( "Wait until a disconnect!" );
+	return;
      }
    
    if ( !url[0] )
