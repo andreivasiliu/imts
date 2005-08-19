@@ -2655,7 +2655,7 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
    
    /* These don't begin with 'You'. */
    
-   if ( !strcmp( line, "*** Illusion ***" ) )
+   if ( !strcmp( line, "** Illusion **" ) )
      ignore_illusion = 1;
    
    /* We have a cure after we ate something, so it's good. */
