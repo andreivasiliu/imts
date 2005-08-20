@@ -3776,11 +3776,11 @@ void build_stats( void )
    
    /* Body part damage.. */
    sprintf( stats[s++], C_R "[Limb damage:]" C_0 "                         "
-	    C_R "[Stats:]" C_0 "        " C_R "[Defences:]\r\n" C_0 );
+	    C_R "[Stats:]" C_0 "        " C_R "[Defences:]" C_0 );
    
    sprintf( stats[s++], C_R "[" C_B "Left Arm: %s%d" C_B
 	    "  Right Arm: %s%d" C_B "  Head:  %s%d" C_R "]" C_0
-	    "  " C_R "[" C_B "Health: %s%4d" C_R "]" C_0 "  %s\r\n" C_0,
+	    "  " C_R "[" C_B "Health: %s%4d" C_R "]" C_0 "  %s" C_0,
 	    partdamage[PART_LEFTARM] ? C_R : C_G, partdamage[PART_LEFTARM],
 	    partdamage[PART_RIGHTARM] ? C_R : C_G, partdamage[PART_RIGHTARM],
 	    partdamage[PART_HEAD] ? C_R : C_G, partdamage[PART_HEAD],
@@ -3788,30 +3788,30 @@ void build_stats( void )
    
    sprintf( stats[s++], C_R "[" C_B "Left Leg: %s%d" C_B
 	    "  Right Leg: %s%d" C_B "  Torso: %s%d" C_R "]" C_0
-	    "  " C_R "[" C_B "Mana:   %s%4d" C_R "]" C_0 "  %s\r\n" C_0,
+	    "  " C_R "[" C_B "Mana:   %s%4d" C_R "]" C_0 "  %s" C_0,
 	    partdamage[PART_LEFTLEG] ? C_R : C_G, partdamage[PART_LEFTLEG],
 	    partdamage[PART_RIGHTLEG] ? C_R : C_G, partdamage[PART_RIGHTLEG],
 	    partdamage[PART_TORSO] ? C_R : C_G, partdamage[PART_TORSO],
 	    p_mana < p_heal_mana ? C_R : C_G, p_mana, defs[d++] );
-   sprintf( stats[s++], "                                                       %s\r\n" C_0, defs[d++] );
+   sprintf( stats[s++], "                                                       %s" C_0, defs[d++] );
    
    
    /* Balances.. */
-   sprintf( stats[s++], C_R "[Balances:]                                            %s\r\n" C_0, defs[d++] );
+   sprintf( stats[s++], C_R "[Balances:]                                            %s" C_0, defs[d++] );
    sprintf( stats[s++], C_R "[" C_B "Balance:     %s%d" C_B "  Healing: %s%d"
-	    C_B "  Salves: %s%d" C_B "  Cure Elix: %s%d" C_R "]  %s\r\n" C_0,
+	    C_B "  Salves: %s%d" C_B "  Cure Elix: %s%d" C_R "]  %s" C_0,
 	    p_balance ? C_G : C_R, p_balance,
 	    balance_healing ? C_R : C_G, balance_healing,
 	    balance_salve ? C_R : C_G, balance_salve,
 	    balance_cureelix ? C_R : C_G, balance_cureelix, defs[d++] );
    sprintf( stats[s++], C_R "[" C_B "Equilibrium: %s%d" C_B "  Herbs:   %s%d"
-	    C_B "  Smoke:  %s%d" C_B "  Toadstool: %s%d" C_R "]  %s\r\n" C_0,
+	    C_B "  Smoke:  %s%d" C_B "  Toadstool: %s%d" C_R "]  %s" C_0,
 	    p_equilibrium ? C_G : C_R, p_equilibrium,
 	    balance_herbs ? C_R : C_G, balance_herbs,
 	    balance_smoke ? C_R : C_G, balance_smoke,
 	    balance_toadstool ? C_R : C_G, balance_toadstool, defs[d++] );
    
-   sprintf( stats[s++], "                                                       %s\r\n" C_0, defs[d++] );
+   sprintf( stats[s++], "                                                       %s" C_0, defs[d++] );
    
    /* Afflictions.. */
    for ( i = 0; afflictions[i].name && nr < 10; i++ )
@@ -3819,13 +3819,13 @@ void build_stats( void )
 	if ( afflictions[i].afflicted )
 	  {
 	     if ( !nr )
-	       sprintf( stats[s++], C_R "[Afflictions:]                                         %s\r\n" C_0, defs[d++] );
+	       sprintf( stats[s++], C_R "[Afflictions:]                                         %s" C_0, defs[d++] );
 	     nr++;
 	     
 	     can_cure = !can_cure_aff( i, BAL_HERB );
 	     
 	     sprintf( stats[s++], C_R "[" C_G "Afflicted by: [" C_R "%s" C_G "]  Cure: ["
-		      "%s%s" C_G "] (" C_W "`%d" C_G ")" C_R "]  %*s\r\n" C_0,
+		      "%s%s" C_G "] (" C_W "`%d" C_G ")" C_R "]  %*s" C_0,
 		      afflictions[i].name,
 		      afflictions[i].tried ? C_R : ( can_cure ? C_B : C_G ),
 		      cures[afflictions[i].herbs_cure].name, nr,
@@ -3834,10 +3834,10 @@ void build_stats( void )
 	  }
      }
    if ( !nr )
-     sprintf( stats[s++], C_R "[No known afflictions.]                                %s\r\n" C_0, defs[d++] );
+     sprintf( stats[s++], C_R "[No known afflictions.]                                %s" C_0, defs[d++] );
    
    while ( d < 20 && defs[d][0] )
-     sprintf( stats[s++], "                                                       %s\r\n" C_0, defs[d++] );
+     sprintf( stats[s++], "                                                       %s" C_0, defs[d++] );
    
    stats[s][0] = '\0';
 }
@@ -5252,7 +5252,7 @@ int imperian_process_client_command( char *cmd )
 	     build_stats( );
 	     
 	     for ( i = 0; stats[i][0]; i++ )
-	       clientf( stats[i] );
+	       clientff( "%s\r\n", stats[i] );
 	  }
 	else if ( *(cmd+2) == 'h' )
 	  {
