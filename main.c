@@ -158,7 +158,6 @@ char last_prompt[INPUT_BUF];
 int buffer_output;
 int buffer_send_to_server;
 int safe_mode;
-int skip_mccp_msg;
 int gag_line_value;
 int gag_prompt_value;
 int last_timer;
@@ -169,6 +168,8 @@ int unable_to_write;
 char *buffer_write_error;
 char *initial_big_buffer;
 int bind_to_localhost;
+int disable_mccp;
+int verbose_mccp;
 
 char *connection_error;
 
@@ -598,6 +599,15 @@ void read_config( char *file_name, int silent )
 	     
 	     strcpy( atcp_login_as, buf );
 	  }
+	else if ( !strcmp( cmd, "disable_mccp" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     if ( !strcmp( buf, "yes" ) )
+	       disable_mccp = 1;
+	     else
+	       disable_mccp = 0;
+	  }
 	else if ( !strcmp( cmd, "user" ) || !strcmp( cmd, "username" ) )
 	  {
 	     get_string( p, buf, 256 );
@@ -630,7 +640,7 @@ void read_config( char *file_name, int silent )
 	     
 	     if ( !buf[0] )
 	       {
-		  debugf( "Syntax error in the 'modules' file." );
+		  debugf( "Syntax error in file '%s'.", file_name );
 		  continue;
 	       }
 	     
@@ -670,7 +680,7 @@ void read_config( char *file_name, int silent )
 	     
 	     if ( !buf[0] )
 	       {
-		  debugf( "Syntax error in the 'modules' file." );
+		  debugf( "Syntax error in file '%s'.", file_name );
 		  continue;
 	       }
 	     
@@ -702,7 +712,8 @@ void read_config( char *file_name, int silent )
 	  }
 	else
 	  {
-	     debugf( "Syntax error, in the 'modules' file." );
+	     debugf( "Syntax error in file '%s': unknown option '%s'.",
+		     file_name, cmd );
 	     continue;
 	  }
      }
@@ -1265,10 +1276,10 @@ void logff( char *type, char *string, ... )
    gettimeofday( &tv, NULL );
    
    if ( type )
-     fprintf( fl, "(%3ld.%2ld) [%s]: %s", tv.tv_sec % 1000,
+     fprintf( fl, "(%3ld.%2ld) [%s]: %s\n", tv.tv_sec % 1000,
 	      tv.tv_usec / 10000, type, string );
    else
-     fprintf( fl, "(%3ld.%2ld) %s", tv.tv_sec % 1000,
+     fprintf( fl, "(%3ld.%2ld) %s\n", tv.tv_sec % 1000,
 	      tv.tv_usec / 10000, string );
    
    fclose( fl );
@@ -1286,7 +1297,7 @@ void start_log( )
      {
 	debugf( "Log file found! Logging everything in it." );
 	logging = 1;
-	logff( NULL, "-= LOG STARTED =-\n" );
+	logff( NULL, "-= LOG STARTED =-" );
 	fclose( fl );
      }
    else
@@ -1337,7 +1348,6 @@ void log_bytes( char *type, char *string, int bytes )
      }
    
    *(b++) = '\'';
-   *(b++) = '\n';
    *(b++) = 0;
    
    logff( NULL, buf );
@@ -2389,14 +2399,16 @@ void debug_telnet( char *buf, char *dst, char *who, int *bytes )
 	     if ( !memcmp( iac_string, will_compress2, 3 ) )
 	       {
 #if !defined( DISABLE_MCCP )
-		  const char do_compress2[] =
-		    { IAC, DO, TELOPT_COMPRESS2, 0 };
-		  
-		  /* Send it for ourselves. */
-		  send_to_server( (char *) do_compress2 );
-		  
-		  debugf( "mccp: Sent IAC DO COMPRESS2." );
-		  skip_mccp_msg = 1;
+		  if ( !disable_mccp )
+		    {
+		       const char do_compress2[] =
+			 { IAC, DO, TELOPT_COMPRESS2, 0 };
+		       
+		       /* Send it for ourselves. */
+		       send_to_server( (char *) do_compress2 );
+		       
+		       debugf( "mccp: Sent IAC DO COMPRESS2." );
+		    }
 #else
 		  debugf( "mccp: Internally disabled, ignoring." );
 #endif
@@ -2603,6 +2615,7 @@ void process_client_line( char *buf )
 	       {	     
 		  clientfb( "Attempting to start decompression." );
 		  send_to_server( mccp_start );
+		  verbose_mccp = 1;
 		  return;
 	       }
 	     else
@@ -2857,7 +2870,7 @@ void process_client_line( char *buf )
 	       clientfb( "Not while in safe mode." );
 	  }
 	
-	clientf( last_prompt );
+	show_prompt( );
      }
    else
      {
@@ -2885,6 +2898,7 @@ int process_client( void )
 {
    static char last_client_line[4097];
    static int last_client_pos = 0;
+   static int in_iac;
    char buf[4096];
    int bytes, i;
    
@@ -2914,7 +2928,7 @@ int process_client( void )
 	last_client_line[last_client_pos] = buf[i];
 	last_client_line[++last_client_pos] = 0;
 	
-	if ( buf[i] == '\n' )
+	if ( buf[i] == '\n' && !in_iac )
 	  {
 	     last_client_line[last_client_pos] = '\r';
 	     last_client_line[++last_client_pos] = 0;
@@ -2925,10 +2939,23 @@ int process_client( void )
 	     last_client_line[0] = 0;
 	     last_client_pos = 0;
 	  }
-	else if ( buf[i] == '\r' )
+	else if ( buf[i] == '\r' && !in_iac )
 	  {
 	     /* Ignore them. */
 	     last_client_line[--last_client_pos] = 0;
+	  }
+	else if ( buf[i] == (char) SB )
+	  {
+	     in_iac = 1;
+	  }
+	else if ( buf[i] == (char) SE )
+	  {
+	     in_iac = 0;
+	     process_client_line( last_client_line );
+	     
+	     /* Clear the line. */
+	     last_client_line[0] = 0;
+	     last_client_pos = 0;
 	  }
      }
    
@@ -2945,6 +2972,7 @@ void process_buffer( char *raw_buf, int bytes )
    static int last_pos = 0;
    static int last_c_pos = 0;
    static int last_p_pos = 0;
+   static int in_iac;
    char buf[INPUT_BUF];
    int ignore = 0;
    int i;
@@ -2962,7 +2990,7 @@ void process_buffer( char *raw_buf, int bytes )
    buffer_output = 1;
    for ( i = 0; i < bytes; i++ )
      {
-	if ( buf[i] == '\n' )
+	if ( buf[i] == '\n' && !in_iac )
 	  {
 	     current_line++;
 	     
@@ -2986,11 +3014,11 @@ void process_buffer( char *raw_buf, int bytes )
 	     last_printable_line[0] = 0;
 	     last_p_pos = 0;
 	  }
-	else if ( buf[i] == '\r' )
+	else if ( buf[i] == '\r' && !in_iac )
 	  {
 	     /* Just skip it. */
 	  }
-	else if ( buf[i] == (char) GA || buf[i] == (char) EOR )
+	else if ( ( buf[i] == (char) GA || buf[i] == (char) EOR ) && !in_iac )
 	  {
 	     char *custom_prompt;
 	     
@@ -3045,6 +3073,39 @@ void process_buffer( char *raw_buf, int bytes )
 	     
 	     last_line[0] = 0;
 	     last_pos = 0;
+	     
+	     last_colorless_line[0] = 0;
+	     last_c_pos = 0;
+	     
+	     last_printable_line[0] = 0;
+	     last_p_pos = 0;
+	  }
+	else if ( buf[i] == (char) SB )
+	  {
+	     in_iac = 1;
+	     last_line[last_pos] = buf[i];
+	     last_line[++last_pos] = 0;
+	  }
+	else if ( buf[i] == (char) SE )
+	  {
+	     in_iac = 0;
+	     last_line[last_pos] = buf[i];
+	     last_line[++last_pos] = 0;
+	     
+	     if ( strstr( last_line, "Auth.Request ON" ) )
+	       {
+		  const char sb_atcp[] = { IAC, SB, ATCP, 0 };
+		  const char se[] = { IAC, SE, 0 };
+		  char buf[256];
+		  sprintf( buf, "%s" "login whyte deltalink" "%s",
+			   sb_atcp, se );
+		  send_to_server( buf );
+	       }
+	     
+	     clientf( last_line );
+	     
+	     last_pos = 0;
+	     last_line[last_pos] = 0;
 	     
 	     last_colorless_line[0] = 0;
 	     last_c_pos = 0;
@@ -3143,13 +3204,12 @@ int mccp_decompress( char *src, int src_bytes )
 	  {
 	     debugf( "mccp: Starting decompression." );
 	     
-	     if ( !skip_mccp_msg )
+	     if ( verbose_mccp )
 	       {
 		  clientfb( "Server is now sending compressed data." );
-		  clientf( last_prompt );
+		  show_prompt( );
+		  verbose_mccp = 0;
 	       }
-	     else
-	       skip_mccp_msg = 0;
 	     
 	     /* Copy and process whatever is uncompressed. */
 	     if ( p - src > 0 )
@@ -3227,7 +3287,7 @@ int mccp_decompress( char *src, int src_bytes )
 	  {
 	     debugf( "mccp: Decompression ended." );
 	     clientfb( "Server no longer sending compressed data." );
-	     clientf( last_prompt );
+	     show_prompt( );
 	     compressed = 0;
 	     
 	     /* Copy whatever is after it. */

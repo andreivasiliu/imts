@@ -19,8 +19,8 @@ allow_foreign_connections "yes"
 
 # If these are commented or left empty, MudBot will ask the user where to connect.
 
-#host "imperian.com"
-#port "23"
+host "imperian.com"
+port "23"
 
 
 # Name to use on ATCP authentication. To disable ATCP use "none".
@@ -29,6 +29,11 @@ allow_foreign_connections "yes"
 atcp_login_as "default"
 #atcp_login_as "Nexus 3.0.1"
 #atcp_login_as "JavaClient 2.4.8"
+
+
+# Mud Client Compression Protocol.
+
+disable_mccp "no"
 
 
 # Autologin. Requires ATCP.
