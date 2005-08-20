@@ -5700,7 +5700,8 @@ int imperian_process_client_aliases( char *line )
      }
    
    if ( trigger_level && ( !strncmp( line, "give ", 5 ) ||
-			   !strncmp( line, "drop ", 5 ) ) )
+			   !strncmp( line, "drop ", 5 ) ||
+			   !strncmp( line, "offer ", 6 ) ) )
      {
 	int i;
 	
