@@ -20,6 +20,7 @@
  *
  */
 
+#define MODULE_ID "$Name$ $Id$"
 
 /* Module header file, to be used with all module source files. */
 

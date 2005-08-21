@@ -23,6 +23,8 @@
 
 /* Imperian specific code. */
 
+#define IMPERIAN_ID "$Name$ $Id$"
+
 #define TELCMDS
 #define TELOPTS
 
@@ -31,15 +33,16 @@
 
 #define CLR "\33[H\33[J"
 
+int version_major = 1;
+int version_minor = 9;
+
+char *imperian_id = IMPERIAN_ID "\r\n" IMPERIAN_H_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
 /* The Great Tables. */
 struct trigger_table_type *triggers;
 struct defences_table_type *defences;
 struct cure_table_type *cures;
 struct affliction_table_type *afflictions;
-
-int version_major = 1;
-int version_minor = 9;
 
 /* Balances. */
 int balance_herbs;
@@ -227,6 +230,7 @@ ENTRANCE( imperian_module_register )
    self->name = strdup( "Imperian" );
    self->version_major = version_major;
    self->version_minor = version_minor;
+   self->id = imperian_id;
    
    self->init_data = imperian_module_init_data;
    self->process_server_line_prefix = NULL;

@@ -23,6 +23,8 @@
 
 /* Header file specific to Imperian Mapper. */
 
+#define I_MAPPER_H_ID "$Name$ $Id$"
+
 typedef struct room_data ROOM_DATA;
 typedef struct area_data AREA_DATA;
 typedef struct exit_data EXIT_DATA;

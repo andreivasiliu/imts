@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2004, 2005  Andrei Vasiliu
+ * 
+ * 
+ * This file is part of MudBot.
+ * 
+ * MudBot is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * MudBot is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with MudBot; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ */
+
+#define WINMAIN_ID "$Name$ $Id$"
+
 /* Enable all things we need, from the Windows headers. */
 
 //#define WINVER 0x0500
@@ -21,6 +45,8 @@
 #define TAB_CONSOLE 0
 #define TAB_MODULES 1
 #define TAB_MINIMIZE 2
+
+char *winmain_id = WINMAIN_ID "\r\n";
 
 int CreateMainWindow( HINSTANCE hInstance );
 int CreateEditorWindow( HINSTANCE hInstance );

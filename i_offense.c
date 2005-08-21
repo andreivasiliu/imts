@@ -23,6 +23,8 @@
 
 /* Imperian offensive system. */
 
+#define I_OFFENSE_ID "$Name$ $Id$"
+
 #include <sys/time.h>
 #include <pcre.h>
 
@@ -31,6 +33,8 @@
 
 int offensive_version_major = 0;
 int offensive_version_minor = 4;
+
+char *i_offense_id = I_OFFENSE_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
 
 /* Chrono timer. */
@@ -186,6 +190,7 @@ ENTRANCE( offensive_module_register )
    self->name = strdup( "IOffense" );
    self->version_major = offensive_version_major;
    self->version_minor = offensive_version_minor;
+   self->id = i_offense_id;
    
    self->init_data = offensive_module_init_data;
    self->process_server_line_prefix = offensive_process_server_line_prefix;

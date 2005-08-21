@@ -23,6 +23,8 @@
 
 /* Main header file, to be used with all source files. */
 
+#define HEADER_ID "$Name$ $Id$"
+
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -103,6 +105,7 @@ struct module_data
    /* These will be set by the module. */
    int version_major;
    int version_minor;
+   char *id;
    
    void (*init_data)( );
    void (*unload)( );

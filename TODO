@@ -30,6 +30,8 @@ IMAPPER
 - Windows crash report.
 - Area Off.
 - do_before's and do_after's.
+- Time args for prompt.
+- CVS Info.
 
 
 

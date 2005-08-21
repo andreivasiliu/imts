@@ -23,6 +23,8 @@
 
 /* Main source file, handles sockets, signals and other little things. */
 
+#define MAIN_ID "$Name$ $Id$"
+
 #include <unistd.h>	/* For write(), read() */
 #include <stdarg.h>	/* For variable argument functions */
 #include <signal.h>	/* For signal() */
@@ -52,6 +54,11 @@ int main_version_major = 2;
 int main_version_minor = 2;
 
 
+
+char *main_id = MAIN_ID "\r\n" HEADER_ID "\r\n";
+#if defined( FOR_WINDOWS )
+extern char *winmain_id;
+#endif
 
 /*** Functions used by modules. ***/
 
@@ -148,6 +155,8 @@ DESCRIPTOR *current_descriptor;
 char exec_file[1024];
 
 int default_listen_port = 123;
+
+int copyover;
 
 int bytes_sent;
 int bytes_received;
@@ -565,7 +574,7 @@ void read_config( char *file_name, int silent )
 	     else
 	       bind_to_localhost = 1;
 	  }
-	else if ( !strcmp( cmd, "listen_on" ) )
+	else if ( !strcmp( cmd, "listen_on" ) && !copyover )
 	  {
 	     int init_socket( int port );
 	     int port;
@@ -1017,6 +1026,29 @@ void module_show_version( )
 	  (*module->show_notice)( module );
      }
 }
+
+
+void module_show_id( )
+{
+   MODULE *module;
+   
+   clientfb( "Source Identification" );
+   clientf( "\r\n" C_D "(" C_B "MudBot:" C_D ")\r\n" C_W );
+   clientf( main_id );
+#if defined( FOR_WINDOWS )
+   clientf( winmain_id );
+#endif
+   
+   for ( module = modules; module; module = module->next )
+     {
+	clientff( C_D "\r\n(" C_B "%s:" C_D ")\r\n" C_W, module->name );
+	if ( module->id )
+	  clientf( module->id );
+	else
+	  clientf( "-- Unknown --\r\n" );
+     }
+}
+
 
 
 void module_init_data( )
@@ -2077,7 +2109,7 @@ void send_to_server( char *string )
 void copy_over( char *reason )
 {
    DESCRIPTOR *d;
-   char cpo1[64], cpo2[64], cpo3[64];
+   char cpo0[64], cpo1[64], cpo2[64], cpo3[64];
    
    if ( !control || !client || !server )
      {
@@ -2097,12 +2129,13 @@ void copy_over( char *reason )
 	c_close( d->fd );
      }
    
+   sprintf( cpo0, "--%s", reason );
    sprintf( cpo1, "%d", control->fd );
    sprintf( cpo2, "%d", client->fd );
    sprintf( cpo3, "%d", server->fd );
    
    /* Exec - descriptors are kept alive. */
-   execl( exec_file, exec_file, reason, cpo1, cpo2, cpo3, NULL );
+   execl( exec_file, exec_file, cpo0, cpo1, cpo2, cpo3, NULL );
    
    /* Failed! A successful exec never returns... */
    debugerr( "Failed Copyover" );
@@ -2840,6 +2873,10 @@ void process_client_line( char *buf )
 	else if ( !strcmp( buf, "`test" ) )
 	  {
 	     do_test( );
+	  }
+	else if ( !strcmp( buf, "`id" ) )
+	  {
+	     module_show_id( );
 	  }
 	else if ( !strcmp( buf, "`help" ) )
 	  {
@@ -3639,7 +3676,6 @@ void main_loop( )
 
 int main( int argc, char **argv )
 {
-   int copyover = 0;
    int what = 0, help = 0;
    int i;
    

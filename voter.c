@@ -21,12 +21,15 @@
  */
 
 
+#define VOTER_ID "$Name$ $Id$"
+
 #include "module.h"
 
 
 int voter_version_major = 0;
 int voter_version_minor = 5;
 
+char *voter_id = VOTER_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
 /* Globals. */
 
@@ -73,6 +76,7 @@ ENTRANCE( voter_module_register )
    self->name = strdup( "Voter" );
    self->version_major = voter_version_major;
    self->version_minor = voter_version_minor;
+   self->id = voter_id;
    
    self->init_data = NULL;
    self->process_server_line_prefix = NULL;

@@ -23,6 +23,8 @@
 
 /* MudMaster CHAT Protocol. (client-to-client communication) */
 
+#define MMCHAT_ID "$Name$ $Id$"
+
 #include <sys/stat.h>	/* For fstat() */
 
 
@@ -31,6 +33,8 @@
 
 int mmchat_version_major = 0;
 int mmchat_version_minor = 5;
+
+char *mmchat_id = MMCHAT_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
 
 MODULE *mm_self;
@@ -217,6 +221,7 @@ ENTRANCE( mmchat_module_register )
    self->name = strdup( "MMChat" );
    self->version_major = mmchat_version_major;
    self->version_minor = mmchat_version_minor;
+   self->id = mmchat_id;
    
    self->init_data = mmchat_module_init_data;
    self->process_server_line_prefix = NULL;

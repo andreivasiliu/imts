@@ -23,6 +23,9 @@
 
 /* Header file specific to Imperian. */
 
+#define IMPERIAN_H_ID "$Name$ $Id$"
+
+
 /* To make life easier. */
 #define BAL_NONE		0
 #define BAL_HEALELIX		1

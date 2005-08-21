@@ -23,6 +23,8 @@
 
 /* Imperian internal mapper. */
 
+#define I_MAPPER_ID "$Name$ $Id$"
+
 #include "module.h"
 #include "i_mapper.h"
 
@@ -30,6 +32,8 @@
 int mapper_version_major = 1;
 int mapper_version_minor = 3;
 
+
+char *i_mapper_id = I_MAPPER_ID "\r\n" I_MAPPER_H_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
 char *room_color = "\33[33m";
 //char *room_color = "\33[35m";
@@ -212,6 +216,7 @@ ENTRANCE( i_mapper_module_register )
    self->name = strdup( "IMapper" );
    self->version_major = mapper_version_major;
    self->version_minor = mapper_version_minor;
+   self->id = i_mapper_id;
    
    self->init_data = i_mapper_module_init_data;
    self->unload = i_mapper_module_unload;
