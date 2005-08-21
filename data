@@ -1013,7 +1013,6 @@ D defence "contort" X needy takebalance L 3
 "The world about you falls silent as the deafness trance sinks upon you." special defence deafness give
 "You snap your fingers and instantly you hear again." special defence deafness take
 "Silence engulfs you as your hearing fades." special defence deafness give
-"Your hearing has returned." special defence deafness take
 "Your hearing is suddenly restored*" special defence deafness take
 "Your vision and hearing are suddenly restored." special defence deafness take
 "Your hearing has returned." special defence deafness take

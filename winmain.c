@@ -40,6 +40,7 @@ extern int a_on;
 int sock_list[256];
 int iconized;
 char *editor_buffer[3];
+char *composer_contents;
 
 /* Main Window Handles. */
 HWND hwndMain;
@@ -146,8 +147,8 @@ int WINAPI WinMain( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, i
    if ( !CreateMainWindow( hInstance ) )
      return 0;
    
-   //	if ( !CreateEditorWindow( hInstance ) )
-   //	    return 0;
+   if ( !CreateEditorWindow( hInstance ) )
+     return 0;
    
    ShowWindow( hwndMain, nShowCmd );
    
@@ -480,6 +481,45 @@ void win_show_editor( )
    ShowWindow( hwndEMain, SW_SHOW );
    SetActiveWindow( hwndEMain );
 }
+
+
+
+void win_composer_contents( char *string )
+{
+   MENUITEMINFO miiMenu;
+   
+   if ( composer_contents )
+     free( composer_contents );
+   
+   composer_contents = strdup( string );
+   
+   miiMenu.cbSize = sizeof(MENUITEMINFO);
+   miiMenu.fMask = MIIM_STATE;
+   miiMenu.fState = MFS_ENABLED;
+   SetMenuItemInfo( GetMenu( hwndEMain ), ID_EDM_LOADCOMPOSER, FALSE, &miiMenu);
+}
+
+
+
+void LoadComposer( )
+{
+   char buf[65536];
+   char *p, *b;
+   
+   p = composer_contents;
+   b = buf;
+   
+   while( *p )
+     {
+	if ( *p == '\n' )
+	  *(b++) = '\r';
+	  *(b++) = *(p++);
+     }
+   
+   SendMessage( hwndEEdit, WM_SETTEXT, 0, (LPARAM) buf );
+}
+
+
 
 void MakeTrayTooltip( char *buf )
 {
@@ -1006,6 +1046,10 @@ LRESULT CALLBACK EditorWndProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 	     break;
 	   case ID_EDM_LOADB3:
 	     LoadBuffer( 2 );
+	     break;
+	     
+	   case ID_EDM_LOADCOMPOSER:
+	     LoadComposer( );
 	     break;
 	  }
         

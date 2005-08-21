@@ -25,6 +25,7 @@ clean:
 $(BIN): main.o winmain.o winres.res
 	@echo Making '$@' from '$^'...
 	@$(MAKEEXE) -o $@ main.o winmain.o winres.res ../zlib/libz.a -lwsock32 -lcomctl32
+	rm $^
 
 %.dll: %.o %.def
 	@echo Making '$@' from '$^'...

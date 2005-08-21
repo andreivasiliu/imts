@@ -26,7 +26,7 @@
 #include <unistd.h>	/* For write(), read() */
 #include <stdarg.h>	/* For variable argument functions */
 #include <signal.h>	/* For signal() */
-#include <time.h>	/* For time() */
+lll#Include <time.h>	/* For time() */
 
 #include "header.h"
 
@@ -2316,7 +2316,7 @@ void handle_atcp( char *msg )
      }
    
    /* Bleh, has a newline after it too. */
-   if ( !strncmp( act, "Char.Vitals", 10 ) )
+   else if ( !strncmp( act, "Char.Vitals", 10 ) )
      {
 	if ( !a_on )
 	  a_on = 1;
@@ -2340,6 +2340,17 @@ void handle_atcp( char *msg )
 	sscanf( msg, "%s", a_name );
 	strcpy( a_title, body );
      }
+   
+   else if ( !strncmp( act, "Client.Compose", 15 ) )
+     {
+#if defined( FOR_WINDOWS )
+	void win_composer_contents( char *string );
+	
+	clientfb( "Composer's contents received. Type `edit and load the buffer." );
+	win_composer_contents( body );
+#endif
+     }
+   
    
 //   else
 //     debugf( "[%s[%s]%s]", act, body, msg );
@@ -2429,7 +2440,7 @@ void debug_telnet( char *buf, char *dst, char *who, int *bytes )
 		  if ( !atcp_login_as[0] || !strcmp( atcp_login_as, "default" ) )
 		    sprintf( atcp_login_as, "MudBot %d.%d", main_version_major, main_version_minor );
 		  
-		  sprintf( buf, "%s" "hello %s\nauth 1\ncomposer 0\nchar_name 1\nchar_vitals 1\nroom_brief 0\nroom_exits 0" "%s",
+		  sprintf( buf, "%s" "hello %s\nauth 1\ncomposer 1\nchar_name 1\nchar_vitals 1\nroom_brief 0\nroom_exits 0" "%s",
 			   sb_atcp, atcp_login_as, se );
 		  send_to_server( buf );
 		  
