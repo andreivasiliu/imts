@@ -61,7 +61,7 @@ so "./voter.so"
 # Windows modules: Dynamic loaded libraries.
 dll "./imperian.dll"
 dll "./i_mapper.dll"
-#dll "./i_offense.dll"
+dll "./i_offense.dll"
 dll "./voter.dll"
 dll "./mmchat.dll"
 

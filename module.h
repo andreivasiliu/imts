@@ -23,6 +23,11 @@
 
 /* Module header file, to be used with all module source files. */
 
+#if defined( FOR_WINDOWS )
+# define BUILDING_DLL
+#endif
+
+
 #include "header.h"
 
 #if defined( BUILTIN_MODULE )

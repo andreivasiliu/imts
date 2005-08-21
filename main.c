@@ -26,7 +26,7 @@
 #include <unistd.h>	/* For write(), read() */
 #include <stdarg.h>	/* For variable argument functions */
 #include <signal.h>	/* For signal() */
-lll#Include <time.h>	/* For time() */
+#include <time.h>	/* For time() */
 
 #include "header.h"
 
@@ -147,6 +147,8 @@ DESCRIPTOR *current_descriptor;
 
 char exec_file[1024];
 
+int default_listen_port = 123;
+
 int bytes_sent;
 int bytes_received;
 int bytes_uncompressed;
@@ -185,7 +187,6 @@ int default_port;
 char atcp_login_as[512];
 char default_user[512];
 char default_pass[512];
-int default_listen_port;
 
 /* ATCP. */
 int a_hp, a_mana, a_end, a_will, a_exp;
@@ -2367,7 +2368,7 @@ void debug_telnet( char *buf, char *dst, char *who, int *bytes )
    
    static char iac_string[3];
    static int in_iac;
-   static char atcp_msg[512];
+   static char atcp_msg[4096];
    static int in_atcp, k;
    
    int i, j;
@@ -3419,8 +3420,12 @@ int init_socket( int port )
    sa.sin_family   = AF_INET;
    sa.sin_port     = htons( port );
    
+#if !defined( FOR_WINDOWS )
    if ( bind_to_localhost )
      inet_aton( "127.0.0.1", &sa.sin_addr );
+#else
+   sa.sin_addr.s_addr = inet_addr( "127.0.0.1" );
+#endif
    
    if ( bind( fd, (struct sockaddr *) &sa, sizeof( sa ) ) < 0 )
      {
@@ -3641,9 +3646,6 @@ int main( int argc, char **argv )
    /* We'll need this for a copyover. */
    if ( argv[0] )
      strcpy( exec_file, argv[0] );
-   
-   /* Set this as default. */
-   default_listen_port = 123;
    
    /* Parse command-line options. */
    for ( i = 1; i < argc; i++ )

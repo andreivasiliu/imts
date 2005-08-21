@@ -1,3 +1,47 @@
+IMTS-unstable
+===============
+(MudBot:)
+- Descriptor handling updated, to allow multiple listening ports.
+- Various small changes, for compatibility with the Nexus client.
+? The Editor can now make use of Composer's contents.
+- Will buffer a module's output if it can't send it. (You can now fully enjoy
+  "room find a"!)
+
+
+
+IMTS-4
+======
+
+(MudBot:)
+- Telnet negotation handler rewritten.
+- Can use the new authentication method for ATCP, and default switched
+  from "Javaclient 2.4.8" to "MudBot 2.1".
+- Can assume another identity over ATCP, which can be set in the 'modules.txt'
+  file.
+- Hostname and Port for Autoconnecting can be set in the 'modules.txt' file.
+- User and Password for Autologin can be set in the 'modules.txt' file too.
+(Imperian:)
+- The Imperian module makes use of the 'experience to next level' value, and now
+  has it in the custom prompt.
+(IMapper:)
+- On special exits, Alias checking doesn't crash when the Command it points to is
+  NULL. (Thanks Brydian)
+- Swimming over water bug properly fixed. Sorry about that.
+- 'map path near <vnum>' added. Keep alertness up, folks.
+- Multiple uni-directional exits leading to the same room can now be handled by
+  the pathfinder. As a side effect though, pathfinding is a bit slower.
+- Alertness fixed even further. Should always recognize a room name properly, and
+  show ALL directions matching it.
+- Speedwalking into a locked door will give a more unique message, so a client
+  can trigger it to unlock the door.
+- 'queue' and 'queue clear' changed to 'map queue' and 'map queue clear'.
+- 'map swim' removed.
+- 'map config' added, with the options: save, load, swim, wholist, alertness,
+  locate, showarea.
+- Landmarks are now saved and loaded from the config file.
+
+
+
 IMTS-3
 ======
 
@@ -11,31 +55,10 @@ compatible with Zmud.
 - Lines beginning with '<', '(', or any weird characters won't be considered
 room names.
 - Who list changed.
-- Survey will create an area or switch to an existing one, instead of updating the current area's name.
+- Survey will create an area or switch to an existing one, instead of updating
+  the current area's name.
 - 'area update' will make survey update an area's name, instead of switching it.
-- 'map path' can take more arguments as vnums, and will bring you to the nearest vnum.
+- 'map path' can take more arguments as vnums, and will bring you to the nearest
+  vnum.
 - 'exit special capture create' and 'exit special capture link <vnum>' added.
 
-
-IMTS-4
-======
-
-(MudBot:)
-- Telnet negotation handler rewritten.
-- Can use the new authentication method for ATCP, and default switched from "Javaclient 2.4.8" to "MudBot 2.1".
-- Can assume another identity over ATCP, which can be set in the 'modules.txt' file.
-- Hostname and Port for Autoconnecting can be set in the 'modules.txt' file.
-- User and Password for Autologin can be set in the 'modules.txt' file too.
-(Imperian:)
-- The Imperian module makes use of the 'experience to next level' value, and now has it in the custom prompt.
-(IMapper:)
-- On special exits, Alias checking doesn't crash when the Command it points to is NULL. (Thanks Brydian)
-- Swimming over water bug properly fixed. Sorry about that.
-- 'map path near <vnum>' added. Keep alertness up, folks.
-- Multiple uni-directional exits leading to the same room can now be handled by the pathfinder. As a side effect though, pathfinding is a bit slower.
-- Alertness fixed even further. Should always recognize a room name properly, and show ALL directions matching it.
-- Speedwalking into a locked door will give a more unique message, so a client can trigger it to unlock the door.
-- 'queue' and 'queue clear' changed to 'map queue' and 'map queue clear'.
-- 'map swim' removed.
-- 'map config' added, with the options: save, load, swim, wholist, alertness, locate, showarea.
-- Landmarks are now saved and loaded from the config file.

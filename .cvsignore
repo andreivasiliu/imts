@@ -1,5 +1,6 @@
 *.res
 *.dll
 *.exe
+*.def
 settings*
 bot

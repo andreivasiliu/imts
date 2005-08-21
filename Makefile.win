@@ -4,18 +4,28 @@ CC      = gcc.exe
 WINDRES = windres.exe
 DLLTOOL = dlltool.exe
 DLLWRAP = dllwrap.exe
-LIBS    = -L"D:/Programs/Dev-Cpp/lib" -L../zlib
-INCS    = -I"D:/Programs/Dev-Cpp/include" -I../zlib
+LIBS    = -L"D:/Programs/Dev-Cpp/lib" -L"./deps"
+INCS    = -I"D:/Programs/Dev-Cpp/include" -I"./deps"
 BIN     = mb-core.exe
 CFLAGS  = $(INCS) -DFOR_WINDOWS
 
+# Builders.
 MAKERES = $(WINDRES) --input-format=rc -O coff
 MAKEDEF = $(DLLTOOL)
 MAKEDLL = $(DLLWRAP) $(LIBS) --quiet --no-export-all-symbols --add-stdcall-alias
 MAKEOBJ = $(CC) $(CFLAGS) -c
 MAKEEXE = $(CC) $(LIBS) -mwindows
 
-FILES   = $(BIN) i_mapper.dll imperian.dll mmchat.dll voter.dll
+# Dependencies.
+LIBS_mb-core.exe   = -lzdll -lwsock32 -lcomctl32
+LIBS_i_offense.dll = -lpcre
+# Warning, can't get these to work yet.
+DEPS_imperian      = imperian.h
+DEPS_i_mapper      = i_mapper.h
+DEPS_winmain       = winres.h
+
+# Targets.
+FILES   = $(BIN) i_mapper.dll imperian.dll mmchat.dll voter.dll i_offense.dll
 
 all: $(FILES)
 
@@ -24,29 +34,20 @@ clean:
 
 $(BIN): main.o winmain.o winres.res
 	@echo Making '$@' from '$^'...
-	@$(MAKEEXE) -o $@ main.o winmain.o winres.res ../zlib/libz.a -lwsock32 -lcomctl32
-	rm $^
+	@$(MAKEEXE) -o $@ $^ $(LIBS_$@)
 
 %.dll: %.o %.def
 	@echo Making '$@' from '$^'...
-	@$(MAKEDLL) -o $@ $< --def $*.def
+	@$(MAKEDLL) -o $@ $< $(LIBS_$@) --def $*.def
 
 %.def: %.o
 	@echo Making '$@' from '$^'...
 	@$(MAKEDEF) -z $@ $< --dllname $*.dll
 
-main.o: main.c header.h
-	@echo Making '$@' from '$^'...
-	@$(MAKEOBJ) -o $@ $<
-
-winmain.o: winmain.c winres.h
-	@echo Making '$@' from '$^'...
-	@$(MAKEOBJ) -o $@ $<
-
 %.o: %.c header.h module.h
 	@echo Making '$@' from '$^'...
-	@$(MAKEOBJ) -o $@ $< -DBUILDING_DLL
+	@$(MAKEOBJ) -o $@ $<
 
-%.res: %.rc
+%.res: %.rc %.h
 	@echo Making '$@' from '$^'...
 	@$(MAKERES) -o $@ -i $<

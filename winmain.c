@@ -65,15 +65,26 @@ HINSTANCE hInstance;
 void AddText( char *string )
 {
    static char buf[4096];
+   static int closed;
    int lines;
    
-   strcat( buf, string );
+   if ( closed )
+     return;
+   
+   if ( strlen( buf ) > 2048 )
+     {
+	strcat( buf, "Too many messages! Disabling the console.\r\n" );
+	closed = 1;
+     }
+   else
+     strcat( buf, string );
    
    if ( !hwndEdit )
      return;
    
    SendMessage( hwndEdit, WM_SETTEXT, 0, (LPARAM) buf );
    
+   /* Scroll all the way down. */
    lines = SendMessage( hwndEdit, EM_GETLINECOUNT, 0, 0 );
    SendMessage( hwndEdit, EM_LINESCROLL, 0, (LPARAM) lines );
    
@@ -509,12 +520,24 @@ void LoadComposer( )
    p = composer_contents;
    b = buf;
    
+   /* Convert both "\n" and "\r\n" to "\r\n" */
+   
    while( *p )
      {
+	if ( *p == '\r' && *(p+1) == '\n' )
+	  {
+	     *(b++) = *(p++);
+	     *(b++) = *(p++);
+	     continue;
+	  }
+	
 	if ( *p == '\n' )
 	  *(b++) = '\r';
-	  *(b++) = *(p++);
+	
+	*(b++) = *(p++);
      }
+   
+   *b = 0;
    
    SendMessage( hwndEEdit, WM_SETTEXT, 0, (LPARAM) buf );
 }
@@ -569,14 +592,14 @@ void win_update_descriptors( )
      {
 	int type;
 	
-	if ( *d->fd < 1 )
+	if ( d->fd < 1 )
 	  continue;
 	
 	if ( d->callback_in )
-	  WSAAsyncSelect( *d->fd, hwndMain, UDM_WINSOCK_SELECT,
+	  WSAAsyncSelect( d->fd, hwndMain, UDM_WINSOCK_SELECT,
 			  ( d->callback_out ? FD_WRITE : 0 ) | FD_READ | FD_CLOSE | FD_ACCEPT );
 	
-	sock_list[i++] = *d->fd;
+	sock_list[i++] = d->fd;
      }
    
    /* Update the System Tray icon. */
@@ -646,18 +669,18 @@ void check_descriptors( )
    /* What descriptors do we want to select? */
    for ( d = descs; d; d = d->next )
      {
-	if ( *d->fd < 1 )
+	if ( d->fd < 1 )
 	  continue;
 	
 	if ( d->callback_in )
-	  FD_SET( *d->fd, &in_set );
+	  FD_SET( d->fd, &in_set );
 	if ( d->callback_out )
-	  FD_SET( *d->fd, &out_set );
+	  FD_SET( d->fd, &out_set );
 	if ( d->callback_exc )
-	  FD_SET( *d->fd, &exc_set );
+	  FD_SET( d->fd, &exc_set );
 	
-	if ( maxdesc < *d->fd )
-	  maxdesc = *d->fd;
+	if ( maxdesc < d->fd )
+	  maxdesc = d->fd;
      }
    
    /* Don't block, return immediately. */
@@ -675,24 +698,24 @@ void check_descriptors( )
 	d_next = d->next;
 	
 	/* Do we have a valid descriptor? */
-	if ( *d->fd < 1 )
+	if ( d->fd < 1 )
 	  continue;
 	
 	current_descriptor = d;
 	
-	if ( d->callback_in && FD_ISSET( *d->fd, &in_set ) )
+	if ( d->callback_in && FD_ISSET( d->fd, &in_set ) )
 	  (*d->callback_in)( d );
 	
 	if ( !current_descriptor )
 	  continue;
 	
-	if ( d->callback_out && FD_ISSET( *d->fd, &out_set ) )
+	if ( d->callback_out && FD_ISSET( d->fd, &out_set ) )
 	  (*d->callback_out)( d );
 	
 	if ( !current_descriptor )
 	  continue;
 	
-	if ( d->callback_exc && FD_ISSET( *d->fd, &exc_set ) )
+	if ( d->callback_exc && FD_ISSET( d->fd, &exc_set ) )
 	  (*d->callback_exc)( d );
      }
 }
@@ -714,6 +737,7 @@ void SendBuffer( int ole )
    const char se[] = { IAC, SE, 0 };
    char buf[16384];
    char buf2[16384+16];
+   char *pbuf, *p, *b;
    int bytes;
    
    if ( !hwndEEdit )
@@ -733,11 +757,24 @@ void SendBuffer( int ole )
    
    bytes = SendMessage( hwndEEdit, WM_GETTEXT, (WPARAM) 16384, (LPARAM) buf );
    
-   if ( bytes > 0 && buf[bytes-1] != '\n' && buf[bytes-1] != '\r' )
+   /* Convert all "\r\n"'s to "\n". */
+   pbuf = malloc( bytes );
+   p = pbuf;
+   b = buf;
+   while( *b )
      {
-        buf[bytes] = '\n';
-        buf[bytes+1] = 0;
+	if ( *b == '\r' )
+	  {
+	     b++;
+	     continue;
+	  }
+	
+	*(p++) = *(b++);
      }
+   /* And don't let it end without a new line. */
+   if ( bytes > 0 && *(b-1) != '\n' )
+     *(p++) = '\n';
+   *p = 0;
    
    if ( client )
      {
@@ -749,13 +786,15 @@ void SendBuffer( int ole )
    
    if ( ole )
      {
-        sprintf( buf2, "%solesetbuf\n%s%s", sb_atcp, buf, se );
+        sprintf( buf2, "%solesetbuf\n%s%s", sb_atcp, pbuf, se );
         send_to_server( buf2 );
      }
    else
      {
-        send_to_server( buf );
+        send_to_server( pbuf );
      }
+   
+   free( pbuf );
 }
 
 
