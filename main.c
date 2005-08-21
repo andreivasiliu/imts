@@ -2990,6 +2990,23 @@ void process_buffer( char *raw_buf, int bytes )
    buffer_output = 1;
    for ( i = 0; i < bytes; i++ )
      {
+	if ( last_pos > INPUT_BUF - 16 )
+	  {
+	     /* Print without processing, for now. */
+	     last_line[last_pos] = buf[i];
+	     last_line[++last_pos] = 0;
+	     
+	     clientf( last_line );
+	     
+	     last_line[0] = 0;
+	     last_pos = 0;
+	     
+	     last_colorless_line[0] = 0;
+	     last_c_pos = 0;
+	     
+	     last_printable_line[0] = 0;
+	     last_p_pos = 0;
+	  }
 	if ( buf[i] == '\n' && !in_iac )
 	  {
 	     current_line++;
