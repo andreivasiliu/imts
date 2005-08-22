@@ -178,6 +178,7 @@ int show_processing_time;
 int unable_to_write;
 char *buffer_write_error;
 char *initial_big_buffer;
+int bw_end_offset;
 int bind_to_localhost;
 int disable_mccp;
 int verbose_mccp;
@@ -1965,7 +1966,7 @@ void fd_control_in( DESCRIPTOR *self )
 /* Send it slowly, and only if we can. */
 void write_error_buffer( DESCRIPTOR *self )
 {
-   int length, bytes, free_buffer = 0;
+   int bytes;
    
    if ( !client )
      {
@@ -1973,32 +1974,65 @@ void write_error_buffer( DESCRIPTOR *self )
 	exit( 1 );
      }
    
-   length = strlen( buffer_write_error );
-   
    while( 1 )
      {
-	bytes = c_write( client->fd, buffer_write_error, length > 4096 ? 4096 : length );
+	bytes = c_write( client->fd, buffer_write_error,
+			 bw_end_offset > 4096 ? 4096 : bw_end_offset );
 	
 	if ( bytes < 0 )
 	  break;
 	
 	buffer_write_error += bytes;
-	length -= bytes;
+	bw_end_offset -= bytes;
 	
-	if ( !length )
+	if ( !bw_end_offset )
 	  {
-	     free_buffer = 1;
+	     debugf( "Everything sent, freeing the memory buffer." );
+	     unable_to_write = 0;
+	     free( initial_big_buffer );
+	     self->callback_out = NULL;
+	     update_descriptors( );
 	     break;
 	  }
      }
+}
+
+
+
+void send_to_client( char *data, int bytes )
+{
+   if ( bytes < 1 )
+     return;
    
-   if ( free_buffer )
+   if ( unable_to_write )
      {
-	debugf( "Everything sent, freeing the memory buffer." );
-	unable_to_write = 0;
-	free( initial_big_buffer );
-	self->callback_out = NULL;
-	update_descriptors( );
+	if ( unable_to_write == 1 )
+	  memcpy( buffer_write_error + bw_end_offset, data, bytes );
+	bw_end_offset += bytes;
+	return;
+     }
+   
+   bytes = c_write( client->fd, data, bytes );
+   
+   if ( bytes < 0 )
+     {
+	debugf( "Unable to write to the client! Buffering until we can." );
+	
+	/* Get 16 Mb of memory. We'll need a lot. */
+	buffer_write_error = malloc( 1048576 * 16 );
+	
+	if ( !buffer_write_error )
+	  unable_to_write = 2;
+	else
+	  {
+	     unable_to_write = 1;
+	     initial_big_buffer = buffer_write_error;
+	     memcpy( buffer_write_error, data, bytes );
+	     bw_end_offset = bytes;
+	     
+	     client->callback_out = write_error_buffer;
+	     update_descriptors( );
+	  }
      }
 }
 
@@ -2007,7 +2041,6 @@ void write_error_buffer( DESCRIPTOR *self )
 void clientf( char *string )
 {
    int length;
-   int bytes;
    
    if ( buffer_output )
      {
@@ -2023,35 +2056,9 @@ void clientf( char *string )
 	return;
      }
    
-   if ( unable_to_write )
-     {
-	if ( unable_to_write == 1 )
-	  strcat( buffer_write_error, string );
-	return;
-     }
-   
    length = strlen( string );
    
-   bytes = c_write( client->fd, string, length );
-   
-   if ( bytes < 0 )
-     {
-	debugf( "Unable to write to the client! Buffering until we can." );
-	
-	/* Get 16 Mb of memory. We'll need a lot. */
-	buffer_write_error = malloc( 1048576 * 16 );
-	initial_big_buffer = buffer_write_error;
-	if ( !buffer_write_error )
-	  unable_to_write = 2;
-	else
-	  {
-	     unable_to_write = 1;
-	     strcpy( buffer_write_error, string );
-	     
-	     client->callback_out = write_error_buffer;
-	     update_descriptors( );
-	  }
-     }
+   send_to_client( string, length );
 }
 
 
