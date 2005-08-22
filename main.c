@@ -662,8 +662,17 @@ void read_config( char *file_name, int silent )
 		  continue;
 	       }
 	     
+	     /* Try both ways, for compatibility. */
 	     register_module = dlsym( dl_handle, "module_register" );
-	     if ( ( dl_error = dlerror( ) ) != NULL )
+	     dl_error = dlerror( );
+	     
+	     if ( dl_error != NULL )
+	       {
+		  register_module = dlsym( dl_handle, "_module_register" );
+		  dl_error = dlerror( );
+	       }
+	     
+	     if ( dl_error != NULL )
 	       {
 		  debugf( "Can't get the Register symbol from %s: %s",
 			  buf, dl_error );
