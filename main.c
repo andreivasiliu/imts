@@ -182,6 +182,7 @@ int bw_end_offset;
 int bind_to_localhost;
 int disable_mccp;
 int verbose_mccp;
+int mxp_enabled;
 
 char *connection_error;
 
@@ -525,13 +526,11 @@ void read_config( char *file_name, int silent )
    FILE *fl;
    MODULE *module;
    static int nested_files;
-   const char *dl_error;
    void (*register_module)( MODULE *self );
    char line[256];
    char buf[256];
    char cmd[256];
    char *p;
-   void *dl_handle;
    
    DEBUG( "read_config" );
    
@@ -589,8 +588,7 @@ void read_config( char *file_name, int silent )
 	     
 	     debugf( "Listening on port %d%s.", port, bind_to_localhost ? ", bound on localhost" : "" );
 	     
-	     if ( init_socket( port ) < 0 )
-	       exit( 1 );
+	     init_socket( port );
 	  }
 	else if ( !strcmp( cmd, "host" ) || !strcmp( cmd, "hostname" ) )
 	  {
@@ -645,6 +643,9 @@ void read_config( char *file_name, int silent )
 	else if ( !strcmp( cmd, "so" ) )
 	  {
 #if !defined( FOR_WINDOWS )
+	     const char *dl_error;
+	     void *dl_handle;
+	     
 	     get_string( p, buf, 256 );
 	     
 	     debugf( "Loading file '%s'.", buf );
@@ -892,7 +893,6 @@ void load_module( char *name )
 #else
    
    void (*register_module)( MODULE *self );
-   const char *dl_error;
    char buf[2048];
    MODULE *module;
    HINSTANCE mod;
@@ -1557,6 +1557,26 @@ void assign_client( int fd )
 
 
 
+char *get_socket_error( int *nr )
+{
+#if !defined( FOR_WINDOWS )
+   if ( nr )
+     *nr = errno;
+   
+   return strerror( errno );
+#else
+   char *win_str_error( int error );
+   int error;
+   
+   error = WSAGetLastError( );
+   
+   if ( nr )
+     *nr = error;
+   
+   return win_str_error( error );
+#endif
+}
+
 char *get_connect_error( )
 {
    return connection_error;
@@ -1613,77 +1633,7 @@ int mb_connect( char *hostname, int port )
    
    if ( i )
      {
-#if !defined( FOR_WINDOWS )
-	switch( errno )
-	  {
-	   case ECONNREFUSED:
-	     connection_error = "Connection refused"; break;
-	   case ETIMEDOUT:
-	     connection_error = "Connection timed out"; break;
-	   case ENETUNREACH:
-	     connection_error = "Network unreachable"; break;
-	   case EHOSTUNREACH:
-	     connection_error = "Host unreachable"; break;
-	   case EINPROGRESS: /* We didn't make it non-blocking. */
-	     connection_error = "Impossible error!!"; break;
-	   default:
-	     connection_error = "Unable to connect"; break;
-	  }
-#else
-	switch( WSAGetLastError( ) )
-	  {
-	   case WSANOTINITIALISED:
-	     connection_error = "Unable to initialise socket"; break;
-	   case WSAEAFNOSUPPORT:
-	     connection_error = "The specified address family is not supported"; break;
-	   case WSAEADDRNOTAVAIL:
-	     connection_error = "Specified address is not available from the local machine"; break;
-	   case WSAENETUNREACH:
-	     connection_error = "Network unreachable"; break;
-	   case WSAECONNREFUSED:
-	     connection_error = "Connection refused"; break;
-	   case WSAEDESTADDRREQ:
-	     connection_error = "Destination address is required"; break;
-	   case WSAEFAULT:
-	     connection_error = "The namelen argument is incorrect"; break;
-	   case WSAEINVAL:
-	     connection_error = "The socket is not already bound to an address"; break;
-	   case WSAEISCONN:
-	     connection_error = "The socket is already connected"; break;
-	   case WSAEADDRINUSE:
-	     connection_error = "The specified address is already in use"; break;
-	   case WSAEMFILE:
-	     connection_error = "No more file descriptors are available"; break;
-	   case WSAENOBUFS:
-	     connection_error = "No buffer space available"; break;
-	   case WSAEPROTONOSUPPORT:
-	     connection_error = "Protocol not supported"; break;
-	   case WSAEPROTOTYPE:
-	     connection_error = "Wrong type protocol for this socket"; break;
-	   case WSAENOTSOCK:
-	     connection_error = "The descriptor is not a socket"; break;
-	   case WSAETIMEDOUT:
-	     connection_error = "Connection timed out"; break;
-	   case WSAESOCKTNOSUPPORT:
-	     connection_error = "Socket type is not supported in this address family"; break;
-	   case WSAENETDOWN:
-	     connection_error = "Network subsystem failure"; break;
-	   case WSAHOST_NOT_FOUND:
-	     connection_error = "Authoritative Answer Host not found"; break;
-	   case WSATRY_AGAIN:
-	     connection_error = "Non-Authoritative Host not found or SERVERFAIL"; break;
-	   case WSANO_RECOVERY:
-	     connection_error = "Non recoverable errors, FORMERR, REFUSED, NOTIMP"; break;
-	   case WSANO_DATA:
-	     connection_error = "Valid name, no data record of requested type"; break;
-	   case WSAEINPROGRESS:
-	     connection_error = "Impossible error!"; break;
-	   case WSAEINTR:
-	     connection_error = "The (blocking) call was canceled via WSACancelBlockingCall()"; break;
-	   default:
-	     connection_error = "Unable to connect"; break;
-	  }
-#endif
+	connection_error = get_socket_error( NULL );
 	
 	c_close( sock );
 	return -4;
@@ -1714,7 +1664,7 @@ void check_for_server( void )
      }
    else if ( bytes < 0 )
      {
-	debugerr( "Error on read" );
+	debugf( "check_for_server: %s.", get_socket_error( NULL ) );
      }
    if ( bytes <= 0 )
      {
@@ -1849,7 +1799,7 @@ void new_descriptor( int control )
    size = sizeof( sock );
    if ( ( desc = accept( control, (struct sockaddr *) &sock, &size) ) < 0 )
      {
-	debugerr( "New_descriptor: accept" );
+	debugf( "New_descriptor: accept: %s.", get_socket_error( NULL ) );
 	return;
      }
    
@@ -2007,32 +1957,51 @@ void send_to_client( char *data, int bytes )
    if ( unable_to_write )
      {
 	if ( unable_to_write == 1 )
-	  memcpy( buffer_write_error + bw_end_offset, data, bytes );
-	bw_end_offset += bytes;
+	  {
+	     memcpy( buffer_write_error + bw_end_offset, data, bytes );
+	     bw_end_offset += bytes;
+	  }
+	
 	return;
      }
    
-   bytes = c_write( client->fd, data, bytes );
+#if defined( FOR_WINDOWS )
+   WSASetLastError( 0 );
+#endif
    
-   if ( bytes < 0 )
+   if ( ( c_write( client->fd, data, bytes ) < 0 ) )
      {
-	debugf( "Unable to write to the client! Buffering until we can." );
+	char *error;
+	int errnr;
 	
-	/* Get 16 Mb of memory. We'll need a lot. */
-	buffer_write_error = malloc( 1048576 * 16 );
+	error = get_socket_error( &errnr );
 	
-	if ( !buffer_write_error )
-	  unable_to_write = 2;
-	else
+#if defined( FOR_WINDOWS )
+	if ( errnr == WSAEWOULDBLOCK )
 	  {
-	     unable_to_write = 1;
-	     initial_big_buffer = buffer_write_error;
-	     memcpy( buffer_write_error, data, bytes );
-	     bw_end_offset = bytes;
+	     debugf( "Unable to write to the client! Buffering until we can." );
 	     
-	     client->callback_out = write_error_buffer;
-	     update_descriptors( );
+	     /* Get 16 Mb of memory. We'll need a lot. */
+	     buffer_write_error = malloc( 1048576 * 16 );
+	     
+	     if ( !buffer_write_error )
+	       unable_to_write = 2;
+	     else
+	       {
+		  unable_to_write = 1;
+		  initial_big_buffer = buffer_write_error;
+		  memcpy( buffer_write_error, data, bytes );
+		  bw_end_offset = bytes;
+		  
+		  client->callback_out = write_error_buffer;
+		  update_descriptors( );
+	       }
+	     return;
 	  }
+#endif
+	
+	debugf( "send_to_client: (%d) %s.", errnr, error );
+	assign_client( 0 );
      }
 }
 
@@ -2114,7 +2083,7 @@ void send_to_server( char *string )
    
    if ( bytes < 0 )
      {
-	debugerr( "send_to_server" );
+	debugf( "send_to_server: %s.", get_socket_error( NULL ) );
 	exit( 1 );
      }
    
@@ -2407,7 +2376,77 @@ void handle_atcp( char *msg )
 }
 
 
-void debug_telnet( char *buf, char *dst, char *who, int *bytes )
+void client_telnet( char *buf, char *dst, int *bytes )
+{
+   const char do_mxp[] = { IAC, DO, TELOPT_MXP, 0 };
+   
+   static char iac_string[3];
+   static int in_iac;
+   
+   int i, j;
+   
+   DEBUG( "client_telnet" );
+   
+   for ( i = 0, j = 0; i < *bytes; i++ )
+     {
+	/* Interpret As Command! */
+	if ( buf[i] == (char) IAC )
+	  {
+	     in_iac = 1;
+	     
+	     iac_string[0] = buf[i];
+	     iac_string[1] = 0;
+	     iac_string[2] = 0;
+	     
+	     continue;
+	  }
+	
+	if ( in_iac )
+	  {
+	     iac_string[in_iac] = buf[i];
+	     
+	     /* These need another byte. Wait for one more... */
+	     if ( buf[i] == (char) WILL ||
+		  buf[i] == (char) WONT ||
+		  buf[i] == (char) DO ||
+		  buf[i] == (char) DONT ||
+		  buf[i] == (char) SB )
+	       {
+		  in_iac = 2;
+		  continue;
+	       }
+	     
+	     /* We have everything? Let's see what, then. */
+	     
+	     if ( !memcmp( iac_string, do_mxp, 3 ) )
+	       {
+		  mxp_enabled = 1;
+		  debugf( "mxp: Supported by the Client!" );
+	       }
+	     
+	     else
+	       {
+		  /* Nothing we know about? Send it further then. */
+		  dst[j++] = iac_string[0];
+		  dst[j++] = iac_string[1];
+		  if ( in_iac == 2 )
+		    dst[j++] = iac_string[2];
+	       }
+	     
+	     in_iac = 0;
+	     
+	     continue;
+	  }
+	
+	/* Copy, one by one. */
+	dst[j++] = buf[i];
+     }
+   
+   *bytes = j;
+}
+
+
+void server_telnet( char *buf, char *dst, int *bytes )
 {
    const char will_compress2[] = { IAC, WILL, TELOPT_COMPRESS2, 0 };
    const char will_atcp[] = { IAC, WILL, ATCP, 0 };
@@ -2422,7 +2461,7 @@ void debug_telnet( char *buf, char *dst, char *who, int *bytes )
    
    int i, j;
    
-   DEBUG( "debug_telnet" );
+   DEBUG( "server_telnet" );
    
    for ( i = 0, j = 0; i < *bytes; i++ )
      {
@@ -2584,10 +2623,12 @@ char *get_string( char *argument, char *arg_first, int max )
 
 void do_test( )
 {
-   int *p = 0;
+   char will_mxp[] = { IAC, WILL, TELOPT_MXP, 0 };
    
-   *p = 0;
-   
+   if ( !mxp_enabled )
+     clientf( will_mxp );
+   else
+     clientf( "\33[1z" "<SEND>map config</SEND>\r\n" );
 }
 
 
@@ -2638,11 +2679,11 @@ void process_client_line( char *buf )
 	  }
 	else if ( !strcmp( buf, "`reboot" ) )
 	  {
-	     char buf2[1024];
-	     
 #if defined( FOR_WINDOWS )
 	     clientfb( "Rebooting on Windows will just result in a very happy crash. Don't." );
 #else
+	     char buf2[1024];
+	     
 	     if ( compressed )
 	       clientfb( "Can't reboot, while server is sending compressed data. Use `mccp stop, first." );
 	     else
@@ -2961,19 +3002,19 @@ void process_client_line( char *buf )
 
 int process_client( void )
 {
-   static char last_client_line[4097];
+   static char last_client_line[4096];
    static int last_client_pos = 0;
    static int in_iac;
-   char buf[4096];
+   char raw_buf[4096], buf[4096];
    int bytes, i;
    
    DEBUG( "process_client" );
    
-   bytes = c_read( client->fd, buf, 4096 );
+   bytes = c_read( client->fd, raw_buf, 4095 );
    
    if ( bytes < 0 )
      {
-	debugerr( "process_client" );
+	debugf( "process_client: %s.", get_socket_error( NULL ) );
 	debugf( "Restarting." );
 	return 1;
      }
@@ -2983,9 +3024,11 @@ int process_client( void )
 	return 1;
      }
    
-   buf[bytes] = '\0';
+   raw_buf[bytes] = '\0';
    
-   log_bytes( "c->m", buf, bytes );
+   log_bytes( "c->m", raw_buf, bytes );
+   
+   client_telnet( raw_buf, buf, &bytes );
    
    for ( i = 0; i < bytes; i++ )
      {
@@ -3047,7 +3090,7 @@ void process_buffer( char *raw_buf, int bytes )
    
    log_bytes( "s->m", raw_buf, bytes );
    
-   debug_telnet( raw_buf, buf, "Imperian", &bytes );
+   server_telnet( raw_buf, buf, &bytes );
    
    if ( show_processing_time )
      gettimeofday( &tvold, NULL );
@@ -3398,7 +3441,7 @@ int process_server( void )
    
    if ( bytes < 0 )
      {
-	debugerr( "process_server" );
+	debugf( "process_server: %s.", get_socket_error( NULL ) );
 	clientfb( "Error while reading from server..." );
 	debugf( "Restarting." );
 	force_off_mccp( );
@@ -3429,44 +3472,18 @@ int init_socket( int port )
    struct sockaddr_in sa;
    int fd, x = 1;
    
-#if defined( FOR_WINDOWS )
-   /* Win stuff. */
-   WORD wVersionRequested;
-   WSADATA wsaData;
-   wVersionRequested = MAKEWORD( 1, 0 );
-   
-   if ( WSAStartup( wVersionRequested, &wsaData ) )
-     {
-	return -1;
-     }
-   
-   if ( LOBYTE( wsaData.wVersion ) != 1 ||
-	HIBYTE( wsaData.wVersion ) != 0 )
-     {
-	WSACleanup( );
-	return -1;
-     }
-   /* End of Win stuff. */
-#endif
-   
    if ( ( fd = socket( AF_INET, SOCK_STREAM, 0 ) ) < 0 )
      {
-	debugerr( "Init_socket: socket" );
-#if defined( FOR_WINDOWS )
-	WSACleanup( );
-#endif
-	exit( 1 );
+	debugf( "Init_socket: socket: %s.", get_socket_error( NULL ) );
+	return -1;
      }
    
    if ( setsockopt( fd, SOL_SOCKET, SO_REUSEADDR,
 		    (char *) &x, sizeof( x ) ) < 0 )
      {
-	debugerr( "Init_socket: SO_REUSEADDR" );
+	debugf( "Init_socket: SO_REUSEADDR: %s.", get_socket_error( NULL ) );
 	c_close( fd );
-#if defined( FOR_WINDOWS )
-	WSACleanup( );
-#endif
-	exit( 1 );
+	return -1;
      }
    
    sa	      = sa_zero;
@@ -3482,22 +3499,16 @@ int init_socket( int port )
    
    if ( bind( fd, (struct sockaddr *) &sa, sizeof( sa ) ) < 0 )
      {
-	debugerr( "Init_socket: bind" );
+	debugf( "Init_socket: bind: %s.", get_socket_error( NULL ) );
 	c_close( fd );
-#if defined( FOR_WINDOWS )
-	WSACleanup( );
-#endif
-	exit( 1 );
+	return -1;
      }
 
    if ( listen( fd, 1 ) < 0 )
      {
-	debugerr( "Init_socket: listen" );
+	debugf( "Init_socket: listen: %s.", get_socket_error( NULL ) );
 	c_close( fd );
-#if defined( FOR_WINDOWS )
-	WSACleanup( );
-#endif
-	exit( 1 );
+	return -1;
      }
    
    /* Control descriptor. */
@@ -3589,6 +3600,8 @@ void sig_segv_handler( int sig )
 
 void mudbot_init( int port )
 {
+   default_listen_port = port;
+   
    /* Check if a log file exists. */
    start_log( );
    
@@ -3597,11 +3610,6 @@ void mudbot_init( int port )
    
    /* Initialize all modules. */
    module_init_data( );
-   
-   if ( !control )
-     {
-	MessageBox( NULL, "At least one port to listen on must be defined!", "MudBot Warning", 0 );
-     }
 }
 
 #else

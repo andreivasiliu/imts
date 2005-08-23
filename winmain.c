@@ -54,12 +54,12 @@ LRESULT CALLBACK MainWndProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam 
 LRESULT CALLBACK EditorWndProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam );
 
 extern DESCRIPTOR *descs, *current_descriptor;
+extern DESCRIPTOR *server, *client, *control;
 extern MODULE *modules;
 extern TIMER *timers;
 
 extern char client_hostname[1024], server_hostname[1024];
 extern int main_version_major, main_version_minor;
-extern int server, client;
 extern int logging;
 extern int a_on;
 
@@ -120,9 +120,9 @@ void AddText( char *string )
 
 void debugf( char *string, ... )
 {
+   void logff( char *type, char *string, ... );
    char buf [ 4096 ];
    char winbuf [ 4096 ], *p, *b;
-   int to_stdout = 1;
    
    va_list args;
    va_start( args, string );
@@ -155,8 +155,6 @@ void win_sig_segv_handler( int sig )
    extern char *debug[6];
    int i;
    
-   MessageBox( NULL, "Crash? Attempting to write a crash.log...", "MudBot", 0 );
-   
    fl = fopen( "crash.log", "w" );
    
    if ( !fl )
@@ -172,14 +170,38 @@ void win_sig_segv_handler( int sig )
      }
    
    fclose( fl );
+   
+   MessageBox( NULL, "File 'crash.log' written.", "MudBot", 0 );
+   exit( 1 );
 }
+
 
 
 int WINAPI WinMain( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd )
 {
+   void mudbot_init( int port );
+   
    MSG msg;
    
    hInstance = hInst;
+   
+   /* Initialize WSA. */
+   WORD wVersionRequested;
+   WSADATA wsaData;
+   wVersionRequested = MAKEWORD( 1, 0 );
+   
+   if ( WSAStartup( wVersionRequested, &wsaData ) )
+     {
+	return 0;
+     }
+   
+   if ( LOBYTE( wsaData.wVersion ) != 1 ||
+	HIBYTE( wsaData.wVersion ) != 0 )
+     {
+	WSACleanup( );
+	return 0;
+     }
+   /* End of WSA. */
    
    if ( !CreateMainWindow( hInstance ) )
      return 0;
@@ -191,6 +213,11 @@ int WINAPI WinMain( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, i
    
    mudbot_init( 123 );
    
+   if ( !control )
+     {
+	MessageBox( NULL, "At least one port to listen on must be defined!", "MudBot Warning", 0 );
+     }
+   
    signal( SIGSEGV, win_sig_segv_handler );
    
    AddText( "Entering main loop... All ready.\r\n" );
@@ -201,6 +228,8 @@ int WINAPI WinMain( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, i
 	TranslateMessage( &msg );
 	DispatchMessage( &msg );
      }
+   
+   WSACleanup( );
    
    return msg.wParam;
 }
@@ -353,12 +382,12 @@ int CreateEditorWindow( HINSTANCE hInstance )
    INITCOMMONCONTROLSEX icc;
    WNDCLASSEX wndClass;
    RECT rcClient;
-   REBARINFO rbi;
-   REBARBANDINFO rbBand;
-   TBBUTTON tbb[2];
-   DWORD dwBtnSize;
+//   REBARINFO rbi;
+//   REBARBANDINFO rbBand;
+//   TBBUTTON tbb[2];
+//   DWORD dwBtnSize;
    HGDIOBJ hObj;
-   int iSend, iClear, i;
+//   int iSend, iClear, i;
    
    /*** Register our Editor Window Class. ***/
    
@@ -600,6 +629,118 @@ void Iconize( )
    iconized = 1;
 }
 
+
+
+char *win_str_error( int error )
+{
+   switch( error )
+     {
+      case WSAEINTR:
+	return "Interrupted function call";
+      case WSAEACCES:
+	return "Permission denied";
+      case WSAEFAULT:
+	return "Bad address";
+      case WSAEINVAL:
+	return "Invalid argument";
+      case WSAEMFILE:
+	return "Too many open files";
+      case WSAEWOULDBLOCK:
+	return "Resource temporarily unavailable";
+      case WSAEINPROGRESS:
+	return "Operation now in progress";
+      case WSAEALREADY:
+	return "Operation already in progress";
+      case WSAENOTSOCK:
+	return "Socket operation on nonsocket";
+      case WSAEDESTADDRREQ:
+	return "Destination address required";
+      case WSAEMSGSIZE:
+	return "Message too long";
+      case WSAEPROTOTYPE:
+	return "Protocol wrong type for socket";
+      case WSAENOPROTOOPT:
+	return "Bad protocol option";
+      case WSAEPROTONOSUPPORT:
+	return "Protocol not supported";
+      case WSAESOCKTNOSUPPORT:
+	return "Socket type not supported";
+      case WSAEOPNOTSUPP:
+	return "Operation not supported";
+      case WSAEPFNOSUPPORT:
+	return "Protocol family not supported";
+      case WSAEAFNOSUPPORT:
+	return "Address family not supported by protocol family";
+      case WSAEADDRINUSE:
+	return "Address already in use";
+      case WSAEADDRNOTAVAIL:
+	return "Cannot assign requested address";
+      case WSAENETDOWN:
+	return "Network is down";
+      case WSAENETUNREACH:
+	return "Network is unreachable";
+      case WSAENETRESET:
+	return "Network dropped connection on reset";
+      case WSAECONNABORTED:
+	return "Software caused connection abort";
+      case WSAECONNRESET:
+	return "Connection reset by peer";
+      case WSAENOBUFS:
+	return "No buffer space available";
+      case WSAEISCONN:
+	return "Socket is already connected";
+      case WSAENOTCONN:
+	return "Socket is not connected";
+      case WSAESHUTDOWN:
+	return "Cannot send after socket shutdown";
+      case WSAETIMEDOUT:
+	return "Connection timed out";
+      case WSAECONNREFUSED:
+	return "Connection refused";
+      case WSAEHOSTDOWN:
+	return "Host is down";
+      case WSAEHOSTUNREACH:
+	return "No route to host";
+      case WSAEPROCLIM:
+	return "Too many processes";
+      case WSASYSNOTREADY:
+	return "Network subsystem is unavailable";
+      case WSAVERNOTSUPPORTED:
+	return "Winsock.dll version out of range";
+      case WSANOTINITIALISED:
+	return "Successful WSAStartup not yet performed";
+      case WSAEDISCON:
+	return "Graceful shutdown in progress";
+      case WSATYPE_NOT_FOUND:
+	return "Class type not found";
+      case WSAHOST_NOT_FOUND:
+	return "Host not found";
+      case WSATRY_AGAIN:
+	return "Nonauthoritative host not found";
+      case WSANO_RECOVERY:
+	return "This is a nonrecoverable error";
+      case WSANO_DATA:
+	return "Valid name, no data record of requested type";
+      case WSA_INVALID_HANDLE:
+	return "Specified event object handle is invalid";
+      case WSA_INVALID_PARAMETER:
+	return "One or more parameters are invalid";
+      case WSA_IO_INCOMPLETE:
+	return "Overlapped I/O event object not in signaled state";
+      case WSA_IO_PENDING:
+	return "Overlapped operations will complete later";
+      case WSA_NOT_ENOUGH_MEMORY:
+	return "Insufficient memory available";
+      case WSA_OPERATION_ABORTED:
+	return "Overlapped operation aborted";
+      case WSASYSCALLFAILURE:
+	return "System call failure";
+     }
+   
+   return "Unknown error";
+}
+
+
 void win_update_descriptors( )
 {
    DESCRIPTOR *d;
@@ -616,8 +757,6 @@ void win_update_descriptors( )
    
    for ( d = descs; d; d = d->next )
      {
-	int type;
-	
 	if ( d->fd < 1 )
 	  continue;
 	
@@ -678,6 +817,7 @@ void win_update_modules( )
 
 void check_descriptors( )
 {
+   void check_timers( );
    struct timeval pulsetime;
    fd_set in_set;
    fd_set out_set;
@@ -750,6 +890,8 @@ void check_descriptors( )
 
 void UpdateTimer( )
 {
+   void check_timers( );
+   
    check_timers( );
    
    if ( timers )
@@ -759,6 +901,8 @@ void UpdateTimer( )
 
 void SendBuffer( int ole )
 {
+   void clientff( char *string, ... );
+   void send_to_server( char *string );
    const char sb_atcp[] = { IAC, SB, ATCP, 0 };
    const char se[] = { IAC, SE, 0 };
    char buf[16384];
@@ -1016,7 +1160,7 @@ LRESULT CALLBACK MainWndProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam 
       case UDM_WINSOCK_SELECT:
 	  {
 	     int event  = WSAGETSELECTEVENT( lParam );
-	     int wsaerr = WSAGETSELECTERROR( lParam );
+//	     int wsaerr = WSAGETSELECTERROR( lParam );
 	     
 	     switch( event )
 	       {
