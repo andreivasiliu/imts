@@ -230,37 +230,7 @@ ENTRANCE( i_mapper_module_register )
    self->main_loop = NULL;
    self->update_descriptors = NULL;
    
-   /* Communication */
-   get_modules = self->get_func( "get_modules" );
-   get_variable = self->get_func( "get_variable" );
-   DEBUG = self->get_func( "DEBUG" );
-   debugf = self->get_func( "debugf" );
-   debugerr = self->get_func( "debugerr" );
-   logff = self->get_func( "logff" );
-   clientf = self->get_func( "clientf" );
-   clientfr = self->get_func( "clientfr" );
-   clientff = self->get_func( "clientff" );
-   send_to_server = self->get_func( "send_to_server" );
-   show_prompt = self->get_func( "show_prompt" );
-   gag_line = self->get_func( "gag_line" );
-   gag_prompt = self->get_func( "gag_prompt" );
-   /* Utility */
-   get_string = self->get_func( "get_string" );
-   cmp = self->get_func( "cmp" );
-   /* Timers */
-   get_timers = self->get_func( "get_timers" );
-   get_timer = self->get_func( "get_timer" );
-   add_timer = self->get_func( "add_timer" );
-   del_timer = self->get_func( "del_timer" );
-   /* Networking */
-   get_descriptors = self->get_func( "get_descriptors" );
-   mb_connect = self->get_func( "mb_connect" );
-   get_connect_error = self->get_func( "get_connect_error" );
-   add_descriptor = self->get_func( "add_descriptor" );
-   remove_descriptor = self->get_func( "remove_descriptor" );
-   c_read = self->get_func( "c_read" );
-   c_write = self->get_func( "c_write" );
-   c_close = self->get_func( "c_close" );
+   GET_FUNCTIONS( self );
 }
 
 
@@ -4496,7 +4466,7 @@ void i_mapper_process_server_line_suffix( char *colorless_line, char *colorful_l
 	  {
 	     if ( disable_swimming )
 	       {
-		  clientf( "\r\n" C_R "[Hint: Swimming is disabled. Use 'map swim' to turn it back on.]" C_0 );
+		  clientf( "\r\n" C_R "[Hint: Swimming is disabled. Use 'map config swim' to turn it back on.]" C_0 );
 	       }
 	  }
 	     
@@ -6159,7 +6129,7 @@ void do_room_mark( char *arg )
    
    clientfr( buf );
    
-   clientfr( "Using 'map save' will make it permanent." );
+   clientfr( "Using 'map config save' will make it permanent." );
 }
 
 
