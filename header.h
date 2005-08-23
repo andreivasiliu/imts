@@ -72,6 +72,7 @@
 
 #define TELOPT_COMPRESS 85  /* MCCP - Mud Client Compression Protocol. */
 #define TELOPT_COMPRESS2 86 /* MCCPv2 */
+#define TELOPT_MXP 91       /* MXP - Mud eXtension Protocol. */
 
 #define INPUT_BUF 2048
 
