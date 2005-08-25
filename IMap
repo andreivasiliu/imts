@@ -44,6 +44,9 @@ T: "the Stream of Consciousness" magenta 1 1 no no
 T: "Graveyard" cyan 1 1 no no
 T: "Ruins" cyan 1 1 no no
 T: "Church" cyan 1 1 no no
+T: "Wetlands Village" brown 1 1 no no
+T: "Blackstone Dungeon" brown 1 1 no no
+T: "Blackstone Keep" dark 1 1 no no
 
 
 MESSAGES
@@ -18459,6 +18462,7 @@ E: south 1392
 ROOM v3876
 Name: A barren wasteland.
 Type: Swamp
+E: northeast 8473
 E: south 5585
 E: northwest 1391
 
@@ -23652,6 +23656,12 @@ Name: Oasis of the Sage.
 Type: Desert
 E: east 2140
 
+ROOM v2052
+Name: The Khandava Archway.
+Type: Undefined
+E: east 3462
+E: west 2051
+
 
 
 AREA
@@ -23702,12 +23712,6 @@ ROOM v5942
 Name: Along the small animal path. (path)
 Type: Path
 E: southeast 3469
-
-ROOM v2052
-Name: The Khandava Archway.
-Type: Forest
-E: east 3462
-E: west 2051
 
 ROOM v3462
 Name: The Redwood Path.
@@ -55014,6 +55018,230 @@ Name: In a widening valley between the hills.
 Type: Hills
 E: east 8440
 E: west 1400
+
+
+
+AREA
+Name: Blackthorne.
+
+ROOM v8492
+Name: Inside a sweltering outpost.
+Type: Wetlands Village
+E: down 8473
+
+ROOM v8473
+Name: A vine-entangled outpost.
+Type: Wetlands Village
+E: northeast 8474
+E: southwest 3876
+E: up 8492
+
+ROOM v8474
+Name: Before a massive gate.
+Type: Wetlands Village
+E: northeast 8475
+E: southwest 8473
+
+ROOM v8475
+Name: A massive gate made from stone and writhing vines.
+Type: Wetlands Village
+E: east 8476
+E: southwest 8474
+
+ROOM v8476
+Name: A sodden trail in the wastelands.
+Type: Wetlands Village
+E: north 8477
+E: east 8489
+E: west 8475
+
+ROOM v8477
+Name: A copse of mist shrouded trees.
+Type: Wetlands Village
+E: north 8478
+E: east 8490
+E: south 8476
+
+ROOM v8478
+Name: A dark,twisting path within the Wastelands.
+Type: Wetlands Village
+E: north 8479
+E: east 8480
+E: south 8477
+
+ROOM v8479
+Name: Vine enclosed training ground.
+Type: Wetlands Village
+E: south 8478
+
+ROOM v8480
+Name: A foul gorge along the path.
+Type: Wetlands Village
+E: east 8481
+E: west 8478
+
+ROOM v8481
+Name: A break in the path.
+Type: Wetlands Village
+E: east 8482
+E: south 8487
+E: west 8480
+
+ROOM v8482
+Name: Off the beaten path.
+Type: Wetlands Village
+E: northeast 8483
+E: east 8485
+E: southeast 8486
+E: west 8481
+
+ROOM v8483
+Name: A straw-strewn mess hall.
+Type: Wetlands Village
+E: southwest 8482
+E: west 8484
+
+ROOM v8484
+Name: A dark fragrant kitchen.
+Type: Wetlands Village
+E: east 8483
+
+ROOM v8485
+Name: Blackthorne Provisions Shop.
+Type: Wetlands Village
+E: west 8482
+
+ROOM v8486
+Name: A modest latrine.
+Type: Wetlands Village
+E: northwest 8482
+
+ROOM v8487
+Name: Approaching a massive willow.
+Type: Wetlands Village
+E: north 8481
+E: south 8488
+
+ROOM v8488
+Name: Beneath an ancient willow.
+Type: Wetlands Village
+E: north 8487
+E: west 8489
+E: in 8491
+UE: in east
+
+ROOM v8489
+Name: A dark path leading to a tree.
+Type: Wetlands Village
+E: east 8488
+E: west 8476
+
+ROOM v8490
+Name: Before a keep of towering black stone.
+Type: Wetlands Village
+E: west 8477
+E: in 8493
+
+ROOM v8491
+Name: Inside an eerie hollow willow tree.
+Type: Wetlands Village
+E: out 8488
+UE: out west
+
+ROOM v8493
+Name: A foyer of polished black stone.
+Type: Blackstone Keep
+E: north 8498
+E: south 8494
+E: out 8490
+
+ROOM v8494
+Name: A smooth stone walkway.
+Type: Blackstone Keep
+E: north 8493
+E: down 8495
+
+ROOM v8495
+Name: A dank stairwell of crumbling stone.
+Type: Blackstone Dungeon
+E: up 8494
+E: down 8496
+
+ROOM v8496
+Name: Before a massive iron door at the end of a dank stairwell.
+Type: Blackstone Dungeon
+E: east 8497
+E: up 8495
+
+ROOM v8497
+Name: A dungeon deep within the keep.
+Type: Blackstone Dungeon
+E: west 8496
+
+ROOM v8498
+Name: A smooth stone walkway.
+Type: Blackstone Keep
+E: south 8493
+E: up 8499
+
+ROOM v8499
+Name: At the top of a spiraling staircase.
+Type: Blackstone Keep
+E: north 8500
+E: down 8498
+
+ROOM v8500
+Name: A torch-lit hallway.
+Type: Blackstone Keep
+E: north 8506
+E: east 8502
+E: south 8499
+E: west 8501
+
+ROOM v8501
+Name: A quiet passage off the hall.
+Type: Blackstone Keep
+E: north 8504
+E: east 8500
+E: south 8505
+
+ROOM v8502
+Name: A smoke-shrouded lounge.
+Type: Blackstone Keep
+E: north 8503
+E: west 8500
+
+ROOM v8503
+Name: A foul-smelling room lined with bunks.
+Type: Blackstone Keep
+E: south 8502
+
+ROOM v8504
+Name: Before a large bullentin's board.
+Type: Blackstone Keep
+E: south 8501
+
+ROOM v8505
+Name: An office cluttered with many letters.
+Type: Blackstone Keep
+E: north 8501
+
+ROOM v8506
+Name: Before a large archway of polished stone.
+Type: Blackstone Keep
+E: north 8507
+E: south 8500
+
+ROOM v8507
+Name: An archway lined with pillars.
+Type: Blackstone Keep
+E: south 8506
+E: up 8508
+
+ROOM v8508
+Name: Blackthorne's Strategy Chambers.
+Type: Blackstone Keep
+E: down 8507
 
 
 
