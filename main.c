@@ -875,8 +875,17 @@ void load_module( char *name )
 	return;
      }
    
+   /* Try both ways, for compatibility. */
    register_module = dlsym( dl_handle, "module_register" );
-   if ( ( dl_error = dlerror( ) ) != NULL )
+   dl_error = dlerror( );
+   
+   if ( dl_error != NULL )
+     {
+	register_module = dlsym( dl_handle, "_module_register" );
+	dl_error = dlerror( );
+     }
+   
+   if ( dl_error != NULL )
      {
 	sprintf( buf, "Can't get the Register symbol from %s: %s",
 		name, dl_error );
@@ -1141,12 +1150,48 @@ void show_prompt( )
 
 
 
+void restart_mccp( TIMER *self )
+{
+   char mccp_start[] = { IAC, DO, TELOPT_COMPRESS2, 0 };
+   
+   send_to_server( mccp_start );
+}
+
+
+
 void module_process_server_line( char *rawline, char *colorless, char *stripped )
 {
    MODULE *module;
+   char mccp_stop[] = { IAC, DONT, TELOPT_COMPRESS2, 0 };
    
    DEBUG( "module_process_server_line" );
    
+   /* Our own triggers, to start/stop MCCP when needed. */
+   if ( compressed &&
+	( !cmp( "you are out of the land.", rawline ) ) )
+     {
+	add_timer( "restart_mccp", 20, restart_mccp, 0, 0, 0 );
+	send_to_server( mccp_stop );
+     }
+   if ( !compressed && !disable_mccp &&
+	( !cmp( "You cease your praying.", rawline ) ) )
+     {
+	del_timer( "restart_mccp" );
+	restart_mccp( NULL );
+     }
+#if defined( FOR_WINDOWS )
+   if ( compressed &&
+	( !cmp( "You enter the editor.", rawline ) ||
+	  !cmp( "You begin writing.", rawline ) ) )
+     {
+	/* Only briefly, ATCP over MCCP is very buggy. */
+	verbose_mccp = 0;
+	debugf( "Temporarely stopping MCCP." );
+	send_to_server( mccp_stop );
+	send_to_server( mccp_start );
+     }
+#endif
+	
    for ( module = modules; module; module = module->next )
      {
 	if ( module->process_server_line_prefix )
@@ -2365,7 +2410,9 @@ void handle_atcp( char *msg )
 #if defined( FOR_WINDOWS )
 	void win_composer_contents( char *string );
 	
+	clientf( "\r\n" );
 	clientfb( "Composer's contents received. Type `edit and load the buffer." );
+	show_prompt( );
 	win_composer_contents( body );
 #endif
      }
@@ -2379,6 +2426,7 @@ void handle_atcp( char *msg )
 void client_telnet( char *buf, char *dst, int *bytes )
 {
    const char do_mxp[] = { IAC, DO, TELOPT_MXP, 0 };
+   const char dont_mxp[] = { IAC, DONT, TELOPT_MXP, 0 };
    
    static char iac_string[3];
    static int in_iac;
@@ -2421,7 +2469,13 @@ void client_telnet( char *buf, char *dst, int *bytes )
 	     if ( !memcmp( iac_string, do_mxp, 3 ) )
 	       {
 		  mxp_enabled = 1;
-		  debugf( "mxp: Supported by the Client!" );
+		  debugf( "mxp: Supported by your Client!" );
+	       }
+	     
+	     else if ( !memcmp( iac_string, dont_mxp, 3 ) )
+	       {
+		  mxp_enabled = 0;
+		  debugf( "mxp: Unsupported by your client." );
 	       }
 	     
 	     else
@@ -2732,6 +2786,7 @@ void process_client_line( char *buf )
 	     
 	     clientfb( "Attempting to stop decompression." );
 	     send_to_server( mccp_stop );
+	     verbose_mccp = 1;
 	     
 	     return;
 	  }
@@ -3411,8 +3466,13 @@ int mccp_decompress( char *src, int src_bytes )
 	if ( status == Z_STREAM_END )
 	  {
 	     debugf( "mccp: Decompression ended." );
-	     clientfb( "Server no longer sending compressed data." );
-	     show_prompt( );
+	     if ( verbose_mccp )
+	       {
+		  verbose_mccp = 0;
+		  clientfb( "Server no longer sending compressed data." );
+		  show_prompt( );
+	       }
+	     
 	     compressed = 0;
 	     
 	     /* Copy whatever is after it. */
