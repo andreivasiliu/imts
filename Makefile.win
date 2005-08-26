@@ -7,7 +7,7 @@ DLLWRAP = dllwrap.exe
 LIBS    = -L"D:/Programs/Dev-Cpp/lib" -L"./deps"
 INCS    = -I"D:/Programs/Dev-Cpp/include" -I"./deps"
 BIN     = mb-core.exe
-CFLAGS  = $(INCS) -DFOR_WINDOWS
+CFLAGS  = $(INCS) -DFOR_WINDOWS -Wall -O3
 
 # Builders.
 MAKERES = $(WINDRES) --input-format=rc -O coff
