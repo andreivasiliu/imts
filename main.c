@@ -52,7 +52,7 @@
 #endif
 
 int main_version_major = 2;
-int main_version_minor = 2;
+int main_version_minor = 3;
 
 
 
@@ -88,6 +88,12 @@ void send_to_server( char *string );
 void show_prompt( );
 int gag_line( int gag );
 int gag_prompt( int gag );
+#if !defined( FOR_WINDOWS )
+void mxp( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
+#else
+void mxp( char *string, ... );
+#endif
+int mxp_tag( int tag );
 
 /* Utility */
 #if defined( FOR_WINDOWS )
@@ -199,6 +205,7 @@ int default_port;
 char atcp_login_as[512];
 char default_user[512];
 char default_pass[512];
+int default_mxp_mode = 7;
 
 /* ATCP. */
 int a_hp, a_mana, a_end, a_will, a_exp;
@@ -347,6 +354,8 @@ void *get_function( char *name )
 	  { "show_prompt", show_prompt },
 	  { "gag_line", gag_line },
 	  { "gag_prompt", gag_prompt },
+	  { "mxp", mxp },
+	  { "mxp_tag", mxp_tag },
 	/* Utility */
 	  { "gettimeofday", gettimeofday },
 	  { "get_string", get_string },
@@ -557,7 +566,8 @@ void generate_config( char *file_name )
      }
    
    fprintf( fl, "# MudBot configuration file.\n"
-	    "# Uncomment (i.e. remove the '#' before) anything you want to be parsed.\n\n\n" );
+	    "# Uncomment (i.e. remove the '#' before) anything you want to be parsed.\n"
+	    "# If there's something you don't understand here, just leave it as it is.\n\n" );
    
    fprintf( fl, "# Ports to listen on. They can be as many as you want. \"default\" is 123.\n\n"
 	    "# These will accept connections only from localhost.\n"
@@ -580,6 +590,10 @@ void generate_config( char *file_name )
    
    fprintf( fl, "# Mud Client Compression Protocol.\n\n"
 	    "disable_mccp \"no\"\n\n\n" );
+   
+   fprintf( fl, "# Mud eXtension Protocol. Can be \"disabled\", \"locked\", \"open\", or \"secure\".\n"
+	    "# Read the MXP specifications on www.zuggsoft.com for more info.\n\n"
+	    "default_mxp_mode \"locked\"\n\n\n" );
    
    fprintf( fl, "# Autologin. Requires ATCP.\n"
 	    "# Keep your password here at your own risk! Better just leave these empty.\n\n"
@@ -697,6 +711,19 @@ void read_config( char *file_name, int silent )
 	       disable_mccp = 1;
 	     else
 	       disable_mccp = 0;
+	  }
+	else if ( !strcmp( cmd, "default_mxp_mode" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     if ( !strcmp( buf, "locked" ) || !buf[0] )
+	       default_mxp_mode = 7;
+	     else if ( !strcmp( buf, "secure" ) )
+	       default_mxp_mode = 6;
+	     else if ( !strcmp( buf, "open" ) )
+	       default_mxp_mode = 5;
+	     else
+	       default_mxp_mode = 0;
 	  }
 	else if ( !strcmp( cmd, "user" ) || !strcmp( cmd, "username" ) )
 	  {
@@ -1233,6 +1260,20 @@ void show_prompt( )
 
 
 
+void module_mxp_enabled( )
+{
+   MODULE *module;
+   
+   DEBUG( "module_mxp_enabled" );
+   
+   for ( module = modules; module; module = module->next )
+     {
+	if ( module->mxp_enabled )
+	  (module->mxp_enabled)( );
+     }
+}
+
+
 void restart_mccp( TIMER *self )
 {
    char mccp_start[] = { IAC, DO, TELOPT_COMPRESS2, 0 };
@@ -1245,6 +1286,7 @@ void restart_mccp( TIMER *self )
 void module_process_server_line( char *rawline, char *colorless, char *stripped )
 {
    MODULE *module;
+   char mccp_start[] = { IAC, DO, TELOPT_COMPRESS2, 0 };
    char mccp_stop[] = { IAC, DONT, TELOPT_COMPRESS2, 0 };
    
    DEBUG( "module_process_server_line" );
@@ -1650,6 +1692,7 @@ void assign_client( int fd )
    else if ( fd )
      {
 	void fd_client_in( DESCRIPTOR *self );
+	void fd_client_out( DESCRIPTOR *self );
 	void fd_client_exc( DESCRIPTOR *self );
 	
 	/* Client. */
@@ -1659,7 +1702,7 @@ void assign_client( int fd )
 	client->mod = NULL;
 	client->fd = fd;
 	client->callback_in = fd_client_in;
-	client->callback_out = NULL;
+	client->callback_out = fd_client_out;
 	client->callback_exc = fd_client_exc;
 	add_descriptor( client );
      }
@@ -1757,8 +1800,9 @@ int mb_connect( char *hostname, int port )
 
 void check_for_server( void )
 {
+   void client_telnet( char *src, char *dst, int *bytes );
    static char request[4096];
-   char buf[4096];
+   char raw_buf[4096], buf[4096];
    char hostname[4096];
    char *c, *pos;
    int port;
@@ -1766,7 +1810,7 @@ void check_for_server( void )
    int found = 0;
    int server;
    
-   bytes = c_read( client->fd, buf, 4096 );
+   bytes = c_read( client->fd, raw_buf, 4096 );
    
    if ( bytes == 0 )
      {
@@ -1786,6 +1830,8 @@ void check_for_server( void )
    buf[bytes] = '\0';
    
    log_bytes( "c->m (conn)", buf, bytes );
+   
+   client_telnet( raw_buf, buf, &bytes );
    
    strncat( request, buf, bytes );
    
@@ -1859,6 +1905,21 @@ void fd_client_in( DESCRIPTOR *self )
 	if ( process_client( ) )
 	  assign_client( 0 );
      }
+}
+
+
+void fd_client_out( DESCRIPTOR *self )
+{
+   /* Ask for MXP support. */
+   
+   char will_mxp[] = { IAC, WILL, TELOPT_MXP, 0 };
+   
+   mxp_enabled = 0;
+   if ( default_mxp_mode )
+     clientf( will_mxp );
+   
+   self->callback_out = NULL;
+   update_descriptors( );
 }
 
 
@@ -2535,6 +2596,11 @@ void client_telnet( char *buf, char *dst, int *bytes )
 	       {
 		  mxp_enabled = 1;
 		  debugf( "mxp: Supported by your Client!" );
+		  
+		  if ( default_mxp_mode )
+		    mxp_tag( default_mxp_mode );
+		  
+		  module_mxp_enabled( );
 	       }
 	     
 	     else if ( !memcmp( iac_string, dont_mxp, 3 ) )
@@ -2740,6 +2806,43 @@ char *get_string( char *argument, char *arg_first, int max )
 
 
 
+void mxp( char *string, ... )
+{
+   char buf [ 4096 ];
+   
+   if ( !mxp_enabled )
+     return;
+   
+   va_list args;
+   va_start( args, string );
+   vsnprintf( buf, 4096, string, args );
+   va_end( args );
+   
+   clientf( buf );
+}
+
+
+int mxp_tag( int tag )
+{
+   if ( !mxp_enabled )
+     return 0;
+   
+   if ( tag == TAG_NOTHING )
+     return default_mxp_mode;
+   
+   if ( tag < 0 )
+     {
+	if ( default_mxp_mode )
+	  tag = default_mxp_mode;
+	else
+	  tag = 7;
+     }
+   
+   clientff( "\33[%dz", tag );
+   return 1;
+}
+
+
 void do_test( )
 {
    char will_mxp[] = { IAC, WILL, TELOPT_MXP, 0 };
@@ -2747,7 +2850,10 @@ void do_test( )
    if ( !mxp_enabled )
      clientf( will_mxp );
    else
-     clientf( "\33[1z" "<SEND>map config</SEND>\r\n" );
+     {
+	mxp_tag( 1 );
+	mxp( "This can be <send \"map|map config|map create|map follow\" hint=\"Yes, it can indeed be clicked!|Show Map|Configure|Enable Mapping|Disable Mapping\">clicked</send>!\r\n" );
+     }
 }
 
 
@@ -3081,6 +3187,8 @@ void process_client_line( char *buf )
 		      " `edit       - Open the Editor.\r\n"
 #endif
 		      " `license    - GNU GPL notice.\r\n"
+		      " `id         - Source Identification.\r\n"
+		      " `log        - Toggle logging into the log.txt file.\r\n"
 		      " `quit       - Ends the program, for good.\r\n" C_0 );
 	     clientfb( "Rebooting or crashing will keep the connection alive." );
 	     clientfb( "Everything in blue brackets belongs to the MudBot engine." );

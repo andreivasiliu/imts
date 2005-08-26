@@ -46,6 +46,7 @@
 #define C_C "\33[1;36m"
 #define C_W "\33[1;37m"
 
+#define C_d "\33[0;30m"
 #define C_r "\33[0;31m"
 #define C_g "\33[0;32m"
 #define C_y "\33[0;33m"
@@ -79,6 +80,19 @@
 #if defined( FOR_WINDOWS )
 # define __atribute__ ; //
 #endif
+
+/* Values to be used with mxp_tag. */
+#define TAG_NOTHING	-2
+#define TAG_DEFAULT	-1
+#define TAG_OPEN	0 
+#define TAG_SECURE 	1
+#define TAG_LOCKED	2
+#define TAG_RESET	3
+#define TAG_TEMP_SECURE	4
+#define TAG_LOCK_OPEN	5
+#define TAG_LOCK_SECURE	6
+#define TAG_LOCK_LOCKED	7
+
 
 typedef struct module_data MODULE;
 typedef struct descriptor_data DESCRIPTOR;
@@ -123,6 +137,7 @@ struct module_data
    void (*update_modules)( );
    void (*update_timers)( );
    void (*debugf)( char *string );
+   void (*mxp_enabled)( );
 };
 
 

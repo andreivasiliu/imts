@@ -211,6 +211,7 @@ void i_mapper_process_server_prompt_informative( char *line, char *rawline );
 void i_mapper_process_server_prompt_action( char *rawline );
 int  i_mapper_process_client_command( char *cmd );
 int  i_mapper_process_client_aliases( char *cmd );
+void i_mapper_mxp_enabled( );
 
 
 ENTRANCE( i_mapper_module_register )
@@ -231,6 +232,7 @@ ENTRANCE( i_mapper_module_register )
    self->build_custom_prompt = NULL;
    self->main_loop = NULL;
    self->update_descriptors = NULL;
+   self->mxp_enabled = i_mapper_mxp_enabled;
    
    GET_FUNCTIONS( self );
 }
@@ -1757,9 +1759,10 @@ void fill_map_new( ROOM_DATA *room, int x, int y )
 void show_map_new( ROOM_DATA *room )
 {
    ROOM_DATA *r;
-   char map_buf[4096], buf[64], *p, *s, *s2;
-   char vnum_buf[64];
+   char map_buf[65536], buf[64], *p, *s, *s2;
+   char vnum_buf[1024];
    int x, y, len, len2, loop;
+   int use_mxp = 0;
    
    DEBUG( "show_map_new" );
    
@@ -1795,12 +1798,16 @@ void show_map_new( ROOM_DATA *room )
 //   debugf( "2: %d", get_timer( ) );
    
    
-   /* Build it up. */
+   /* Are we able to get a SECURE mode on MXP? */
+   if ( mxp_tag( TAG_SECURE ) )
+     use_mxp = 1;
+   
+   /* Upper banner. */
    
    map_buf[0] = 0;
    p = map_buf;
    
-   /* Upper banner. */
+   /* Build it up. */
    
    sprintf( vnum_buf, "v%d", room->vnum );
    
@@ -1854,12 +1861,29 @@ void show_map_new( ROOM_DATA *room )
 			      *(p++) = *(s++);
 			    *(p++) = '[';
 			    
+			    if ( use_mxp )
+			      {
+				 sprintf( vnum_buf, "<mpelm v=%d r=\"%s\" t=\"%s\">",
+					  map_new[x][y].room->vnum, map_new[x][y].room->name,
+					  map_new[x][y].room->room_type->name );
+				 s = vnum_buf;
+				 while( *s )
+				   *(p++) = *(s++);
+			      }
+			    
 			    if ( map_new[x][y].room == current_room )
 			      s = C_B "*";
 			    else if ( map_new[x][y].in_out )
 			      s = C_r "o";
+			    else if ( use_mxp )
+			      s = C_d " ";
 			    else
 			      s = " ";
+			    while( *s )
+			      *(p++) = *(s++);
+			    
+			    sprintf( vnum_buf, "</mpelm>" );
+			    s = vnum_buf;
 			    while( *s )
 			      *(p++) = *(s++);
 			    
@@ -1995,6 +2019,10 @@ void show_map_new( ROOM_DATA *room )
    
    /* Show it away. */
    clientf( map_buf );
+   
+   /* And return MXP to default. */
+   if ( use_mxp )
+     mxp_tag( TAG_DEFAULT );
 }
 
 
@@ -2591,6 +2619,12 @@ char *read_string( FILE *fl )
    if ( !len )
      return NULL;
    
+   if ( len > 256 )
+     {
+	debugf( "Warning! Attempting to read an overly long string." );
+	return NULL;
+     }
+   
    string = malloc( len );
    fread( string, sizeof( char ), len, fl );
    
@@ -2610,7 +2644,7 @@ void save_binary_map( char *file )
    
    DEBUG( "save_binary_map" );
    
-   fl = fopen( file, "w" );
+   fl = fopen( file, "wb" );
    
    if ( !fl )
      return;
@@ -2709,7 +2743,7 @@ int load_binary_map( char *file )
    
    DEBUG( "load_binary_map" );
    
-   fl = fopen( file, "r" );
+   fl = fopen( file, "rb" );
    
    if ( !fl )
      return 1;
@@ -2722,6 +2756,11 @@ int load_binary_map( char *file )
 	
 	type.name = read_string( fl );
 	type.color = read_string( fl );
+	if ( !type.name || !type.color )
+	  {
+	     debugf( "NULL entries where they shouldn't be!" );
+	     return 1;
+	  }
 	
 	add_room_type( type.name, type.color, type.cost_in, type.cost_out,
 		       type.must_swim, type.underwater );
@@ -3551,6 +3590,14 @@ void show_path( ROOM_DATA *current )
      }
    strcat( buf, C_R ".]\r\n" C_0 );
    clientf( buf );
+}
+
+
+
+void i_mapper_mxp_enabled( )
+{
+   mxp_tag( TAG_TEMP_SECURE );
+   mxp( "<!element mpelm '<send \"map path &v;|room look &v;\" hint=\"&r;|Vnum: &v;|Type: &t;\">' ATT='v r t'>" );
 }
 
 

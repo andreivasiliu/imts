@@ -224,6 +224,7 @@ void imperian_process_server_prompt_action( char *rawline );
 int  imperian_process_client_command( char *cmd );
 int  imperian_process_client_aliases( char *cmd );
 char *imperian_build_custom_prompt( );
+void imperian_mxp_enabled( );
 
 ENTRANCE( imperian_module_register )
 {
@@ -242,6 +243,7 @@ ENTRANCE( imperian_module_register )
    self->build_custom_prompt = imperian_build_custom_prompt;
    self->main_loop = NULL;
    self->update_descriptors = NULL;
+   self->mxp_enabled = imperian_mxp_enabled;
    
    GET_FUNCTIONS( self );
 }
@@ -5759,19 +5761,36 @@ int imperian_process_client_aliases( char *line )
 
 
 
+void imperian_mxp_enabled( )
+{
+   mxp_tag( TAG_TEMP_SECURE );
+   mxp( "<!element Prompt FLAG='Prompt'>" );
+}
+
+
+
 /* Not yet a monster, but I sure hope it will be. :) */
 char *imperian_build_custom_prompt( )
 {
    static int last_health;
    char *c, *p, *b;
-   char buf[4096];
+   char buf[4096], mxp1[64], mxp2[64];
    char iac_ga[] = { IAC, GA, 0 };
    char iac_eor[] = { EOR, 0 };
    int truth_value = 0, skip = 0, end;
    int *a_max_hp, *a_max_mana, *a_exp;
+   int use_mxp = 0;
    
    if ( !custom_prompt[0] )
      return NULL;
+   
+   if ( ( use_mxp = mxp_tag( TAG_NOTHING ) ) )
+     {
+	sprintf( mxp1, C_0 "\33[%dz<Prompt>", TAG_LOCK_SECURE );
+	sprintf( mxp2, "</Prompt>\33[%dz", use_mxp );
+     }
+   else
+     mxp1[0] = 0, mxp2[0] = 0;
    
    /* Check for a special blackout prompt. */
    if ( normal_prompt == 1 )
@@ -5790,8 +5809,8 @@ char *imperian_build_custom_prompt( )
 	p_hp = *a_hp / 11;
 	p_mana = *a_mana / 11;
 	
-	sprintf( prompt, C_D "<" C_r "%d" C_D "/" C_r "%d" C_D "h " C_r "%d" C_D "/" C_r "%d" C_D "m> " C_0,
-		 *a_hp / 11, *a_max_hp / 11, *a_mana / 11, *a_max_mana / 11 );
+	sprintf( prompt, "%s" C_D "<" C_r "%d" C_D "/" C_r "%d" C_D "h " C_r "%d" C_D "/" C_r "%d" C_D "m> " C_0 "%s",
+		 mxp1, *a_hp / 11, *a_max_hp / 11, *a_mana / 11, *a_max_mana / 11, mxp2 );
 	return prompt;
      }
    
@@ -5804,6 +5823,10 @@ char *imperian_build_custom_prompt( )
    c = custom_prompt;
    /* And this is where we store the output. */
    p = prompt;
+   
+   b = mxp1;
+   while ( *b )
+     *(p++) = *(b++ );
    
    while( *c != '\0' )
      {
@@ -6042,6 +6065,9 @@ char *imperian_build_custom_prompt( )
 	c++;
      }
    
+   b = mxp2;
+   while ( *b )
+     *(p++) = *(b++ );
    
    *(p) = 0;
    

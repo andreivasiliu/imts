@@ -71,6 +71,12 @@ void	(*send_to_server)( char *string );
 void	(*show_prompt)( );
 int	(*gag_line)( int gag );
 int	(*gag_prompt)( int gag );
+#if !defined( FOR_WINDOWS )
+void	(*mxp)( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
+#else
+void	(*mxp)( char *string, ... );
+#endif
+int	(*mxp_tag)( int tag );
 
 /* Utility */
 #if defined( FOR_WINDOWS )
@@ -112,6 +118,8 @@ int	(*c_close)( int fd );
    show_prompt = self->get_func( "show_prompt" ); \
    gag_line = self->get_func( "gag_line" ); \
    gag_prompt = self->get_func( "gag_prompt" ); \
+   mxp = self->get_func( "mxp" ); \
+   mxp_tag = self->get_func( "mxp_tag" ); \
    /* Utility */ \
    get_string = self->get_func( "get_string" ); \
    cmp = self->get_func( "cmp" ); \
