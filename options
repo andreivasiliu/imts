@@ -15,7 +15,7 @@ show_afflictions 1
 tree_recovery 10
 arti_pipes 0
 reset_time 3
-can_kipup 1
+can_kipup 0
 
 # Sections begin here.
 

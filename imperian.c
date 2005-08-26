@@ -2569,7 +2569,7 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
 	       if ( defences[i].tried )
 		 defences[i].tried = 0;
 	  }
-	else if ( !cmp( "You cannot find a pipe with that in it.", line ) && last_pipe[0] )
+	else if ( !cmp( "You cannot find a lit pipe with that in it.", line ) && last_pipe[0] )
 	  {
 	     char buf[256];
 	     
@@ -5446,7 +5446,8 @@ int imperian_process_client_command( char *cmd )
 	     for ( i = 0; afflictions[i].name; i++ )
 	       afflictions[i].tried = 0;
 	     break;
-	     need_balance_for_defences = 0;
+	     if ( need_balance_for_defences )
+	       need_balance_for_defences = 2;
 	     
 	     waiting_for_healing_command = 0;
 	     waiting_for_toadstool_command = 0;
@@ -5703,7 +5704,8 @@ int imperian_process_client_aliases( char *line )
 	  }
      }
    
-   if ( trigger_level && !strncmp( line, "sit", 3 ) && keep_standing )
+   if ( trigger_level && keep_standing &&
+	( !strcmp( line, "sit" ) || !strncmp( line, "sit ", 4 ) ) )
      {
 	clientfr( "Attempting to sit would be useless." );
 	show_prompt( );
