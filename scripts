@@ -26,7 +26,7 @@ alias add unw unwield left;unwield right
 alias add key1_n get key102502 from pouch;unlock door n;open door n;n;close door s;lock door s;put 102502 in pouch
 alias add key1_s get key102502 from pouch;unlock door s;open door s;s;close door n;lock door n;put 102502 in pouch
 alias add key2_ne get key104250 from pouch;unlock door ne;open door ne;ne;close door sw;lock door sw;put 104250 in pouch
-alias add key2_sw get key104250 from pouch;unlock door sw;open door se;se;close door ne;lock door ne;put 104250 in pouch
+alias add key2_sw get key104250 from pouch;unlock door sw;open door sw;sw;close door ne;lock door ne;put 104250 in pouch
 
 # Taekate
 alias add sl spp $T left
