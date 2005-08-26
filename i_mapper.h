@@ -102,6 +102,7 @@ struct area_data
    int disabled;
    
    ROOM_DATA *rooms;
+   ROOM_DATA *last_room;
    
    AREA_DATA *next;
 };

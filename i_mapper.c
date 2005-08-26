@@ -28,6 +28,7 @@
 #include "module.h"
 #include "i_mapper.h"
 
+#include <sys/stat.h>
 
 int mapper_version_major = 1;
 int mapper_version_minor = 3;
@@ -40,6 +41,7 @@ char *room_color = "\33[33m";
 int room_color_len = 5;
 
 char map_file[256] = "IMap";
+char map_file_bin[256] = "IMap.bin";
 
 /* A few things we'll need. */
 char *dir_name[] = 
@@ -148,7 +150,7 @@ int capture_special_exit;
 char cse_command[5120];
 char cse_message[5120];
 
-/* settings.mapper.txt options. */
+/* config.mapper.txt options. */
 int disable_swimming;
 int disable_wholist;
 int disable_alertness;
@@ -250,9 +252,18 @@ void link_to_area( ROOM_DATA *room, AREA_DATA *area )
    /* Link to an area. */
    if ( area )
      {
-	room->next_in_area = area->rooms;
-	area->rooms = room;
+	if ( area->last_room )
+	  {
+	     area->last_room->next_in_area = room;
+	     room->next_in_area = NULL;
+	  }
+	else
+	  {
+	     room->next_in_area = area->rooms;
+	     area->rooms = room;
+	  }
 	
+	area->last_room = room;
 	room->area = area;
      }
    else if ( current_area )
@@ -276,13 +287,22 @@ void unlink_from_area( ROOM_DATA *room )
    
    /* Unlink from area. */
    if ( room->area->rooms == room )
-     room->area->rooms = room->next_in_area;
+     {
+	room->area->rooms = room->next_in_area;
+	
+	if ( room->area->last_room == room )
+	  room->area->last_room = NULL;
+     }
    else
      for ( r = room->area->rooms; r; r = r->next_in_area )
        {
 	  if ( r->next_in_area == room )
 	    {
 	       r->next_in_area = room->next_in_area;
+	       
+	       if ( room->area->last_room == room )
+		 room->area->last_room = r;
+	       
 	       break;
 	    }
        }
@@ -371,23 +391,45 @@ AREA_DATA *create_area( )
 
 EXIT_DATA *create_exit( ROOM_DATA *room )
 {
-   EXIT_DATA *new_exit;
+   EXIT_DATA *new_exit, *e;
    
    new_exit = calloc( sizeof ( EXIT_DATA ), 1 );
    
    new_exit->vnum = -1;
    
-   /* If room is null, create in the global list. */
+   /* If room is null, create it in the global list. */
    if ( room )
      {
-	new_exit->next = room->special_exits;
-	room->special_exits = new_exit;
+	if ( room->special_exits )
+	  {
+	     e = room->special_exits;
+	     while ( e->next )
+	       e = e->next;
+	     e->next = new_exit;
+	  }
+	else
+	  {
+	     room->special_exits = new_exit;
+	  }
+	
+	new_exit->next = NULL;
 	new_exit->owner = room;
      }
    else
      {
-	new_exit->next = global_special_exits;
-	global_special_exits = new_exit;
+	if ( global_special_exits )
+	  {
+	     e = global_special_exits;
+	     while ( e->next )
+	       e = e->next;
+	     e->next = new_exit;
+	  }
+	else
+	  {
+	     global_special_exits = new_exit;
+	  }
+	
+	new_exit->next = NULL;
 	new_exit->owner = NULL;
      }
    
@@ -2503,6 +2545,266 @@ void save_map( char *file )
 
 
 
+void remake_vnum_exits( )
+{
+   ROOM_DATA *room;
+   int i;
+   
+   for ( room = world; room; room = room->next_in_world )
+     {
+	for ( i = 1; dir_name[i]; i++ )
+	  {
+	     if ( room->exits[i] )
+	       room->vnum_exits[i] = room->exits[i]->vnum;
+	  }
+     }
+}
+
+
+
+void write_string( char *string, FILE *fl )
+{
+   int len = 0;
+   
+   if ( !string )
+     {
+	fwrite( &len, sizeof( int ), 1, fl );
+	return;
+     }
+   
+   len = strlen( string ) + 1;
+   
+   fwrite( &len, sizeof( int ), 1, fl );
+   
+   fwrite( string, sizeof( char ), len, fl );
+}
+
+
+
+char *read_string( FILE *fl )
+{
+   char *string;
+   int len;
+   
+   fread( &len, sizeof( int ), 1, fl );
+   
+   if ( !len )
+     return NULL;
+   
+   string = malloc( len );
+   fread( string, sizeof( char ), len, fl );
+   
+   return string;
+}
+
+
+
+void save_binary_map( char *file )
+{
+   AREA_DATA *area;
+   ROOM_DATA *room;
+   EXIT_DATA *spexit;
+   ROOM_TYPE *type;
+   FILE *fl;
+   int nr;
+   
+   DEBUG( "save_binary_map" );
+   
+   fl = fopen( file, "w" );
+   
+   if ( !fl )
+     return;
+   
+   remake_vnum_exits( );
+   
+   /* Room Types. */
+   /* Format: int, N*ROOM_TYPE, ... */
+   
+   /* Count them. */
+   for ( nr = 0, type = room_types; type; type = type->next )
+     nr++;
+   
+   fwrite( &nr, sizeof( int ), 1, fl );
+   for ( type = room_types; type; type = type->next )
+     {
+	fwrite( type, sizeof( ROOM_TYPE ), 1, fl );
+	write_string( type->name, fl );
+	write_string( type->color, fl );
+     }
+   
+   /* Global Special Exits. */
+   /* Format: ..., int, N*EXIT_DATA, ... */
+   
+   /* Count them. */
+   for ( nr = 0, spexit = global_special_exits; spexit; spexit = spexit->next )
+     nr++;
+   
+   fwrite( &nr, sizeof( int ), 1, fl );
+   for ( spexit = global_special_exits; spexit; spexit = spexit->next )
+     {
+	fwrite( spexit, sizeof( EXIT_DATA ), 1, fl );
+	write_string( spexit->command, fl );
+	write_string( spexit->message, fl );
+     }
+   
+   /* Areas. */
+   /* Format: ..., int, N*[AREA_DATA, int, M*[...]]. */
+   
+   /* Count them. */
+   for ( nr = 0, area = areas; area; area = area->next )
+     nr++;
+   
+   fwrite( &nr, sizeof( int ), 1, fl );
+   for ( area = areas; area; area = area->next )
+     {
+	fwrite( area, sizeof( AREA_DATA ), 1, fl );
+	write_string( area->name, fl );
+	
+	/* Rooms. */
+	/* Format: int, M*[ROOM_DATA, int, P*EXIT_DATA] */
+	
+	for ( nr = 0, room = area->rooms; room; room = room->next_in_area )
+	  nr++;
+	
+	fwrite( &nr, sizeof( int ), 1, fl );
+	for ( room = area->rooms; room; room = room->next_in_area )
+	  {
+	     fwrite( room, sizeof( ROOM_DATA ), 1, fl );
+	     write_string( room->name, fl );
+	     if ( room->room_type )
+	       write_string( room->room_type->name, fl );
+	     
+	     /* Special Exits. */
+	     
+	     /* Count them. */
+	     for ( nr = 0, spexit = room->special_exits; spexit; spexit = spexit->next )
+	       nr++;
+	     
+	     fwrite( &nr, sizeof( int ), 1, fl );
+	     for ( spexit = room->special_exits; spexit; spexit = spexit->next )
+	       {
+		  fwrite( spexit, sizeof( EXIT_DATA ), 1, fl );
+		  write_string( spexit->command, fl );
+		  write_string( spexit->message, fl );
+	       }
+	  }
+     }
+   
+   fwrite( "x", sizeof( char ), 1, fl );
+   fclose( fl );
+}
+
+
+
+int load_binary_map( char *file )
+{
+   AREA_DATA area, *a;
+   ROOM_DATA room, *r;
+   EXIT_DATA spexit, *spe;
+   ROOM_TYPE type, *t;
+   FILE *fl;
+   char check, *type_name;
+   int types, areas, rooms, exits;
+   int i, j, k;
+   
+   DEBUG( "load_binary_map" );
+   
+   fl = fopen( file, "r" );
+   
+   if ( !fl )
+     return 1;
+   
+   /* Room Types. */
+   fread( &types, sizeof( int ), 1, fl );
+   for ( i = 0; i < types; i++ )
+     {
+	fread( &type, sizeof( ROOM_TYPE ), 1, fl );
+	
+	type.name = read_string( fl );
+	type.color = read_string( fl );
+	
+	add_room_type( type.name, type.color, type.cost_in, type.cost_out,
+		       type.must_swim, type.underwater );
+     }
+   
+   /* Global Special Exits. */
+   fread( &exits, sizeof( int ), 1, fl );
+   for ( i = 0; i < exits; i++ )
+     {
+	fread( &spexit, sizeof( EXIT_DATA ), 1, fl );
+	spe = create_exit( NULL );
+	
+	spe->alias = spexit.alias;
+	spe->vnum = spexit.vnum;
+	spe->command = read_string( fl );
+	spe->message = read_string( fl );
+     }
+   
+   /* Areas. */
+   fread( &areas, sizeof( int ), 1, fl );
+   for ( i = 0; i < areas; i++ )
+     {
+	fread( &area, sizeof( AREA_DATA ), 1, fl );
+	a = create_area( );
+	
+	a->disabled = area.disabled;
+	a->name = read_string( fl );
+	
+	current_area = a;
+	
+	/* Rooms. */
+	fread( &rooms, sizeof( int ), 1, fl );
+	for ( j = 0; j < rooms; j++ )
+	  {
+	     fread( &room, sizeof( ROOM_DATA ), 1, fl );
+	     r = create_room( room.vnum );
+	     
+	     r->underwater = room.underwater;
+	     memcpy( r->vnum_exits, room.vnum_exits, sizeof(int)*13 + sizeof(short)*13*5 );
+	     r->name = read_string( fl );
+	     
+	     if ( room.room_type )
+	       {
+		  type_name = read_string( fl );
+		  for ( t = room_types; t; t = t->next )
+		    if ( !strcmp( type_name, t->name ) )
+		      {
+			 r->room_type = t;
+			 break;
+		      }
+		  free( type_name );
+	       }
+	     
+	     /* Special Exits. */
+	     fread( &exits, sizeof( int ), 1, fl );
+	     for ( k = 0; k < exits; k++ )
+	       {
+		  fread( &spexit, sizeof( EXIT_DATA ), 1, fl );
+		  spe = create_exit( r );
+		  
+		  spe->alias = spexit.alias;
+		  spe->vnum = spexit.vnum;
+		  spe->command = read_string( fl );
+		  spe->message = read_string( fl );
+	       }
+	  }
+     }
+   
+   fread( &check, sizeof( char ), 1, fl );
+   
+   fclose( fl );
+   
+   if ( check != 'x' )
+     {
+	debugf( "The binary IMap file is corrupted!" );
+	return 1;
+     }
+   
+   return 0;
+}
+
+
+
 int check_map( )
 {
    DEBUG( "check_map" );
@@ -3255,27 +3557,49 @@ void show_path( ROOM_DATA *current )
 
 void i_mapper_module_init_data( )
 {
+   struct stat map, mapbin, mapper;
+   int binary;
+   
    DEBUG( "i_mapper_init_data" );
    
    null_room_type = add_room_type( "Unknown", get_color( "red" ), 1, 1, 0, 0 );
    add_room_type( "Undefined", get_color( "bright-red" ), 1, 1, 0, 0 );
    
    destroy_map( );
+   
+   /* Check if we have a binary map that is newer than the map and mapper. */
+   
+   if ( !stat( map_file_bin, &mapbin ) &&
+	!stat( map_file, &map ) &&
+	( !stat( "i_mapper.dll", &mapper ) ||
+	  !stat( "i_mapper.so", &mapper ) ) &&
+	mapbin.st_mtime > map.st_mtime &&
+	mapbin.st_mtime > mapper.st_mtime )
+     binary = 1;
+   else
+     binary = 0;
+   
    get_timer( );
-   if ( load_map( map_file ) )
+   
+   if ( binary ? load_binary_map( map_file_bin ) : load_map( map_file ) )
      {
 	destroy_map( );
 	mode = NONE;
 	return;
      }
-   else
+   
+   convert_vnum_exits( );
+   check_map( );
+   debugf( "%sIMap loaded. (%d microseconds)",
+	   binary ? "Binary " : "", get_timer( ) );
+   
+   if ( !binary )
      {
-	convert_vnum_exits( );
-	check_map( );
-	debugf( "Map loaded. (%d microseconds)", get_timer( ) );
+	debugf( "Generating binary map." );
+	save_binary_map( map_file_bin );
      }
    
-   load_settings( "settings.mapper.txt" );
+   load_settings( "config.mapper.txt" );
    
    mode = GET_UNLOST;
 }
@@ -4345,14 +4669,14 @@ void i_mapper_process_server_line_prefix( char *colorless_line, char *colorful_l
    DEBUG( "i_mapper_process_server_line_prefix" );
    
    if ( auto_walk &&
-	( !cmp( line, "You cannot move that fast, slow down!" ) ||
-	  !cmp( line, "Now now, don't be so hasty!" ) ) )
+	( !cmp( "You cannot move that fast, slow down!", line ) ||
+	  !cmp( "Now now, don't be so hasty!", line ) ) )
      {
 	gag_line( 1 );
 	gag_prompt( 1 );
      }
    
-   if ( auto_bump && !cmp( line, "There is no exit in that direction." ) )
+   if ( auto_bump && !cmp( "There is no exit in that direction.", line ) )
      {
 	gag_line( 1 );
 	gag_prompt( 1 );
@@ -4646,6 +4970,56 @@ int i_mapper_process_client_command( char *cmd )
 
 
 
+AREA_DATA *get_area_by_name( char *string )
+{
+   AREA_DATA *area = NULL, *a;
+   
+   if ( !string[0] )
+     {
+	if ( !current_area )
+	  {
+	     clientfr( "No current area set." );
+	     return NULL;
+	  }
+	else
+	  return current_area;
+     }
+   
+   for ( a = areas; a; a = a->next )
+     if ( case_strstr( a->name, string ) )
+       {
+	  if ( !area )
+	    area = a;
+	  else
+	    {
+	       /* More than one area of that name. */
+	       /* List them all, and return. */
+	       
+	       clientfr( "Multiple matches found:" );
+	       
+	       clientff( " - %s\r\n", area->name );
+	       clientff( " - %s\r\n", a->name );
+	       for ( area = a->next; area; area = area->next )
+		 if ( case_strstr( area->name, string ) )
+		   {
+		      clientff( " - %s\r\n", area->name );
+		   }
+	       
+	       return NULL;
+	    }
+       }
+   
+   if ( !area )
+     {
+	clientfr( "No area names match that." );
+	return NULL;
+     }
+   
+   return area;
+}
+
+
+
 /* Map commands. */
 
 void do_map( char *arg )
@@ -4804,6 +5178,12 @@ void do_map_none( char *arg )
 
 void do_map_save( char *arg )
 {
+   if ( !strcmp( arg, "binary" ) )
+     {
+	save_binary_map( map_file_bin );
+	return;
+     }
+   
    if ( areas )
      save_map( map_file );
    else
@@ -4818,7 +5198,7 @@ void do_map_load( char *arg )
    
    destroy_map( );
    get_timer( );
-   if ( load_map( map_file ) )
+   if ( !strcmp( arg, "binary" ) ? load_binary_map( map_file_bin ) : load_map( map_file ) )
      {
 	destroy_map( );
 	clientfr( "Couldn't load map." );
@@ -4831,7 +5211,7 @@ void do_map_load( char *arg )
 	sprintf( buf, "Vnum exits converted. (%d microseconds)", get_timer( ) );
 	clientfr( buf );
 	check_map( );
-	load_settings( "settings.mapper.txt" );
+	load_settings( "config.mapper.txt" );
 	
 	mode = GET_UNLOST;
      }
@@ -5106,7 +5486,7 @@ void do_map_config( char *arg )
    
    if ( !strcmp( option, "save" ) )
      {
-	if ( save_settings( "settings.mapper.txt" ) )
+	if ( save_settings( "config.mapper.txt" ) )
 	  clientfr( "Unable to open the file for writing." );
 	else
 	  clientfr( "All settings saved." );
@@ -5114,7 +5494,7 @@ void do_map_config( char *arg )
      }
    else if ( !strcmp( option, "load" ) )
      {
-	if ( load_settings( "settings.mapper.txt" ) )
+	if ( load_settings( "config.mapper.txt" ) )
 	  clientfr( "Unable to open the file for reading." );
 	else
 	  clientfr( "All settings reloaded." );
@@ -5272,9 +5652,16 @@ void do_map_orig( char *arg )
 void do_map_file( char *arg )
 {
    if ( !arg[0] )
-     strcpy( map_file, "IMap" );
+     {
+	strcpy( map_file, "IMap" );
+	strcpy( map_file, "IMap.bin" );
+     }
    else
-     strcpy( map_file, arg );
+     {
+	strcpy( map_file, arg );
+	strcpy( map_file_bin, arg );
+	strcat( map_file_bin, ".bin" );
+     }
    
    clientff( C_R "[File for map load/save set to '%s'.]\r\n" C_0, map_file );
 }
@@ -5698,13 +6085,8 @@ void do_area_info( char *arg )
 
 void do_area_off( char *arg )
 {
+   AREA_DATA *area;
    char buf[256];
-   
-   if ( !current_area )
-     {
-	clientfr( "No current area set." );
-	return;
-     }
    
    if ( mode != CREATING )
      {
@@ -5712,12 +6094,17 @@ void do_area_off( char *arg )
 	return;
      }
    
-   current_area->disabled = current_area->disabled ? 0 : 1;
+   area = get_area_by_name( arg );
    
-   if ( current_area->disabled )
-     sprintf( buf, "Pathfinding in '%s' disabled.", current_area->name );
+   if ( !area )
+     return;
+   
+   area->disabled = area->disabled ? 0 : 1;
+   
+   if ( area->disabled )
+     sprintf( buf, "Pathfinding in '%s' disabled.", area->name );
    else
-     sprintf( buf, "Pathfinding in '%s' re-enabled.", current_area->name );
+     sprintf( buf, "Pathfinding in '%s' re-enabled.", area->name );
    
    clientfr( buf );
 }
@@ -6012,50 +6399,16 @@ void do_room_destroy( char *arg )
 
 void do_room_list( char *arg )
 {
+   AREA_DATA *area;
    ROOM_DATA *room;
    char buf[256];
    
-   if ( !current_area && !arg[0] )
-     {
-	clientfr( "No current area set." );
-	return;
-     }
+   area = get_area_by_name( arg );
    
-   if ( arg[0] )
-     {
-	AREA_DATA *area = NULL, *a;
-	
-	for ( a = areas; a; a = a->next )
-	  if ( case_strstr( a->name, arg ) )
-	    {
-	       if ( !area )
-		 area = a;
-	       else
-		 {
-		    /* More than one area of that name. */
-		    /* List them all, and return. */
-		    
-		    clientfr( "Multiple matches found:" );
-		    for ( area = areas; area; area = area->next )
-		      if ( case_strstr( area->name, arg ) )
-			{
-			   clientff( " - %s\r\n", area->name );
-			}
-		    
-		    return;
-		 }
-	    }
-	
-	if ( !area )
-	  {
-	     clientfr( "No area names match that." );
-	     return;
-	  }
-	
-	room = area->rooms;
-     }
-   else
-     room = current_area->rooms;
+   if ( !area )
+     return;
+   
+   room = area->rooms;
    
    clientff( C_R "[Rooms in " C_B "%s" C_R "]\r\n" C_0,
 	     room->area->name );
@@ -6724,12 +7077,16 @@ void do_landmarks( char *arg )
    ROOM_DATA *room;
    char buf[256];
    int first;
+   int found = 0;
    
    clientfr( "Landmarks throughout the world:" );
    
    for ( area = areas; area; area = area->next )
      {
 	first = 1;
+	
+	if ( !found )
+	  found = 1;
 	
 	for ( room = area->rooms; room; room = room->next_in_area )
 	  {
@@ -6751,6 +7108,9 @@ void do_landmarks( char *arg )
 	     clientf( buf );
 	  }
      }
+   
+   if ( !found )
+     clientf( "None defined, use the 'room mark' command to add some." );
    
    clientf( "\r\n" );
 }
