@@ -49,58 +49,61 @@ C fitness      "fitness"           none
 # Affliction Table.
 
 # Name                  Herb, smoke, salve     Fcs Prg  Special      Diagnosis
+
+
 #  Herbs.
 A "madness"             n/a laurel n/a         no  no   n/a          "hearing whispers of madness."
 A "stupidity"           orphine n/a n/a        yes no   n/a          "unnaturally stupid."
 A "hellsight"           n/a laurel n/a         no  no   n/a          "catching glimpses of Hell."
 A "hypochondria"        kelp n/a n/a           no  no   n/a          "a certified hypochondriac."
 A "anorexia"            n/a n/a epidermal      yes no   n/a          "anorexic."
-A "asthma"              kelp n/a n/a           no  yes  fitness      "afflicted by horrible asthma."
-A "slickness"           maidenhair lovage n/a  no  no   n/a          "extremely oily."
+A "asthma"              kelp n/a n/a           no  yes  n/a          "afflicted by horrible asthma."
+A "slickness"           maidenhair lovage n/a  no  yes  n/a          "extremely oily."
+A "paralysis"           maidenhair n/a n/a     no  yes  n/a          "paralysed."
+A "disloyalty"          n/a lovage n/a         no  yes  n/a          "inspiring disloyalty in those nearby."
 A "fear"                n/a n/a n/a            no  no   compose      "afflicted by fear."
 A "dissonance"          mandrake n/a n/a       no  no   n/a          "has a dissonant nature."
 A "equilloss"           n/a n/a n/a            no  no   concentrate  "---"
 A "mana-leech"          n/a lovage n/a         no  no   n/a          "a victim of manaleech."
-A "recklessness"        mandrake n/a n/a       no  no   n/a          "reckless."
-A "herbs-reject"        nightshade n/a n/a     no  no   n/a          "unable to digest herbs properly."
-A "sunlight-allergy"    nightshade n/a n/a     no  no   n/a          "allergic to sunlight."
-A "paralysis"           maidenhair n/a n/a     no  yes  n/a          "paralysed."
+A "recklessness"        mandrake n/a n/a       yes no   n/a          "reckless."
+A "herbs-reject"        nightshade n/a n/a     no  yes  n/a          "unable to digest herbs properly."
+A "sunlight-allergy"    nightshade n/a n/a     no  yes  n/a          "allergic to sunlight."
 A "clumsiness"          kelp n/a n/a           no  yes  n/a          "afflicted with clumsiness."
 A "left-leg-paralysis"  maidenhair n/a n/a     no  no   n/a          "has a paralysed left leg."
 A "right-leg-paralysis" maidenhair n/a n/a     no  no   n/a          "has a paralysed right leg."
-A "left-arm-paralysis"  maidenhair n/a n/a     no  no   n/a          "has a paralysed left arm."
-A "right-arm-paralysis" maidenhair n/a n/a     no  no   n/a          "has a paralysed right arm."
+A "left-arm-paralysis"  maidenhair n/a n/a     no  yes  n/a          "has a paralysed left arm."
+A "right-arm-paralysis" maidenhair n/a n/a     no  yes  n/a          "has a paralysed right arm."
 A "cyanide"             n/a n/a n/a            no  yes  immunity     "suffering from cyanide."
 A "weakness"            kelp n/a n/a           yes yes  n/a          "wearied in body."
 A "sensitivity"         maidenhair n/a n/a     no  yes  n/a          "sensitive to pain."
-A "salves-slow"         kelp n/a n/a           no  no   n/a          "afflicted with poor salve absorption."
+A "salves-slow"         kelp n/a n/a           no  yes  n/a          "afflicted with poor salve absorption."
 A "generosity"          galingale n/a n/a      no  no   n/a
-A "confusion"           wormwood n/a n/a       no  no   n/a          "confused."
+A "confusion"           wormwood n/a n/a       yes no   n/a          "confused."
 A "haemophilia"         nightshade n/a n/a     no  no   n/a          "afflicted by thin blood."
 A "health-leech"        kelp n/a n/a           no  no   n/a          "a victim of healthleech."
-A "hypersomnia"         wormwood n/a n/a       no  no   n/a          "hypersomnic."
+A "hypersomnia"         wormwood n/a n/a       yes no   n/a          "hypersomnic."
 A "masochism"           orphine n/a n/a        yes no   n/a          "masochistic."
 A "dizziness"           mandrake n/a n/a       yes no   n/a          "overcome by dizziness."
 A "peace"               galingale n/a n/a      no  no   n/a          "feeling unnaturally tranquil."
 A "pacifism"            galingale n/a n/a      no  no   n/a          "pacified."
-A "hallucinations"      wormwood n/a n/a       no  no   n/a          "hallucinating."
+A "hallucinations"      wormwood n/a n/a       yes no   n/a          "hallucinating."
 A "impatience"          mandrake n/a n/a       no  no   n/a          "impatient."
-A "paranoia"            wormwood n/a n/a       no  no   n/a          "paranoid."
+A "paranoia"            wormwood n/a n/a       yes no   n/a          "paranoid."
 A "justice"             galingale n/a n/a      no  no   n/a          "surrounded by the aura of justice."
 A "lovers"              galingale n/a n/a      no  no   n/a          "Desperately in love with *."
 A "dementia"            wormwood n/a n/a       no  no   n/a          "demented."
 A "claustrophobia"      orphine n/a n/a        yes no   n/a          "claustrophobic."
-A "agoraphobia"         orphine n/a n/a        no  no   n/a
+A "agoraphobia"         orphine n/a n/a        yes no   n/a
 A "vertigo"             orphine n/a n/a        yes no   n/a          "afraid of heights."
 A "shyness"             mandrake n/a n/a       yes no   n/a          "afflicted by unbearable shyness."
 A "nausea"              nightshade n/a n/a     no  yes  n/a          "violently ill."
-A "deadening"           mandrake n/a n/a       no  no   n/a          "of a deadened mind."
+A "deadening"           mandrake n/a n/a       yes no   n/a          "of a deadened mind."
 A "lethargy"            nightshade n/a n/a     no  no   n/a          "feeling rather lethargic."
 #  Unknown.
 A "addiction"           nightshade n/a n/a     no  no   n/a
 A "larkspur"            mandrake n/a n/a       no  no   n/a
 A "berserking"          orphine n/a n/a        no  no   n/a
-A "loneliness"          orphine n/a n/a        no  no   n/a          "very lonely."
+A "loneliness"          orphine n/a n/a        yes no   n/a          "very lonely."
 A "scytherus"           nightshade n/a n/a     no  no   n/a
 #  Salves.
 A "herbs-slow"          n/a n/a epidermal      no  no   n/a          "afflicted with slow herb digestion."
