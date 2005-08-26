@@ -29,6 +29,7 @@
 #include <stdarg.h>	/* For variable argument functions */
 #include <signal.h>	/* For signal() */
 #include <time.h>	/* For time() */
+#include <sys/stat.h>	/* For stat() */
 
 #include "header.h"
 
@@ -192,7 +193,7 @@ char *log_file = "log.txt";
 char server_hostname[1024];
 char client_hostname[1024];
 
-/* Options from modules.txt */
+/* Options from config.txt */
 char default_host[512];
 int default_port;
 char atcp_login_as[512];
@@ -521,6 +522,94 @@ void update_modules( )
 
 
 
+void write_mod( char *file_name, char *type, FILE *fl )
+{
+   char buf[256];
+   struct stat buf2;
+   
+   sprintf( buf, "./%s.%s", file_name, type );
+   
+   if ( stat( buf, &buf2 ) )
+     fprintf( fl, "#" );
+   
+   fprintf( fl, "%s \"%s\"\n", type, buf );
+}
+
+
+
+void generate_config( char *file_name )
+{
+   FILE *fl;
+   struct stat buf;
+   char *type;
+   
+   if ( !stat( file_name, &buf ) )
+     return;
+   
+   debugf( "No configuration file found, generating one." );
+   
+   fl = fopen( file_name, "w" );
+   
+   if ( !fl )
+     {
+	debugerr( file_name );
+	return;
+     }
+   
+   fprintf( fl, "# MudBot configuration file.\n"
+	    "# Uncomment (i.e. remove the '#' before) anything you want to be parsed.\n\n\n" );
+   
+   fprintf( fl, "# Ports to listen on. They can be as many as you want. \"default\" is 123.\n\n"
+	    "# These will accept connections only from localhost.\n"
+	    "allow_foreign_connections \"no\"\n\n"
+	    "listen_on \"default\"\n"
+	    "#listen_on \"23\"\n\n"
+	    "# And anyone can connect to these.\n"
+	    "allow_foreign_connections \"yes\"\n\n"
+	    "#listen_on \"1523\"\n\n\n" );
+   
+   fprintf( fl, "# If these are commented or left empty, MudBot will ask the user where to connect.\n\n"
+	    "host \"imperian.com\"\n"
+	    "port \"23\"\n\n\n" );
+   
+   fprintf( fl, "# Name to use on ATCP authentication. To disable ATCP use \"none\".\n"
+	    "# To login as \"MudBot <actual version>\" use \"default\" or leave it empty.\n\n"
+	    "atcp_login_as \"default\"\n"
+	    "#atcp_login_as \"Nexus 3.0.1\"\n"
+	    "#atcp_login_as \"JavaClient 2.4.8\"\n\n\n" );
+   
+   fprintf( fl, "# Mud Client Compression Protocol.\n\n"
+	    "disable_mccp \"no\"\n\n\n" );
+   
+   fprintf( fl, "# Autologin. Requires ATCP.\n"
+	    "# Keep your password here at your own risk! Better just leave these empty.\n\n"
+	    "user \"\"\n"
+	    "pass \"\"\n\n\n" );
+   
+   fprintf( fl, "# Read and parse these files too.\n\n"
+	    "include \"user.txt\"\n\n\n\n" );
+   
+#if defined( FOR_WINDOWS )
+   fprintf( fl, "# Windows modules: Dynamic loaded libraries.\n\n" );
+   type = "dll";
+#else
+   fprintf( fl, "# Linux modules: Shared object files.\n\n" );
+   type = "so";
+#endif
+   
+   write_mod( "imperian", type, fl );
+   write_mod( "i_mapper", type, fl );
+   write_mod( "i_offense", type, fl );
+   write_mod( "mmchat", type, fl );
+   write_mod( "voter", type, fl );
+   
+   fprintf( fl, "\n" );
+   
+   fclose( fl );
+}
+
+
+
 void read_config( char *file_name, int silent )
 {
    FILE *fl;
@@ -535,14 +624,6 @@ void read_config( char *file_name, int silent )
    DEBUG( "read_config" );
    
    fl = fopen( file_name, "r" );
-   
-   if ( !fl )
-     {
-	strcpy( buf, file_name );
-	strcat( buf, ".txt" );
-	
-	fl = fopen( buf, "r" );
-     }
    
    if ( !fl )
      {
@@ -998,7 +1079,9 @@ void modules_register( )
 {
    MODULE *mod;
    
-   read_config( "modules", 0 );
+   generate_config( "config.txt" );
+   
+   read_config( "config.txt", 0 );
    load_builtin_modules( );
    
    DEBUG( "modules_register" );
@@ -1373,24 +1456,6 @@ void logff( char *type, char *string, ... )
    fclose( fl );
 }
 
-
-
-void start_log( )
-{
-   FILE *fl;
-   
-   fl = fopen( log_file, "r" );
-   
-   if ( fl )
-     {
-	debugf( "Log file found! Logging everything in it." );
-	logging = 1;
-	logff( NULL, "-= LOG STARTED =-" );
-	fclose( fl );
-     }
-   else
-     logging = 0;
-}
 
 
 void log_bytes( char *type, char *string, int bytes )
@@ -2943,35 +3008,21 @@ void process_client_line( char *buf )
 #endif
 	else if ( !strncmp( buf, "`license", 8 ) )
 	  {
-	     if ( !strcmp( buf, "`license w" ) )
-	       {
-		  
-		  
-	       }
-	     else if ( !strcmp( buf, "`license c" ) )
-	       {
-		  
-		  
-		  
-	       }
-	     else
-	       {
-		  clientf( C_W " Copyright (C) 2004, 2005  Andrei Vasiliu\r\n"
-			   "\r\n"
-			   " This program is free software; you can redistribute it and/or modify\r\n"
-			   " it under the terms of the GNU General Public License as published by\r\n"
-			   " the Free Software Foundation; either version 2 of the License, or\r\n"
-			   " (at your option) any later version.\r\n"
-			   "\r\n"
-			   " This program is distributed in the hope that it will be useful,\r\n"
-			   " but WITHOUT ANY WARRANTY; without even the implied warranty of\r\n"
-			   " MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\r\n"
-			   " GNU General Public License for more details.\r\n"
-			   "\r\n"
-			   " You should have received a copy of the GNU General Public License\r\n"
-			   " along with this program; if not, write to the Free Software\r\n"
-			   " Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA\r\n" C_0 );
-	       }
+	     clientf( C_W " Copyright (C) 2004, 2005  Andrei Vasiliu\r\n"
+		      "\r\n"
+		      " This program is free software; you can redistribute it and/or modify\r\n"
+		      " it under the terms of the GNU General Public License as published by\r\n"
+		      " the Free Software Foundation; either version 2 of the License, or\r\n"
+		      " (at your option) any later version.\r\n"
+		      "\r\n"
+		      " This program is distributed in the hope that it will be useful,\r\n"
+		      " but WITHOUT ANY WARRANTY; without even the implied warranty of\r\n"
+		      " MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\r\n"
+		      " GNU General Public License for more details.\r\n"
+		      "\r\n"
+		      " You should have received a copy of the GNU General Public License\r\n"
+		      " along with this program; if not, write to the Free Software\r\n"
+		      " Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA\r\n" C_0 );
 	  }
 	else if ( !strcmp( buf, "`ptime" ) )
 	  {
@@ -2989,6 +3040,21 @@ void process_client_line( char *buf )
 	else if ( !strcmp( buf, "`id" ) )
 	  {
 	     module_show_id( );
+	  }
+	else if ( !strcmp( buf, "`log" ) )
+	  {
+	     if ( logging )
+	       {
+		  clientfb( "Logging stopped." );
+		  logff( NULL, "-= LOG ENDED =-" );
+		  logging = 0;
+	       }
+	     else
+	       {
+		  logging = 1;
+		  logff( NULL, "-= LOG STARTED =-" );
+		  clientfb( "Logging started." );
+	       }
 	  }
 	else if ( !strcmp( buf, "`help" ) )
 	  {
@@ -3662,9 +3728,6 @@ void mudbot_init( int port )
 {
    default_listen_port = port;
    
-   /* Check if a log file exists. */
-   start_log( );
-   
    /* Load all modules, and register them. */
    modules_register( );
    
@@ -3868,9 +3931,6 @@ int main( int argc, char **argv )
      {
 	/* Signal handling. */
 	signal( SIGSEGV, sig_segv_handler );
-	
-	/* Check if a log file exists. */
-	start_log( );
 	
 	/* Load and register all modules. */
 	modules_register( );
