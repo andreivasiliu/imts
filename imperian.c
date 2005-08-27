@@ -2541,7 +2541,7 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
 	  }
 	if ( !cmp( "Your only working arm is off-balance.", line ) )
 	  {
-	     balance_left_arm = 0;
+	     balance_left_arm = 1;
 	     balance_right_arm = 0;
 	  }
 	if ( !cmp( "You are asleep and can do nothing. WAKE will attempt to wake you.", line ) )
