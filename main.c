@@ -2542,7 +2542,7 @@ void handle_atcp( char *msg )
 #if defined( FOR_WINDOWS )
 	void win_composer_contents( char *string );
 	
-	if ( body[0] )
+	if ( body && body[0] )
 	  {
 	     clientf( "\r\n" );
 	     clientfb( "Composer's contents received. Type `edit and load the buffer." );
