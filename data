@@ -453,6 +453,7 @@ A "something"           n/a n/a n/a            no  no   n/a          "---"
 
 
 # Chills.
+"* opens ^ maw and exhales a blast of frigidly cold air on you." chills give
 "You feel the strength ebb from your body as the cold takes its toll." chills give
 "*you, sending a strange chill deep into your bones." chills give
 "* sends the cold of the grave to freeze you." chills give
@@ -461,10 +462,7 @@ A "something"           n/a n/a n/a            no  no   n/a          "---"
 "A feeling of comfortable warmth spreads over you." chills cure X S
 "You concentrate for a moment and a feeling of comfortable warmth fills you." chills cure X S
 "Though still shivering, you are no longer gripped in icy paralysis." chills give X S
-#"A feeling of comfortable warmth spreads over you."
-#"blasts you with cold, frigid air"
 #"blows a chill breath at you"
-#"exhales a blast of frigidly cold air on you"
 #"gestures grandly, and causes a deepfreeze to settle over"
 #"raises a hand towards you and blasts you with cold"
 
