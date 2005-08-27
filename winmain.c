@@ -155,6 +155,14 @@ void win_sig_segv_handler( int sig )
    extern char *debug[6];
    int i;
    
+   if ( logging )
+     {
+	debugf( "Segmentation fault received!" );
+	debugf( "History:" );
+	for ( i = 0; i < 6 && debug[i]; i++ )
+	  debugf( " (%d) %s", i, debug[i] );
+     }
+   
    fl = fopen( "crash.log", "w" );
    
    if ( !fl )
@@ -162,16 +170,12 @@ void win_sig_segv_handler( int sig )
    
    fprintf( fl, "History:\r\n" );
    
-   for ( i = 0; i < 6; i++ )
-     {
-        if ( !debug[i] )
-	  break;
-        fprintf( fl, " (%d) %s\r\n", i, debug[i] );
-     }
+   for ( i = 0; i < 6 && debug[i]; i++ )
+     fprintf( fl, " (%d) %s\r\n", i, debug[i] );
    
    fclose( fl );
    
-   MessageBox( NULL, "File 'crash.log' written.", "MudBot", 0 );
+   MessageBox( NULL, "Segmentation Fault signal! File 'crash.log' written.", "MudBot", 0 );
    exit( 1 );
 }
 
@@ -607,6 +611,8 @@ void MakeTrayTooltip( char *buf )
 	    server ? ( server_hostname[0] ? server_hostname : "unknown" ) : "not connected" );
    buf[63] = 0;
 }
+
+
 
 void Iconize( )
 {
