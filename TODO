@@ -3,6 +3,23 @@ OVERALL
 
 - Make it all work well. :)
 
+
+High Priority
+=============
+
+- Windows crash report.
+- do_before's and do_after's.
+- Time args for prompt.
+- Client/Server host fix.
+- Empty Composer contents.
+- MXP tags around Exits/Room title.
+- Player locations.
+
+
+
+Low Priority
+============
+
 IMPERIAN
 ========
 
@@ -13,29 +30,18 @@ IMPERIAN
 - Fix Defense pipe refilling.
 - Timer on Pipes.
 - "The salve fizzles away without effect."
-
 - Blackout trips.
 
 IMAPPER
 =======
 
-- Fix open door.
 - Customizable colors.
 - Personal rooms, stored in a personal map file.
 - NPC says before room titles need to be fixed.
-* Enable/Disable prefix/suffix.
-* Landmarks.
-- Composer gather.
-- MCCP disable on quit.
-- Windows crash report.
-- Area Off.
-- do_before's and do_after's.
-- Time args for prompt.
-- CVS Info.
-
-
 
 IOFFENSE
 ========
 
-- Nothing!
+- More support for RegEx triggers.
+- A better, hopefully expandable parsing system.
+
