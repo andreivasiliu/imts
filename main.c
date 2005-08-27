@@ -1062,6 +1062,10 @@ void load_module( char *name )
    else
      clientfb( "Eh, or not." );
    
+   /* Make sure it knows and initializes MXP. */
+   if ( module->mxp_enabled && client && mxp_enabled )
+     (module->mxp_enabled)( );
+   
    sprintf( buf, "Module %s has been loaded.", module->name );
    clientfb( buf );
    
@@ -1649,8 +1653,9 @@ void assign_server( int fd )
 	else
 	  {
 	     server->fd = fd;
-	     update_descriptors( );
 	  }
+	
+	update_descriptors( );
      }
    else if ( fd )
      {
@@ -1686,8 +1691,9 @@ void assign_client( int fd )
 	else
 	  {
 	     client->fd = fd;
-	     update_descriptors( );
 	  }
+	
+	update_descriptors( );
      }
    else if ( fd )
      {
@@ -2536,10 +2542,13 @@ void handle_atcp( char *msg )
 #if defined( FOR_WINDOWS )
 	void win_composer_contents( char *string );
 	
-	clientf( "\r\n" );
-	clientfb( "Composer's contents received. Type `edit and load the buffer." );
-	show_prompt( );
-	win_composer_contents( body );
+	if ( body[0] )
+	  {
+	     clientf( "\r\n" );
+	     clientfb( "Composer's contents received. Type `edit and load the buffer." );
+	     show_prompt( );
+	     win_composer_contents( body );
+	  }
 #endif
      }
    
@@ -2827,16 +2836,16 @@ int mxp_tag( int tag )
    if ( !mxp_enabled )
      return 0;
    
-   if ( tag == TAG_NOTHING )
-     return default_mxp_mode;
-   
-   if ( tag < 0 )
+   if ( tag == TAG_DEFAULT )
      {
 	if ( default_mxp_mode )
 	  tag = default_mxp_mode;
 	else
 	  tag = 7;
      }
+   
+   if ( tag == TAG_NOTHING || tag < 0 )
+     return default_mxp_mode;
    
    clientff( "\33[%dz", tag );
    return 1;
@@ -3445,16 +3454,6 @@ void process_buffer( char *raw_buf, int bytes )
 	     in_iac = 0;
 	     last_line[last_pos] = buf[i];
 	     last_line[++last_pos] = 0;
-	     
-	     if ( strstr( last_line, "Auth.Request ON" ) )
-	       {
-		  const char sb_atcp[] = { IAC, SB, ATCP, 0 };
-		  const char se[] = { IAC, SE, 0 };
-		  char buf[256];
-		  sprintf( buf, "%s" "login whyte deltalink" "%s",
-			   sb_atcp, se );
-		  send_to_server( buf );
-	       }
 	     
 	     clientf( last_line );
 	     
