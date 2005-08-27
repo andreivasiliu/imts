@@ -92,6 +92,8 @@ struct room_data
    ROOM_DATA *pf_parent;
    ROOM_DATA *next_in_pfno;
    ROOM_DATA *next_in_pfco;
+   
+   char *person_here;
 };
 
 /* Area structure. */

@@ -149,6 +149,8 @@ int locate_arena;
 int capture_special_exit;
 char cse_command[5120];
 char cse_message[5120];
+int close_rmtitle_tag;
+int similar;
 
 /* config.mapper.txt options. */
 int disable_swimming;
@@ -156,6 +158,8 @@ int disable_wholist;
 int disable_alertness;
 int disable_locating;
 int disable_areaname;
+int disable_mxp_title;
+int disable_mxp_map;
 
 
 char *dash_command;
@@ -798,16 +802,9 @@ void set_reverse( ROOM_DATA *source, int dir, ROOM_DATA *destination )
 }
 
 
-void parse_room( char *line, char *raw_line )
+void parse_pre_room( char *line, char *raw_line )
 {
-   ROOM_DATA *new_room;
-   int created = 0;
-   int similar = 0;
-   int q, i;
-   
-   DEBUG( "parse_room" );
-   
-   /* Room title check. */
+   similar = 0;
    
    if ( !parsing_room )
      {
@@ -831,20 +828,41 @@ void parse_room( char *line, char *raw_line )
 	  }
      }
    
+   if ( parsing_room == 1 && line[0] && !disable_mxp_title )
+     {
+	if ( mxp_tag( TAG_TEMP_SECURE ) )
+	  {
+	     mxp( "<RmTitle>" );
+	     close_rmtitle_tag = 1;
+	  }
+     }
+}
+
+
+void parse_room( char *line, char *raw_line )
+{
+   ROOM_DATA *new_room;
+   int created = 0;
+   int q, i;
+   
+   DEBUG( "parse_room" );
+   
+   /* Room title check. */
+   
+   /* Moved from here to parse_pre_room( ). */
+   
    if ( !parsing_room )
      return;
-   
-//   debugf( "Room!" );
    
    /* Stage one, room name. */
    if ( parsing_room == 1 )
      {
-	if ( line[0] == '\0' )
-	  {
-	     /* Room name is after a newline. (ex: swim look) */
-	     /* Leave parsing_room as 1. */
-	     return;
-	  }
+	/* Room name is after a newline. (e.g. title after a swim) */
+	/* Leave parsing_room as 1. */
+	if ( !line[0] )
+	  return;
+	
+//	debugf( "Room!" );
 	
 	/* Return if it looks too weird to be a room title. */
 	if ( ( line[0] < 'A' || line[0] > 'Z' ) &&
@@ -1800,7 +1818,7 @@ void show_map_new( ROOM_DATA *room )
    
    
    /* Are we able to get a SECURE mode on MXP? */
-   if ( mxp_tag( TAG_SECURE ) )
+   if ( !disable_mxp_map && mxp_tag( TAG_LOCK_SECURE ) )
      use_mxp = 1;
    
    /* Upper banner. */
@@ -1864,9 +1882,14 @@ void show_map_new( ROOM_DATA *room )
 			    
 			    if ( use_mxp )
 			      {
-				 sprintf( vnum_buf, "<mpelm v=%d r=\"%s\" t=\"%s\">",
-					  map_new[x][y].room->vnum, map_new[x][y].room->name,
-					  map_new[x][y].room->room_type->name );
+				 if ( map_new[x][y].room->person_here )
+				   sprintf( vnum_buf, "<mppers v=%d r=\"%s\" t=\"%s\" p=\"%s\">",
+					    map_new[x][y].room->vnum, map_new[x][y].room->name,
+					    map_new[x][y].room->room_type->name, map_new[x][y].room->person_here );
+				 else
+				   sprintf( vnum_buf, "<mpelm v=%d r=\"%s\" t=\"%s\">",
+					    map_new[x][y].room->vnum, map_new[x][y].room->name,
+					    map_new[x][y].room->room_type->name );
 				 s = vnum_buf;
 				 while( *s )
 				   *(p++) = *(s++);
@@ -1874,6 +1897,8 @@ void show_map_new( ROOM_DATA *room )
 			    
 			    if ( map_new[x][y].room == current_room )
 			      s = C_B "*";
+			    else if ( map_new[x][y].room->person_here )
+			      s = C_Y "*";
 			    else if ( map_new[x][y].in_out )
 			      s = C_r "o";
 			    else if ( use_mxp )
@@ -1883,10 +1908,15 @@ void show_map_new( ROOM_DATA *room )
 			    while( *s )
 			      *(p++) = *(s++);
 			    
-			    sprintf( vnum_buf, "</mpelm>" );
-			    s = vnum_buf;
-			    while( *s )
-			      *(p++) = *(s++);
+			    if ( use_mxp )
+			      {
+				 if ( map_new[x][y].room->person_here )
+				   s = "</mppers>";
+				 else
+				   s = "</mpelm>";
+				 while( *s )
+				   *(p++) = *(s++);
+			      }
 			    
 			    if ( !map_new[x][y].room->underwater )
 			      s = map_new[x][y].color;
@@ -2313,6 +2343,8 @@ int save_settings( char *file )
    fprintf( fl, "Disable-Alertness %s\r\n", disable_alertness ? "yes" : "no" );
    fprintf( fl, "Disable-Locating %s\r\n", disable_locating ? "yes" : "no" );
    fprintf( fl, "Disable-AreaName %s\r\n", disable_areaname ? "yes" : "no" );
+   fprintf( fl, "Disable-MXPTitle %s\r\n", disable_mxp_title ? "yes" : "no" );
+   fprintf( fl, "Disable-MXPMap %s\r\n", disable_mxp_map ? "yes" : "no" );
    
    /* Save all landmarks. */
    
@@ -2426,6 +2458,26 @@ int load_settings( char *file )
 	       disable_areaname = 1;
 	     else if ( !strcmp( value, "no" ) )
 	       disable_areaname = 0;
+	     else
+	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
+	  }
+	
+	else if ( !strcmp( option, "Disable-MXPTitle" ) )
+	  {
+	     if ( !strcmp( value, "yes" ) )
+	       disable_mxp_title = 1;
+	     else if ( !strcmp( value, "no" ) )
+	       disable_mxp_title = 0;
+	     else
+	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
+	  }
+	
+	else if ( !strcmp( option, "Disable-MXPMap" ) )
+	  {
+	     if ( !strcmp( value, "yes" ) )
+	       disable_mxp_map = 1;
+	     else if ( !strcmp( value, "no" ) )
+	       disable_mxp_map = 0;
 	     else
 	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
 	  }
@@ -3597,8 +3649,13 @@ void show_path( ROOM_DATA *current )
 
 void i_mapper_mxp_enabled( )
 {
-   mxp_tag( TAG_TEMP_SECURE );
-   mxp( "<!element mpelm '<send \"map path &v;|room look &v;\" hint=\"&r;|Vnum: &v;|Type: &t;\">' ATT='v r t'>" );
+   mxp_tag( TAG_LOCK_SECURE );
+   mxp( "<!element mpelm '<send \"map path &v;|room look &v;\" "
+	"hint=\"&r;|Vnum: &v;|Type: &t;\">' ATT='v r t'>" );
+   mxp( "<!element mppers '<send \"map path &v;|room look &v;|who &p;\" "
+	"hint=\"&p; (&n;)|Vnum: &v;|Type: &t;|Player: &p;\">' ATT='v r t p'>" );
+   mxp( "<!element RmTitle TAG='RoomName'>" );
+   mxp_tag( TAG_DEFAULT );
 }
 
 
@@ -3725,7 +3782,7 @@ void mark_player( ROOM_DATA *room, char *name )
 	room->person_here = strdup( name );
      }
    else
-     room->person_here = strdup( "Unknown Player Name" );
+     room->person_here = strdup( "Someone" );
    
    add_timer( "remove_players", 5, remove_players, 0, 0, 0 );
 }
@@ -3865,6 +3922,8 @@ void parse_msense( char *line )
 
 void parse_window( char *line )
 {
+   char name[256];
+   
    DEBUG( "parse_window" );
    
    if ( strncmp( line, "You see that ", 12 ) )
@@ -3877,7 +3936,9 @@ void parse_window( char *line )
    
    line += 7;
    
-   locate_room( line, 1, NULL );
+   get_string( line + 12, name, 256 );
+   
+   locate_room( line, 1, name );
 }
 
 
@@ -3895,6 +3956,7 @@ void parse_scent( char *line )
 void parse_scry( char *line )
 {
    char buf[256];
+   char name[256];
    
    DEBUG( "parse_scry" );
    
@@ -3909,10 +3971,10 @@ void parse_scry( char *line )
 	/* Next line: "sensing Whyte at Antioch Runners tent." */
 	/* Skip the first three words. */
 	line = get_string( line, buf, 256 );
-	line = get_string( line, buf, 256 );
+	line = get_string( line, name, 256 );
 	line = get_string( line, buf, 256 );
 	
-	locate_room( line, 1, NULL );
+	locate_room( line, 1, name );
      }
 }
 
@@ -4097,7 +4159,7 @@ void parse_scout( char *line )
 
 void parse_pursue( char *line )
 {
-   char buf[512], buf2[512];
+   char buf[512], buf2[512], name[512];
    char *p;
    static int pursue_message;
    
@@ -4106,6 +4168,7 @@ void parse_pursue( char *line )
    if ( !cmp( "You sense that ^ has entered *", line ) )
      {
 	pursue_message = 1;
+	get_string( line + 15, name, 512 );
 	buf[0] = 0;
      }
    
@@ -4142,7 +4205,7 @@ void parse_pursue( char *line )
 	     p--;
 	  }
 	
-	locate_room( buf2, 1, NULL );
+	locate_room( buf2, 1, name );
      }
 }
 
@@ -4250,7 +4313,7 @@ void parse_alertness( char *line )
 
 void parse_eventstatus( char *line )
 {
-   char buf[512];
+   char buf[512], name[512];
    
    DEBUG( "parse_eventstatus" );
    
@@ -4277,6 +4340,8 @@ void parse_eventstatus( char *line )
 	return;
      }
    
+   strcpy( name, buf );
+   
    /* Skip all numbers and other things, until we get to the room name. */
    while ( 1 )
      {
@@ -4296,7 +4361,7 @@ void parse_eventstatus( char *line )
    strcat( buf, "." );
    
    locate_arena = 1;
-   locate_room( buf, 0, NULL );
+   locate_room( buf, 0, name );
 }
 
 
@@ -4786,6 +4851,8 @@ void i_mapper_process_server_line_prefix( char *colorless_line, char *colorful_l
    parse_alertness( colorless_line );
    
    parse_who( colorful_line, colorless_line );
+   
+   parse_pre_room( colorless_line, raw_line );
 }
 
 
@@ -4832,6 +4899,13 @@ void i_mapper_process_server_line_suffix( char *colorless_line, char *colorful_l
    
    if ( !colorful_line[0] )
      return;
+   
+   if ( close_rmtitle_tag )
+     {
+	mxp_tag( TAG_TEMP_SECURE );
+	mxp( "</RmTitle>" );
+	close_rmtitle_tag = 0;
+     }
    
    /* Are we sprinting, now? */
    parse_sprint( colorless_line );
@@ -5581,6 +5655,39 @@ void do_map_queue( char *arg )
 void do_map_config( char *arg )
 {
    char option[256];
+   int i;
+   struct config_option
+     {
+	char *option;
+	int *value;
+	char *true_message;
+	char *false_message;
+     } options[ ] =
+     {
+	  { "swim", &disable_swimming,
+	       "Swimming disabled - will now walk over water.",
+	       "Swimming enabled." },
+	  { "wholist", &disable_wholist,
+	       "Parsing disabled.",
+	       "Parsing enabled" },
+	  { "alertness", &disable_alertness,
+	       "Parsing disabled.",
+	       "Parsing enabled" },
+	  { "locate", &disable_locating,
+	       "Locating disabled.",
+	       "Vnums will now be displayed on locating abilities." },
+	  { "showarea", &disable_areaname,
+	       "The area name will no longer be shown.",
+	       "The area name will be shown after room titles." },
+	  { "title_mxp", &disable_mxp_title,
+	       "MXP tags will no longer be used to mark room titles.",
+	       "MXP tags will be used around room title." },
+	  { "map_mxp", &disable_mxp_map,
+	       "MXP tags will no longer be used on a map.",
+	       "MXP tags will now be used on a map." },
+	
+	  { NULL, NULL, NULL, NULL }
+     };
    
    arg = get_string( arg, option, 256 );
    
@@ -5600,61 +5707,36 @@ void do_map_config( char *arg )
 	  clientfr( "All settings reloaded." );
 	return;
      }
-   else if ( !strcmp( option, "swim" ) )
+   
+   if ( option[0] )
      {
-	disable_swimming = disable_swimming ? 0 : 1;
-	if ( disable_swimming )
-	  clientfr( "Swimming disabled - will now walk over water." );
-	else
-	  clientfr( "Swimming enabled." );
+	for ( i = 0; options[i].option; i++ )
+	  {
+	     if ( strcmp( options[i].option, option ) )
+	       continue;
+	     
+	     *options[i].value = *options[i].value ? 0 : 1;
+	     if ( *options[i].value )
+	       clientfr( options[i].true_message );
+	     else
+	       clientfr( options[i].false_message );
+	     
+	     clientfr( "Use 'map config save' to make it permanent." );
+	     
+	     return;
+	  }
      }
-   else if ( !strcmp( option, "wholist" ) )
-     {
-	disable_wholist = disable_wholist ? 0 : 1;
-	if ( disable_wholist )
-	  clientfr( "Parsing disabled." );
-	else
-	  clientfr( "Parsing enabled." );
-     }
-   else if ( !strcmp( option, "alertness" ) )
-     {
-	disable_alertness = disable_alertness ? 0 : 1;
-	if ( disable_alertness )
-	  clientfr( "Parsing disabled." );
-	else
-	  clientfr( "Parsing enabled." );
-     }
-   else if ( !strcmp( option, "locate" ) )
-     {
-	disable_locating = disable_locating ? 0 : 1;
-	if ( disable_locating )
-	  clientfr( "Locating disabled." );
-	else
-	  clientfr( "Vnums will now be displayed on locating abilities." );
-     }
-   else if ( !strcmp( option, "showarea" ) )
-     {
-	disable_areaname = disable_areaname ? 0 : 1;
-	if ( disable_areaname )
-	  clientfr( "The area name will no longer be shown." );
-	else
-	  clientfr( "The area name will be shown after room titles." );
-     }
-   else
-     {
-	clientfr( "Commands:" );
-	clientf( " map config save      - Save all settings.\r\n"
-		 " map config load      - Reload the previously saved settings.\r\n"
-		 " map config swim      - Toggle swimming.\r\n"
-		 " map config wholist   - Parse and replace the 'who' list.\r\n"
-		 " map config alertness - Parse and replace alertness messages.\r\n"
-		 " map config locate    - Append vnums to various locating abilities.\r\n"
-		 " map config showarea  - Show the current area after a room title.\r\n" );
-	
-	return;
-     }
-  
-   clientfr( "Use 'map config save' to make it permanent." );
+   
+   clientfr( "Commands:" );
+   clientf( " map config save      - Save all settings.\r\n"
+	    " map config load      - Reload the previously saved settings.\r\n"
+	    " map config swim      - Toggle swimming.\r\n"
+	    " map config wholist   - Parse and replace the 'who' list.\r\n"
+	    " map config alertness - Parse and replace alertness messages.\r\n"
+	    " map config locate    - Append vnums to various locating abilities.\r\n"
+	    " map config showarea  - Show the current area after a room title.\r\n"
+	    " map config title_mxp - Mark the room title with MXP tags.\r\n"
+	    " map config map_mxp   - Use MXP tags on map generation.\r\n" );
 }
 
 
