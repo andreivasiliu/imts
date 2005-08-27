@@ -3653,7 +3653,7 @@ void i_mapper_mxp_enabled( )
    mxp( "<!element mpelm '<send \"map path &v;|room look &v;\" "
 	"hint=\"&r;|Vnum: &v;|Type: &t;\">' ATT='v r t'>" );
    mxp( "<!element mppers '<send \"map path &v;|room look &v;|who &p;\" "
-	"hint=\"&p; (&n;)|Vnum: &v;|Type: &t;|Player: &p;\">' ATT='v r t p'>" );
+	"hint=\"&p; (&r;)|Vnum: &v;|Type: &t;|Player: &p;\">' ATT='v r t p'>" );
    mxp( "<!element RmTitle TAG='RoomName'>" );
    mxp_tag( TAG_DEFAULT );
 }
@@ -3772,7 +3772,7 @@ void mark_player( ROOM_DATA *room, char *name )
    if ( name )
      {
 	/* Make sure it's nowhere else. */
-	for ( r = world; r; room = r->next_in_world )
+	for ( r = world; r; r = r->next_in_world )
 	  if ( r->person_here && !strcmp( r->person_here, name ) )
 	    {
 	       free( r->person_here );
@@ -3929,14 +3929,14 @@ void parse_window( char *line )
    if ( strncmp( line, "You see that ", 12 ) )
      return;
    
+   get_string( line + 12, name, 256 );
+   
    line = strstr( line, " is at " );
    
    if ( !line )
      return;
    
    line += 7;
-   
-   get_string( line + 12, name, 256 );
    
    locate_room( line, 1, name );
 }
@@ -4110,21 +4110,27 @@ void parse_fullsense( char *line )
 {
    char *p;
    char buf[256];
+   char name[256];
+   char room[256];
    
    DEBUG( "parse_fullsense" );
    
-   if ( strncmp( line, "You sense ", 10 ) )
+   if ( strncmp( line, "You sense ", 10 ) || strlen( line ) > 128 )
      return;
    
-   p = strstr( line, " at " );
+   strcpy( buf, line );
+   
+   p = strstr( buf, " at " );
    if ( !p )
      return;
+   *p = 0;
    p += 4;
    
-   strcpy( buf, p );
+   strcpy( name, buf + 10 );
+   strcpy( room, p );
    
    /* We now have the room name in 'buf'. */
-   locate_room( buf, 0, NULL );
+   locate_room( room, 0, name );
 }
 
 
