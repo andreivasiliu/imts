@@ -674,6 +674,7 @@ void destroy_map( )
 void i_mapper_module_unload( )
 {
    del_timer( "queue_reset_timer" );
+   del_timer( "remove_players" );
    
    destroy_map( );
 }
@@ -3685,7 +3686,53 @@ int case_strstr( char *haystack, char *needle )
 }
 
 
-void locate_room( char *name, int area )
+void remove_players( TIMER *self )
+{
+   ROOM_DATA *r;
+   
+   for ( r = world; r; r = r->next_in_world )
+     {
+	if ( r->person_here )
+	  {
+	     free( r->person_here );
+	     r->person_here = NULL;
+	  }
+     }
+}
+
+
+
+void mark_player( ROOM_DATA *room, char *name )
+{
+   ROOM_DATA *r;
+   
+   if ( room->person_here )
+     {
+	free( room->person_here );
+	room->person_here = NULL;
+     }
+   
+   if ( name )
+     {
+	/* Make sure it's nowhere else. */
+	for ( r = world; r; room = r->next_in_world )
+	  if ( r->person_here && !strcmp( r->person_here, name ) )
+	    {
+	       free( r->person_here );
+	       r->person_here = NULL;
+	    }
+	
+	room->person_here = strdup( name );
+     }
+   else
+     room->person_here = strdup( "Unknown Player Name" );
+   
+   add_timer( "remove_players", 5, remove_players, 0, 0, 0 );
+}
+
+
+
+void locate_room( char *name, int area, char *player )
 {
    ROOM_DATA *room, *found = NULL;
    char buf[256];
@@ -3777,6 +3824,12 @@ void locate_room( char *name, int area )
 	     clientff( "\r\nFrom your knowledge, that room is in '%s'",
 		       found->area->name );
 	  }
+	
+	/* Mark the room on the map, for a few moments. */
+	if ( !more )
+	  {
+	     mark_player( found, player );
+	  }
      }
 }
 
@@ -3805,7 +3858,7 @@ void parse_msense( char *line )
    buf[end-line+1] = 0;
    
    /* We now have the room name in 'buf'. */
-   locate_room( buf, 1 );
+   locate_room( buf, 1, NULL );
 }
 
 
@@ -3824,7 +3877,7 @@ void parse_window( char *line )
    
    line += 7;
    
-   locate_room( line, 1 );
+   locate_room( line, 1, NULL );
 }
 
 
@@ -3833,7 +3886,7 @@ void parse_scent( char *line )
 {
    if ( !strncmp( line, "You detect traces of scent from ", 32 ) )
      {
-	locate_room( line + 32, 1 );
+	locate_room( line + 32, 1, NULL );
      }
 }
 
@@ -3859,7 +3912,7 @@ void parse_scry( char *line )
 	line = get_string( line, buf, 256 );
 	line = get_string( line, buf, 256 );
 	
-	locate_room( line, 1 );
+	locate_room( line, 1, NULL );
      }
 }
 
@@ -3898,9 +3951,9 @@ void parse_ka( char *line )
 	     sense_message = 0;
 	     
 	     if ( ( line = strstr( buf, " is at " ) ) )
-	       locate_room( line + 7, 1 );
+	       locate_room( line + 7, 1, NULL );
 	     else if ( ( line = strstr( buf, " is located at " ) ) )
-	       locate_room( line + 15, 1 );
+	       locate_room( line + 15, 1, NULL );
 	  }
      }
 }
@@ -3952,7 +4005,7 @@ void parse_seek( char *line )
 		  buf[end-line] = '.';
 		  buf[end-line+1] = 0;
 		  
-		  locate_room( buf, 1 );
+		  locate_room( buf, 1, NULL );
 	       }
 	  }
      }
@@ -3986,7 +4039,7 @@ void parse_shrinesight( char *line )
    buf[end-p] = 0;
    
    /* We now have the room name in 'buf'. */
-   locate_room( buf, 0 );
+   locate_room( buf, 0, NULL );
 }
 
 
@@ -4009,7 +4062,7 @@ void parse_fullsense( char *line )
    strcpy( buf, p );
    
    /* We now have the room name in 'buf'. */
-   locate_room( buf, 0 );
+   locate_room( buf, 0, NULL );
 }
 
 
@@ -4037,7 +4090,7 @@ void parse_scout( char *line )
    strcpy( buf, p + 4 );
    strcat( buf, "." );
    
-   locate_room( buf, 0 );
+   locate_room( buf, 0, NULL );
 }
 
 
@@ -4089,7 +4142,7 @@ void parse_pursue( char *line )
 	     p--;
 	  }
 	
-	locate_room( buf2, 1 );
+	locate_room( buf2, 1, NULL );
      }
 }
 
@@ -4243,7 +4296,7 @@ void parse_eventstatus( char *line )
    strcat( buf, "." );
    
    locate_arena = 1;
-   locate_room( buf, 0 );
+   locate_room( buf, 0, NULL );
 }
 
 
