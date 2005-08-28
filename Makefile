@@ -18,11 +18,15 @@ endif
 # Macintosh
 ifeq ($(shell uname),Darwin)
   C_FLAGS  += -I/sw/include
-  L_FLAGS  += $(O_FLAGS) $(DEBUG) -ldl -lz -L/sw/lib
+  L_FLAGS  += -L/sw/lib
   M_FLAGS  = -dynamiclib -Xlinker -single_module
   SO_FILES = imperian.so i_mapper.so mmchat.so voter.so
 endif
 
+# Solaris
+ifeq ($(shell uname),SunOS)
+  L_FLAGS  += -lsocket
+endif
 
 SRC     = *.c *.h
 
