@@ -59,6 +59,7 @@ GSE: -1 "yank" "You are pulled out of the room by ^ and ^ whip!"
 GSE: -1 "vortex" "you through the ether to ^."
 GSE: -1 "thk" "You are hurled ^ by the force of the blow."
 GSE: 716 "portals" "of the Gods to rescue you."
+GSE: 8509 "suriel" "far above the clouds."
 
 
 AREA
@@ -55242,6 +55243,24 @@ ROOM v8508
 Name: Blackthorne's Strategy Chambers.
 Type: Blackstone Keep
 E: down 8507
+
+
+
+AREA
+Name: Skies.
+
+ROOM v8509
+Name: On the clouds.
+Type: Undefined
+E: north 6
+E: northeast 1552
+E: east 267
+E: southeast 80
+E: south 66
+E: southwest 462
+E: west 5480
+E: northwest 2050
+E: down 3283
 
 
 
