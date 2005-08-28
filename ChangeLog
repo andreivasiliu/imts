@@ -1,4 +1,4 @@
-IMTS-unstable
+IMTS-5
 ===============
 (MudBot:)
 - Descriptor handling updated, to allow multiple listening ports.
@@ -17,6 +17,8 @@ IMTS-unstable
 - Renamed modules.txt to config.txt, which is now generated if not found.
 - Many other insignificant bug fixes.
 - Probably many other new bugs, as always.
+- The same sources will compile on Linux, Darwin and Windows. Also a blank.c
+  file was added, that can be compiled as a module.
 (IMapper:)
 - Making use of MXP, the maps are now enhanced. Tooltip, left-click action
   and right-click menu added to the rooms on a "map".
@@ -28,13 +30,19 @@ IMTS-unstable
   given an area name instead of only changing the current area.
 - Renamed "settings.mapper.txt" to "config.mapper.txt", it's easier for CVS to
   ignore all files beginning with "config."
+- Added "title_mxp" and "map_mxp" to "map config".
+- Wings room added, along with its GSE teleport message.
 (Imperian:)
 - MXP is enabled for the prompt, so custom prompts can make use of secure MXP
   tags.
 - The option "can_kipup" (or `sak in-game) can be used to use 'kipup' instead
-  of 'stand', when possible.
+  of 'stand', in case you have at least one arm working.
+- Multiple commands can be sent by a single defence, cure, or trigger, if they
+  are separated by a semicolon.
+- Some changes on pipe lighting, and defences that use pipes.
 - Commands beginning with sit, such as SITARA, will now work.
-- Trigger message for the pipe re-filler fixed.
+- Trigger message for the pipe refiller fixed.
+- Fixed tree not removing all afflictions, if nothing was cured.
 
 
 
