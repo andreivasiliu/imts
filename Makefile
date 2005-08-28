@@ -26,6 +26,9 @@ endif
 # Solaris
 ifeq ($(shell uname),SunOS)
   L_FLAGS  += -lsocket -lnsl -lresolv
+  C_FLAGS  += 
+  M_FLAGS  += -shared
+  SO_FILES = imperian.so i_mapper.so i_offense.so mmchat.so voter.so
 endif
 
 SRC     = *.c *.h
