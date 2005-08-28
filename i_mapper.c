@@ -151,6 +151,7 @@ char cse_command[5120];
 char cse_message[5120];
 int close_rmtitle_tag;
 int similar;
+int title_offset;
 
 /* config.mapper.txt options. */
 int disable_swimming;
@@ -804,7 +805,10 @@ void set_reverse( ROOM_DATA *source, int dir, ROOM_DATA *destination )
 
 void parse_pre_room( char *line, char *raw_line )
 {
-   similar = 0;
+   if ( similar )
+     similar = 0;
+   if ( title_offset )
+     title_offset = 0;
    
    if ( !parsing_room )
      {
@@ -812,17 +816,17 @@ void parse_pre_room( char *line, char *raw_line )
 	  {
 	     parsing_room = 1;
 	  }
-	else if ( !strncmp( line, "In the trees above", 18 ) &&
+	else if ( !strncmp( line, "In the trees above ", 19 ) &&
 		  !strncmp( raw_line + 18, room_color, room_color_len ) )
 	  {
-	     line += 19;
+	     title_offset = 19;
 	     similar = 1;
 	     parsing_room = 1;
 	  }
-	else if ( !strncmp( line, "Flying above", 12 ) &&
+	else if ( !strncmp( line, "Flying above ", 13 ) &&
 		  !strncmp( raw_line + 12, room_color, room_color_len ) )
 	  {
-	     line += 13;
+	     title_offset = 13;
 	     similar = 1;
 	     parsing_room = 1;
 	  }
@@ -861,6 +865,8 @@ void parse_room( char *line, char *raw_line )
 	/* Leave parsing_room as 1. */
 	if ( !line[0] )
 	  return;
+	
+	line += title_offset;
 	
 //	debugf( "Room!" );
 	
@@ -5280,6 +5286,7 @@ void do_map_help( char *arg )
 	    " map queue cl - Clear the command queue.\r\n"
 	    " map config   - Configure the mapper.\r\n"
 	    " map          - Generate a map, from the current room.\r\n"
+	    " map #        - Generate a map centered on vnum #.\r\n"
 	    " landmarks    - Show all the landmarks, in the world.\r\n"
 	    " go/stop      - Begins, or stops speedwalking.\r\n" );
 }
@@ -7273,13 +7280,13 @@ void do_landmarks( char *arg )
      {
 	first = 1;
 	
-	if ( !found )
-	  found = 1;
-	
 	for ( room = area->rooms; room; room = room->next_in_area )
 	  {
 	     if ( !room->landmark )
 	       continue;
+	     
+	     if ( !found )
+	       found = 1;
 	     
 	     /* And now... */
 	     
