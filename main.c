@@ -1290,7 +1290,6 @@ void restart_mccp( TIMER *self )
 void module_process_server_line( char *rawline, char *colorless, char *stripped )
 {
    MODULE *module;
-   char mccp_start[] = { IAC, DO, TELOPT_COMPRESS2, 0 };
    char mccp_stop[] = { IAC, DONT, TELOPT_COMPRESS2, 0 };
    
    DEBUG( "module_process_server_line" );
@@ -1313,6 +1312,8 @@ void module_process_server_line( char *rawline, char *colorless, char *stripped 
 	( !cmp( "You enter the editor.", rawline ) ||
 	  !cmp( "You begin writing.", rawline ) ) )
      {
+	char mccp_start[] = { IAC, DO, TELOPT_COMPRESS2, 0 };
+	
 	/* Only briefly, ATCP over MCCP is very buggy. */
 	verbose_mccp = 0;
 	debugf( "Temporarely stopping MCCP." );

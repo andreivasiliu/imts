@@ -75,12 +75,15 @@ struct room_data
    ROOM_DATA *exits[13];
    ROOM_DATA *reverse_exits[13];
    int more_reverse_exits[13];
+   
+   /* Beginning of binary-saved values. If you change these, change save_binary_map! */
    int vnum_exits[13];
    short detected_exits[13];
    short locked_exits[13];
    short exit_length[13];
    short use_exit_instead[13];
    short exit_stops_mapping[13];
+   /* End. */
    
    EXIT_DATA *special_exits;
    AREA_DATA *area;
@@ -93,6 +96,7 @@ struct room_data
    ROOM_DATA *next_in_pfno;
    ROOM_DATA *next_in_pfco;
    
+   /* Person in this room. */
    char *person_here;
 };
 
