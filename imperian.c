@@ -2262,6 +2262,18 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
 {
    int i;
    
+   /* We have a cure after we ate something, so it's good. */
+   if ( ( last_cure || last_cure_balance ) &&
+	cmp( "Your insomnia has cleared up.", line ) &&
+	cmp( "Your insomnia has been cured by the mandrake.", line ) &&
+	cmp( "Your mind relaxes and you feel as if you could sleep.", line ) )
+     {
+	last_cure = 0;
+	/* Focus. */
+	if ( last_cure_balance == 1 || last_cure_balance == 2 )
+	  last_cure_balance = 0;
+     }
+   
    /* Most messages begin with the "You" or "Your". Don't bother with the rest. */
    if ( !cmp( "You*", line ) )
      {
@@ -2343,6 +2355,13 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
 	     
 	     /* Same story. */
 	     last_cure = CURE_LOVAGE;
+	  }
+	else if ( line_since_prompt == 1 &&
+	     !cmp( "You take a long drag off your pipe, filling your lungs with linseed smoke.", line ) )
+	  {
+	     failed_smoke_commands = 0;
+	     waiting_for_smoke_command = 0;
+	     del_timer( "smoke_balance_reset" );
 	  }
 	else if ( !cmp( "You quickly rub some salve on your *", line ) )
 	  {
@@ -2634,18 +2653,6 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
    if ( !strcmp( line, "** Illusion **" ) )
      ignore_illusion = 1;
    
-   /* We have a cure after we ate something, so it's good. */
-   if ( ( last_cure || last_cure_balance ) &&
-	cmp( "Your insomnia has cleared up.", line ) &&
-	cmp( "Your insomnia has been cured by the mandrake.", line ) &&
-	cmp( "Your mind relaxes and you feel as if you could sleep.", line ) )
-     {
-	last_cure = 0;
-	/* Focus. */
-	if ( last_cure_balance == 1 || last_cure_balance == 2 )
-	  last_cure_balance = 0;
-     }
-   
    /* A curse with no message is probably Fear or Amnesia. Compose. */
    if ( curse_fear )
      curse_fear = 0;
@@ -2828,6 +2835,31 @@ void aeon_timer( TIMER *self )
 	if ( slow_check == 1 )
 	  slow_check = 0;
      }
+}
+
+
+
+void send_action( char *string )
+{
+   char buf[256], *b, *p;
+   
+   /* Replace all ';' with '\n'. */
+   
+   b = buf;
+   p = string;
+   
+   while( *p )
+     {
+	if ( *p == ';' )
+	  *(b++) = '\n', p++;
+	else
+	  *(b++) = *(p++);
+     }
+   
+   *(b++) = '\n';
+   *b = 0;
+   
+   send_to_server_d( buf );
 }
 
 
@@ -3228,8 +3260,7 @@ void imperian_process_server_line( char *colorless_line, char *colorful_line, ch
 		       clientf( C_G " (" C_W );
 		       clientf( triggers[i].action );
 		       clientf( C_G ")" C_0 );
-		       send_to_server( triggers[i].action );
-		       send_to_server( "\r\n" );
+		       send_action( triggers[i].action );
 		       prompt_newline = 1;
 		    }
 	       }
@@ -3575,9 +3606,7 @@ void cure_afflictions( void )
 	  {
 	     clientff( C_G "(" C_W "%s" C_G ") " C_0, cures[afflictions[aff].special].action );
 	     prompt_newline = 1;
-	     sprintf( buf, "%s\r\n",
-		      cures[afflictions[aff].special].action );
-	     send_to_server_d( buf );
+	     send_action( cures[afflictions[aff].special].action );
 	     
 	     /* No balance stops it, so it will spam us if we don't. */
 	     afflictions[aff].tried = 1;
@@ -4037,6 +4066,13 @@ void reset_arrows( TIMER *self )
 }
 
 
+void disallow_diagdef( TIMER *self )
+{
+   allow_diagdef = 0;
+}
+
+
+
 void reset_defence( TIMER *self )
 {
    clientff( "\r\n" C_R "[" C_D "Resetting defence '" C_G "%s'" C_D "." C_R "]" C_0 "\r\n",
@@ -4085,7 +4121,7 @@ void keep_up_defences( )
 		       sprintf( buf, "outr %s\r\n", defences[i].action + 4 );
 		       send_to_server_d( buf );
 		    }
-		  if ( !strcmp( defences[i].action, "apply fenugreek" ) )
+		  else if ( !strcmp( defences[i].action, "apply fenugreek" ) )
 		    {
 		       if ( writhing )
 			 continue;
@@ -4093,7 +4129,15 @@ void keep_up_defences( )
 		       send_to_server_d( "outr fenugreek\r\n" );
 		    }
 		  
-		  send_to_server( defences[i].action );
+		  if ( !strcmp( defences[i].action, "def" ) ||
+		       !strcmp( defences[i].action, "diag" ) )
+		    {
+		       allow_diagdef = 1;
+		       
+		       add_timer( "allow_diagdef", 3, disallow_diagdef, 0, 0, 0 );
+		    }
+		  
+		  send_action( defences[i].action );
 	       }
 	     else
 	       send_to_server( defences[i].name );
@@ -4624,13 +4668,6 @@ int check_aeon( )
      }
    
    return 1;
-}
-
-
-
-void disallow_diagdef( TIMER *self )
-{
-   allow_diagdef = 0;
 }
 
 
