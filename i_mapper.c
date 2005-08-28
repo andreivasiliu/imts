@@ -5504,7 +5504,7 @@ void do_map_status( char *arg )
    sprintf( buf, "Areas: " C_G "%d" C_0 ", of which fully mapped: " C_G "%d" C_0 ".\r\n", count, count2 );
    clientf( buf );
    
-   sprintf( buf, "Room structure size: " C_G "%d" C_0 " bytes.\r\n", sizeof( ROOM_DATA ) );
+   sprintf( buf, "Room structure size: " C_G "%d" C_0 " bytes.\r\n", (int) sizeof( ROOM_DATA ) );
    clientf( buf );
    
    sprintf( buf, "Hash table size: " C_G "%d" C_0 " chains.\r\n", MAX_HASH );

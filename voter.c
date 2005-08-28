@@ -215,7 +215,7 @@ DESCRIPTOR *voter_connect( char *url )
 		 "%s"
 		 "Content-Type: application/x-www-form-urlencoded\n"
 		 "Content-Length: %d\n\n%s",
-		 p, host, cookie_pot, strlen( post_string ), post_string );
+		 p, host, cookie_pot, (int) strlen( post_string ), post_string );
 //	debugf( "[%s]", buf );
 	c_write( sock, buf, strlen( buf ) );
      }

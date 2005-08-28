@@ -1809,7 +1809,7 @@ int parse_diagnose( char *line )
 	else
 	  {
 	     sprintf( buf, " %*s " C_R "%s" C_W "  (" C_G "%s" C_W ")" C_0,
-		      left_align - strlen( line ), C_D "-" C_0,
+		      left_align - (int) strlen( line ), C_D "-" C_0,
 		      afflictions[i].name, cures[afflictions[i].herbs_cure].name );
 	  }
 	clientf( buf );
@@ -3805,7 +3805,7 @@ void build_stats( void )
 		      afflictions[i].name,
 		      afflictions[i].tried ? C_R : ( can_cure ? C_B : C_G ),
 		      cures[afflictions[i].herbs_cure].name, nr,
-		      63 - strlen( afflictions[i].name ) - strlen( cures[afflictions[i].herbs_cure].name ) -
+		      63 - (int) strlen( afflictions[i].name ) - (int) strlen( cures[afflictions[i].herbs_cure].name ) -
 		      ( nr < 10 ? 1 : ( nr < 100 ? 2 : 3 ) ), defs[d++] );
 	  }
      }

@@ -1494,11 +1494,11 @@ void logff( char *type, char *string, ... )
    gettimeofday( &tv, NULL );
    
    if ( type )
-     fprintf( fl, "(%3ld.%2ld) [%s]: %s\n", tv.tv_sec % 1000,
-	      tv.tv_usec / 10000, type, string );
+     fprintf( fl, "(%3ld.%2ld) [%s]: %s\n", (long) (tv.tv_sec % 1000),
+	      (long) (tv.tv_usec / 10000), type, string );
    else
-     fprintf( fl, "(%3ld.%2ld) %s\n", tv.tv_sec % 1000,
-	      tv.tv_usec / 10000, string );
+     fprintf( fl, "(%3ld.%2ld) %s\n", (long) (tv.tv_sec % 1000),
+	      (long) (tv.tv_usec / 10000), string );
    
    fclose( fl );
 }
