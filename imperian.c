@@ -129,6 +129,7 @@ int clot_mana_usage = 5;
 int bleeding;
 int keep_pipes;
 int pipes_lit;
+int pipes_going_dark;
 int normal_prompt;
 int show_afflictions;
 int mind_locked;
@@ -218,6 +219,7 @@ int AFF_SOMETHING;
 /* Here we register our functions. */
 
 void imperian_module_init_data( );
+void imperian_process_server_line_prefix( char *colorless_line, char *colorful_line, char *raw_line );
 void imperian_process_server_line( char *colorless_line, char *colorful_line, char *raw_line );
 void imperian_process_server_prompt_informative( char *line, char *rawline );
 void imperian_process_server_prompt_action( char *rawline );
@@ -234,7 +236,7 @@ ENTRANCE( imperian_module_register )
    self->id = imperian_id;
    
    self->init_data = imperian_module_init_data;
-   self->process_server_line_prefix = NULL;
+   self->process_server_line_prefix = imperian_process_server_line_prefix;
    self->process_server_line_suffix = imperian_process_server_line;
    self->process_server_prompt_informative = imperian_process_server_prompt_informative;
    self->process_server_prompt_action = imperian_process_server_prompt_action;
@@ -2045,22 +2047,6 @@ int have_balance( )
 
 
 
-void light_pipes( TIMER *self )
-{
-   if ( keep_pipes && pipes_lit != 3 )
-     {
-	if ( have_balance( ) && trigger_level > 0 )
-	  {
-	     clientf( C_W "(" C_G "light pipes" C_W ")\r\n" C_0 );
-	     send_to_server_d( "light pipes\r\n" );
-	     pipes_lit = 3;
-	  }
-	else
-	  pipes_lit = 0;
-     }
-}
-
-   
 void affliction_check( int trigger )
 {
    if ( triggers[trigger].affliction == AFF_ANOREXIA && triggers[trigger].gives )
@@ -2449,29 +2435,14 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
 	     if ( need_balance_for_defences )
 	       need_balance_for_defences = 2;
 	  }
-	else if ( !cmp( "Your pipe has gone cold and dark.", line ) )
-	  {
-	     if ( pipes_lit > 0 )
-	       pipes_lit--;
-	     
-	     if ( pipes_lit == 2 )
-	       clientf( C_R " (" C_W "2 left" C_R ")" C_0 );
-	     else if ( pipes_lit == 1 )
-	       clientf( C_R " (" C_W "1 left" C_R ")" C_0 );
-	     else if ( pipes_lit == 0 )
-	       clientf( C_R " (" C_W "none left" C_R ")" C_0 );
-	     
-	     if ( pipes_lit != 0 )
-	       add_timer( "light_pipes", 1, light_pipes, 0, 0, 0 );
-	  }
 	else if ( !cmp( "You quickly light your pipes, surrounding yourself with a cloud of smoke.", line ) )
 	  {
-	     pipes_lit = 3;
+	     pipes_lit = 1;
 	  }
 	else if ( !cmp( "You carefully light your treasured pipe until it is smoking nicely.", line ) )
 	  {
-	     if ( pipes_lit < 3 )
-	       pipes_lit++;
+//	     if ( pipes_lit < 3 )
+//	       pipes_lit++;
 	  }
 	else if ( !cmp( "You have regained ^ arm balance.", line ) )
 	  {
@@ -2594,7 +2565,7 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
 	  {
 	     char buf[256];
 	     
-	     if ( failed_smoke_commands > 1 )
+	     if ( failed_smoke_commands > 2 )
 	       return 1;
 	     
 	     if ( cmp( last_pipe, "laurel" ) &&
@@ -2860,6 +2831,22 @@ void send_action( char *string )
    *b = 0;
    
    send_to_server_d( buf );
+}
+
+
+
+void imperian_process_server_line_prefix( char *colorless_line, char *colorful_line, char *raw_line )
+{
+   char *line = colorful_line;
+   
+   if ( !cmp( "Your pipe has gone cold and dark.", line ) )
+     {
+	pipes_lit = 0;
+	pipes_going_dark++;
+	
+	if ( pipes_going_dark > 1 )
+	  gag_line( 1 );
+     }
 }
 
 
@@ -3513,7 +3500,7 @@ int can_cure_aff( int aff, int balance )
 	  return 1;
 	
 	/* Smoking, with pipes unlit and off balance. */
-	if ( !arti_pipes && pipes_lit != 3 && !have_balance( ) )
+	if ( !arti_pipes && !pipes_lit && !have_balance( ) )
 	  return 1;
 	
 	if ( balance_smoke )
@@ -4128,6 +4115,13 @@ void keep_up_defences( )
 		       
 		       send_to_server_d( "outr fenugreek\r\n" );
 		    }
+		  else if ( !strncmp( defences[i].action, "smoke pipe with ", 16 ) )
+		    {
+		       if ( !pipes_lit )
+			 send_to_server_d( "light pipes\r\n" );
+		       
+		       strcpy( last_pipe, defences[i].action + 16 );
+		    }
 		  
 		  if ( !strcmp( defences[i].action, "def" ) ||
 		       !strcmp( defences[i].action, "diag" ) )
@@ -4219,6 +4213,14 @@ void imperian_process_server_prompt_informative( char *line, char *rawline )
      {
 	parsing_fullsense = 0;
 	check_fullsense_list( );
+     }
+   
+   /* Show how many pipe lines were gagged. */
+   if ( pipes_going_dark )
+     {
+	if ( pipes_going_dark > 1 )
+	  clientff( C_R "(" C_D "+%d more..." C_R ")" C_0 "\r\n", pipes_going_dark - 1 );
+	pipes_going_dark = 0;
      }
    
    /* A possible instant kill? Show a very visible warning. */
@@ -4637,7 +4639,7 @@ int check_aeon( )
    if ( aeon == 1 )
      {
 	/* Check for lit pipes. */
-	if ( !arti_pipes && pipes_lit != 3 )
+	if ( !arti_pipes && !pipes_lit )
 	  aeon = 2;
 	else
 	  aeon = 3;
@@ -4657,7 +4659,7 @@ int check_aeon( )
    /* Do we have them ready? */
    if ( aeon == 3 )
      {
-	if ( arti_pipes || pipes_lit == 3 )
+	if ( arti_pipes || pipes_lit )
 	  {
 	     /* If we really have Aeon, then diag will not go through. */
 	     clientff( C_W "(" C_G "diag" C_W "/" C_G "smoke laurel" C_W ")\r\n" C_0 );
