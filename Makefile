@@ -25,7 +25,7 @@ endif
 
 # Solaris
 ifeq ($(shell uname),SunOS)
-  L_FLAGS  += -lsocket -lnsl
+  L_FLAGS  += -lsocket -lnsl -lresolv
 endif
 
 SRC     = *.c *.h
