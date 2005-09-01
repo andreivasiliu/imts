@@ -984,10 +984,12 @@ D defence "warning" X needy takebalance
 D defence "secure wield" X needy A "secure wielded" L 3
 D defence "alertness" X needy takebalance A "alertness on" L 3
 D defence "cover tracks" X needy takebalance L 3
-D defence "lifesense" X needy takebalance A "lifesence on" L 2
+D defence "lifesense" X needy takebalance A "lifesense on" L 2
 D defence "conceal weapons" X needy L 2
 D defence "contort" X needy takebalance L 3
-
+D defence "tenemecy" X needy takebalance L 2
+D defence "deadaim" X needy takebalance A "deadaim on" L 2
+D defence "hypersight" X needy takebalance A "hypersight on" L 2
 
 
 # Defence triggers.
@@ -1307,6 +1309,20 @@ D defence "contort" X needy takebalance L 3
 "You inhale deeply, filling your lungs with air, preparing for increased*" special defence celerity give
 "You relax your celerity defence." special defence celerity take
 
+# Tenemecy.
+"You have heightened ingestion." special defence tenemecy give X C
+"Through your finely tuned physical prowess, you increase your*" special defence tenemecy give
+"You relax your celerity defence." special defence celerity take
+
+# Deadaim.
+"You are looking for openings to hit the vitals of your opponent." special defence deadaim give X C
+"You begin looking for openings against your opponent's vital areas." special defence deadaim give
+"You cease attempting to look for openings against your opponent's*" special defence deadaim take
+
+# Hypersight.
+"You are utilising hypersight." special defence hypersight give X C
+"You concentrate your mind and engage your ability of hypersight*" special defence hypersight give
+"You cease to concentrate on hypersight." special defence hypersight take
 
 # Defence strips.
 "You suddenly feel that it would be a fine idea to relax your *" special defence any take
