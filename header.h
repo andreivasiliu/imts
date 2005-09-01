@@ -97,6 +97,7 @@
 typedef struct module_data MODULE;
 typedef struct descriptor_data DESCRIPTOR;
 typedef struct timer_data TIMER;
+typedef struct line_data LINE;
 
 /* Module information structure. */
 struct module_data
@@ -125,6 +126,8 @@ struct module_data
    void (*init_data)( );
    void (*unload)( );
    void (*show_notice)( );
+   void (*process_server_line)( LINE *line );
+   void (*process_server_prompt)( LINE *line );
    void (*process_server_line_prefix)( char *colorless_line, char *colorful_line, char *raw_line );
    void (*process_server_line_suffix)( char *colorless_line, char *colorful_line, char *raw_line );
    void (*process_server_prompt_informative)( char *line, char *rawline );
@@ -169,5 +172,31 @@ struct timer_data
    
    int data[3];
    void (*callback)( TIMER *timer );
+};
+
+
+/* Line or prompt from the server. */
+struct line_data
+{
+   char line[INPUT_BUF];
+   char raw[INPUT_BUF];
+   int raw_offset[INPUT_BUF];
+   char *rawp[INPUT_BUF];
+   
+   char raw_line[INPUT_BUF];
+   
+   int len;
+   int raw_len;
+   
+   short within_color_code;
+   
+   char *prefix;
+   char *suffix;
+   char *inlines[INPUT_BUF];
+   
+   short gag_entirely;
+   short gag_ending;
+   short gag_character[INPUT_BUF];
+   short gag_raw[INPUT_BUF];
 };
 

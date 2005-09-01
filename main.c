@@ -30,6 +30,7 @@
 #include <signal.h>	/* For signal() */
 #include <time.h>	/* For time() */
 #include <sys/stat.h>	/* For stat() */
+#include <fcntl.h>	/* For fcntl() */
 
 #include "header.h"
 
@@ -159,6 +160,8 @@ DESCRIPTOR *server;
 
 DESCRIPTOR *current_descriptor;
 
+LINE *current_new_line;
+
 char exec_file[1024];
 
 int default_listen_port = 123;
@@ -170,7 +173,9 @@ int bytes_received;
 int bytes_uncompressed;
 
 char buffer_noclient[65536];
-char buffer_data[65536];
+char buffer_data[65536], *g_b = buffer_data;
+const char *g_blimit = buffer_data + 16384;
+char *suffix_buffer, *suffix_p, *suffix_max;
 char send_buffer[65536];
 char last_prompt[INPUT_BUF];
 int buffer_output;
@@ -190,6 +195,8 @@ int bind_to_localhost;
 int disable_mccp;
 int verbose_mccp;
 int mxp_enabled;
+int clientf_modifies_suffix;
+int add_newline;
 
 char *connection_error;
 
@@ -302,7 +309,6 @@ int c_close( int fd )
    return close( fd );
 }
 #endif
-
 
 
 void *get_variable( char *name )
@@ -1241,9 +1247,9 @@ void strip_colors( char *string, char *dest )
 int gag_line( int gag )
 {
    if ( gag != -1 )
-     gag_line_value = gag;
+     current_new_line->gag_entirely = gag;
    
-   return gag_line_value;
+   return current_new_line->gag_entirely;
 }
 
 
@@ -1259,7 +1265,9 @@ int gag_prompt( int gag )
 
 void show_prompt( )
 {
-   clientf( last_prompt );
+   void process_buffer( char *raw_buf, int bytes );
+   
+   process_buffer( last_prompt, strlen( last_prompt ) );
 }
 
 
@@ -1380,6 +1388,45 @@ void module_process_server_prompt_action( char *line )
 	if ( module->process_server_prompt_action )
 	  (module->process_server_prompt_action)( line );
      }
+}
+
+
+
+void module_process_new_server_line( LINE *line )
+{
+   MODULE *module;
+   
+   DEBUG( "module_process_new_server_line" );
+   
+   current_new_line = line;
+   clientf_modifies_suffix = 1;
+   
+   for ( module = modules; module; module = module->next )
+     {
+	if ( module->process_server_line )
+	  (module->process_server_line)( line );
+     }
+   
+   clientf_modifies_suffix = 0;
+}
+
+
+void module_process_new_server_prompt( LINE *line )
+{
+   MODULE *module;
+   
+   DEBUG( "module_process_new_server_prompt" );
+   
+   current_new_line = line;
+   clientf_modifies_suffix = 1;
+   
+   for ( module = modules; module; module = module->next )
+     {
+	if ( module->process_server_prompt )
+	  (module->process_server_prompt)( line );
+     }
+   
+   clientf_modifies_suffix = 0;
 }
 
 
@@ -1704,7 +1751,7 @@ void assign_client( int fd )
 	
 	/* Client. */
 	client = calloc( 1, sizeof( DESCRIPTOR ) );
-	client->name = strdup( "client" );
+	client->name = strdup( "Client" );
 	client->description = strdup( "Connection to the mud client" );
 	client->mod = NULL;
 	client->fd = fd;
@@ -2185,9 +2232,43 @@ void send_to_client( char *data, int bytes )
 
 
 
+void suffix( char *string )
+{
+   if ( !suffix_buffer )
+     {
+	suffix_buffer = malloc( 4092 );
+	suffix_p = suffix_buffer;
+	suffix_max = suffix_buffer + 4092;
+     }
+   
+   while ( *string )
+     {
+	*(suffix_p++) = *(string++);
+	if ( suffix_p == suffix_max )
+	  {
+	     size_t size;
+	     size = suffix_max - suffix_buffer + 4092;
+	     suffix_buffer = realloc( suffix_buffer, size );
+	     suffix_max = suffix_buffer + size;
+	     suffix_p = suffix_buffer + size - 4092;
+	  }
+     }
+   
+   *suffix_p = 0;
+}
+
+
+
 void clientf( char *string )
 {
    int length;
+   
+   if ( clientf_modifies_suffix )
+     {
+	suffix( string );
+	
+	return;
+     }
    
    if ( buffer_output )
      {
@@ -3084,27 +3165,33 @@ void process_client_line( char *buf )
 	       }*/
 	     else
 	       {
+		  void process_new_buffer( char *buf, int bytes );
+		  char buf2[4096], *b = buf2;
 		  char *p = buf + 6;
 		  
 		  /* Find the new line, and end the string there. */
 		  while ( *p )
 		    {
-		       if ( *p == '\n' )
-			 {
-			    *p = 0;
-			    break;
-			 }
+		       if ( *p == '$' )
+			 *(b++) = '\n';
+		       else if ( *p == '\n' || *p == '\r' )
+			 break;
+		       else
+			 *(b++) = *p;
+		       
 		       p++;
 		    }
+		  *b = 0;
 		  
 		  clientfb( "Processing line.." );
+		  process_new_buffer( buf2, strlen( buf2 ) );
 		  /* It's safe to assume it's all stripped and colorless. */
-		  module_process_server_line( buf+6, buf+6, buf+6 );
+//		  module_process_server_line( buf+6, buf+6, buf+6 );
 	       }
 	  }
 	else if ( !strcmp( buf, "`echo" ) )
 	  {
-	     clientfb( "Usage: `echo <string> or `echo prompt." );
+	     clientfb( "Usage: `echo <string>" );
 	  }
 	else if ( !strncmp( buf, "`sendatcp", 9 ) )
 	  {
@@ -3311,8 +3398,292 @@ int process_client( void )
 
 
 
+void empty_buffer( )
+{
+   *g_b = 0;
+   if ( g_b != buffer_data )
+     clientf( buffer_data );
+   g_b = buffer_data;
+}
+
+
+/* Too repetitive. But performance is critical here, we can't make it a function. */
+#define SEND_BYTES_IN_BUFFER( source ) if ( (source) ) { s = (source); while ( *s ) { *(g_b++) = *(s++); if ( g_b == g_blimit ) empty_buffer( ); } }
+
+void print_line( LINE *line, char *ending )
+{
+   char *s;
+   int i;
+   
+   DEBUG( "print_line" );
+   
+   /* Add a new line whenever this line/prompt comes right after the last one. */
+   if ( add_newline )
+     {
+	add_newline = 0;
+	SEND_BYTES_IN_BUFFER( "\r\n" );
+     }
+   
+   /* Order:
+    *  prefix, ..., [raw, inlines, printable]*len, ..., suffix, ending */
+   
+   SEND_BYTES_IN_BUFFER( line->prefix );
+   
+   for ( i = 0; i < line->len; i++ )
+     {
+	if ( *line->rawp[i] && !line->gag_raw[i] && !line->gag_entirely )
+	  {
+	     SEND_BYTES_IN_BUFFER( line->rawp[i] );
+	  }
+	
+	SEND_BYTES_IN_BUFFER( line->inlines[i] );
+	
+	if ( line->gag_character[i] || line->gag_entirely )
+	  continue;
+	
+	/* Just one byte here. */
+	*(g_b++) = line->line[i];
+	if ( g_b == g_blimit )
+	  empty_buffer( );
+     }
+   
+   /* Don't forget raw/inlines from the trailing '\0'. But just don't print it. */
+   if ( *line->rawp[i] && !line->gag_raw[i] && !line->gag_entirely )
+     {
+	SEND_BYTES_IN_BUFFER( line->rawp[i] );
+     }
+   
+   SEND_BYTES_IN_BUFFER( line->inlines[i] );
+   
+   SEND_BYTES_IN_BUFFER( line->suffix );
+   
+   if ( !line->gag_ending )
+     {
+	SEND_BYTES_IN_BUFFER( ending );
+     }
+}
+
+#undef SEND_BYTES_IN_BUFFER
+
+
+void clean_line( LINE *line )
+{
+   int i;
+   
+   DEBUG( "clean_line" );
+   
+   for ( i = 0; i <= line->len; i++ )
+     {
+	if ( line->inlines[i] )
+	  {
+	     free( line->inlines[i] );
+	     line->inlines[i] = NULL;
+	  }
+	
+	if ( line->gag_character[i] )
+	  line->gag_character[i] = 0;
+	if ( line->gag_raw[i] )
+	  line->gag_raw[i] = 0;
+     }
+   
+   for ( ; i < line->raw_len; i++ )
+     {
+	if ( line->gag_raw[i] )
+	  line->gag_raw[i] = 0;
+     }
+   
+   if ( line->gag_entirely )
+     line->gag_entirely = 0;
+   if ( line->gag_ending )
+     line->gag_ending = 0;
+   
+   if ( line->prefix )
+     {
+	free( line->prefix );
+	line->prefix = NULL;
+     }
+   
+   if ( suffix_max - suffix_buffer != 4096 )
+     {
+	/* Shrink it back down. */
+	suffix_buffer = realloc( suffix_buffer, 4096 );
+	suffix_max = suffix_buffer + 4096;
+     }
+   
+   if ( suffix_p != suffix_buffer )
+     suffix_p = suffix_buffer, *suffix_p = 0;
+   
+   line->rawp[0] = line->raw;
+   line->len = 0;
+   line->raw_len = 0;
+   
+   line->suffix = suffix_buffer;
+}
+
+
+
+void process_new_buffer( char *raw_buf, int bytes )
+{
+   char iac_ga[] = { IAC, GA, 0 };
+   char buf[INPUT_BUF];
+   char *ending;
+   static LINE line;
+   int i;
+   struct timeval tvold, tvnew, tvold2, tvnew2;
+   static time_t t1, t2, t3, t4;
+   
+   DEBUG( "process_new_buffer" );
+   
+   bytes_uncompressed += bytes;
+   
+   log_bytes( "s->m", raw_buf, bytes );
+   
+   server_telnet( raw_buf, buf, &bytes );
+   
+   if ( show_processing_time )
+     gettimeofday( &tvold2, NULL );
+   
+   /*
+    * 'line' will contain the stripped, printable line.
+    * 'raw_line' will contain the line as it came from the server.
+    * 'raw' will contain the stripped pieces between printable characters.
+    * 'raw_offset' will show where those pieces start, for each character.
+    * 'rawp' is a pointer instead of integer, but same as above.
+    */
+   
+   line.rawp[0] = line.raw;
+   line.suffix = suffix_buffer;
+   
+   t1 = t2 = t3 = t4 = 0;
+   gettimeofday( &tvold, NULL );
+   debugf( "---" );
+   
+#define ADD_TO( timer ) gettimeofday( &tvnew, NULL ); (timer) += tvnew.tv_usec - tvold.tv_usec + ( tvnew.tv_sec - tvold.tv_sec ) * 1000000; tvold = tvnew;
+   
+   /* Break it into the structure. */
+   for ( i = 0; i < bytes; i++ )
+     {
+	/* Check for the end. Either new line, prompt GA, or byte limit. */
+	if ( buf[i] == '\n' || buf[i] == (char) GA ||
+	     line.raw_len == INPUT_BUF - 1 )
+	  {
+	     /* End of the line/prompt/limit? Good! Process it and show it! */
+	     
+	     ADD_TO( t1 );
+	     
+	     /* Remove the IAC byte... If there is one. */
+	     if ( buf[i] == (char) GA && line.raw_len > 0 )
+	       line.raw_len--;
+	     
+	     line.line[line.len] = 0;
+	     line.raw_line[line.raw_len] = 0;
+	     line.raw[line.raw_len] = 0;
+	     line.raw_offset[line.len+1] = 0;
+	     
+	     /* Let the modules do some processing on it, then print it. */
+	     if ( buf[i] == (char) GA )
+	       module_process_new_server_prompt( &line );
+	     else if ( buf[i] == '\n' )
+	       module_process_new_server_line( &line );
+	     else
+	       module_process_new_server_line( &line );
+	     
+	     ADD_TO( t2 );
+	     
+	     if ( buf[i] == (char) GA )
+	       {
+		  strcpy( last_prompt, line.raw_line );
+		  strcat( last_prompt, iac_ga );
+		  
+		  if ( !current_line && !sent_something )
+		    add_newline = 1;
+		  else
+		    {
+		       sent_something = 0;
+		       current_line = 0;
+		    }
+		  
+		  ending = iac_ga;
+	       }
+	     else if ( buf[i] == '\n' )
+	       {
+		  if ( line.len && !current_line && !sent_something )
+		    add_newline = 1;
+		  current_line = 1;
+		  sent_something = 0;
+		  
+		  ending = "\r\n";
+	       }
+	     else
+	       ending = "";
+	     
+	     print_line( &line, ending );
+	     
+	     ADD_TO( t3 );
+	     
+	     clean_line( &line );
+	     
+	     ADD_TO( t4 );
+	     
+	     if ( buf[i] == '\n' || buf[i] == (char) GA )
+	       continue;
+	     
+	     /* Don't continue, current character must not be skipped. */
+	  }
+	
+	/* Ignore this one. */
+	if ( buf[i] == '\r' )
+	  continue;
+	
+	line.raw_line[line.raw_len] = buf[i];
+	
+	/* Is this character printable, or just raw data or color codes? */
+	if ( buf[i] == '\33' )
+	  line.within_color_code = 1;
+	
+	/* Put it where it belongs, never in both places. */
+	if ( line.within_color_code || buf[i] < 32 )
+	  line.raw[line.raw_len++] = buf[i];
+	else
+	  {
+	     line.line[line.len++] = buf[i];
+	     
+	     line.raw[line.raw_len++] = 0;
+	     line.raw_offset[line.len] = line.raw_len;
+	     line.rawp[line.len] = line.raw + line.raw_offset[line.len];
+	  }
+	
+	/* Color codes end with the 'm' character. Beware of other ANSI codes! */
+	if ( line.within_color_code && buf[i] == 'm' )
+	  line.within_color_code = 0;
+     }
+   
+   debugf( "t1: [%d] t2:[%d] t3:[%d] t4:[%d]", (int) t1, (int) t2, (int) t3, (int) t4 );
+   debugf( C_W "Total: [%d]" C_0, (int) (t1 + t2 + t3 + t4 ) );
+   
+   if ( show_processing_time )
+     gettimeofday( &tvnew2, NULL );
+   
+   empty_buffer( );
+   
+   if ( show_processing_time )
+     {
+	int usec, sec;
+	
+	usec = tvnew2.tv_usec - tvold2.tv_usec;
+	sec = tvnew2.tv_sec - tvold2.tv_sec;
+	
+	clientff( "(%d)", usec + ( sec * 1000000 ) );
+     }
+}
+
+
+
 void process_buffer( char *raw_buf, int bytes )
 {
+   process_new_buffer( raw_buf, bytes );
+   
+#if 0
    static char last_line[INPUT_BUF];
    static char last_colorless_line[INPUT_BUF];
    static char last_printable_line[INPUT_BUF];
@@ -3320,9 +3691,9 @@ void process_buffer( char *raw_buf, int bytes )
    static int last_c_pos = 0;
    static int last_p_pos = 0;
    static int in_iac;
-   char buf[INPUT_BUF];
    int ignore = 0;
    int i;
+   char buf[INPUT_BUF];
    struct timeval tvold, tvnew;
    
    bytes_uncompressed += bytes;
@@ -3335,6 +3706,7 @@ void process_buffer( char *raw_buf, int bytes )
      gettimeofday( &tvold, NULL );
    
    buffer_output = 1;
+   
    for ( i = 0; i < bytes; i++ )
      {
 	if ( last_pos > INPUT_BUF - 16 )
@@ -3492,14 +3864,13 @@ void process_buffer( char *raw_buf, int bytes )
 	       }
 	  }
      }
-   
    buffer_output = 0;
-   
-   if ( show_processing_time )
-     gettimeofday( &tvnew, NULL );
    
    clientf( buffer_data );
    buffer_data[0] = 0;
+   
+   if ( show_processing_time )
+     gettimeofday( &tvnew, NULL );
    
    if ( show_processing_time )
      {
@@ -3510,6 +3881,8 @@ void process_buffer( char *raw_buf, int bytes )
 	
 	clientff( "(%d)", usec + ( sec * 1000000 ) );
      }
+   
+#endif
 }
 
 
@@ -3724,12 +4097,8 @@ int init_socket( int port )
    sa.sin_family   = AF_INET;
    sa.sin_port     = htons( port );
    
-#if !defined( FOR_WINDOWS )
    if ( bind_to_localhost )
-     inet_aton( "127.0.0.1", &sa.sin_addr );
-#else
-   sa.sin_addr.s_addr = inet_addr( "127.0.0.1" );
-#endif
+     sa.sin_addr.s_addr = inet_addr( "127.0.0.1" );
    
    if ( bind( fd, (struct sockaddr *) &sa, sizeof( sa ) ) < 0 )
      {

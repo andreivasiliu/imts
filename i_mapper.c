@@ -210,8 +210,9 @@ int bump_exits;
 
 void i_mapper_module_init_data( );
 void i_mapper_module_unload( );
-void i_mapper_process_server_line_prefix( char *colorless_line, char *colorful_line, char *raw_line );
+void i_mapper_process_server_line( LINE *line );
 void i_mapper_process_server_line_suffix( char *colorless_line, char *colorful_line, char *raw_line );
+void i_mapper_process_server_prompt( LINE *line );
 void i_mapper_process_server_prompt_informative( char *line, char *rawline );
 void i_mapper_process_server_prompt_action( char *rawline );
 int  i_mapper_process_client_command( char *cmd );
@@ -228,8 +229,10 @@ ENTRANCE( i_mapper_module_register )
    
    self->init_data = i_mapper_module_init_data;
    self->unload = i_mapper_module_unload;
-   self->process_server_line_prefix = i_mapper_process_server_line_prefix;
+   self->process_server_line = i_mapper_process_server_line;
+   self->process_server_line_prefix = NULL;
    self->process_server_line_suffix = i_mapper_process_server_line_suffix;
+   self->process_server_prompt = i_mapper_process_server_prompt;
    self->process_server_prompt_informative = i_mapper_process_server_prompt_informative;
    self->process_server_prompt_action = i_mapper_process_server_prompt_action;
    self->process_client_command = NULL;
@@ -803,7 +806,7 @@ void set_reverse( ROOM_DATA *source, int dir, ROOM_DATA *destination )
 }
 
 
-void parse_pre_room( char *line, char *raw_line )
+void parse_pre_room( LINE *l )
 {
    if ( similar )
      similar = 0;
@@ -812,27 +815,19 @@ void parse_pre_room( char *line, char *raw_line )
    
    if ( !parsing_room )
      {
-	if ( !strncmp( raw_line, room_color, room_color_len ) )
-	  {
-	     parsing_room = 1;
-	  }
-	else if ( !strncmp( line, "In the trees above ", 19 ) &&
-		  !strncmp( raw_line + 18, room_color, room_color_len ) )
-	  {
-	     title_offset = 19;
-	     similar = 1;
-	     parsing_room = 1;
-	  }
-	else if ( !strncmp( line, "Flying above ", 13 ) &&
-		  !strncmp( raw_line + 12, room_color, room_color_len ) )
-	  {
-	     title_offset = 13;
-	     similar = 1;
-	     parsing_room = 1;
-	  }
+	if ( !strncmp( l->line, "In the trees above ", 19 ) )
+	  title_offset = 18, similar = 1;
+	if ( !strncmp( l->line, "Flying above ", 13 ) )
+	  title_offset = 12, similar = 1;
+	
+	if ( !strncmp( l->rawp[title_offset], room_color, room_color_len ) )
+	  parsing_room = 1;
+	
+	if ( title_offset )
+	  title_offset++;
      }
    
-   if ( parsing_room == 1 && line[0] && !disable_mxp_title )
+   if ( parsing_room == 1 && l->line[0] && !disable_mxp_title )
      {
 	if ( mxp_tag( TAG_TEMP_SECURE ) )
 	  {
@@ -4378,7 +4373,7 @@ void parse_eventstatus( char *line )
 
 
 
-void parse_who( char *line, char *colorless )
+void parse_who( LINE *line )
 {
    static int first_time = 1, len1, len2;
    ROOM_DATA *r, *room;
@@ -4391,13 +4386,9 @@ void parse_who( char *line, char *colorless )
    
    DEBUG( "parse_who" );
    
-   if ( disable_wholist )
-     return;
-   
-   if ( colorless[0] != ' ' )
-     return;
-   
-   if ( strlen( line ) < 70 )
+   if ( disable_wholist ||
+	line->line[0] != ' ' ||
+	line->len < 70 )
      return;
    
    /* Initialize these two, so we won't do them each time. */
@@ -4408,27 +4399,24 @@ void parse_who( char *line, char *colorless )
 	first_time = 0;
      }
    
-   if ( !cmp( "[36m - [37m*", line + 14 ) &&
-	!cmp( "[36m - [37m*", line + 59 ) )
+   /* Has two lines, with color changes at the sides? */
+   
+   if ( !cmp( " - *", line->line + 14 ) &&
+	!cmp( " - *", line->line + 51 ) )
      {
-	strcpy( color, C_0 + 1 );
+	if ( *line->rawp[0] )
+	  strcpy( color, line->rawp[0] );
+	else
+	  strcpy( color, C_0 );
 	
-	get_string( colorless, name, 64 );
+	get_string( line->line, name, 64 );
 	
-	strcpy( roomname, line + 70 );
-     }
-   else if ( !cmp( " - *", colorless + 14 ) &&
-	     !cmp( " - *", colorless + 51 ) )
-     {
-	get_string( line, color, 64 );
-	get_string( colorless, name, 64 );
-	
-	strcpy( roomname, colorless + 54 );
+	strcpy( roomname, line->line + 54 );
      }
    else
      return;
    
-   gag_line( 1 );
+   line->gag_entirely = 1;
    
    /* Search for it. */
    
@@ -4451,7 +4439,7 @@ void parse_who( char *line, char *colorless )
 	    }
        }
    
-   clientff( "\33%s%14s" C_c " - " C_0 "%-24s ", color, name, roomname );
+   clientff( "%s%14s" C_c " - " C_0 "%-24s ", color, name, roomname );
    
    if ( !room )
      {
@@ -4491,8 +4479,6 @@ void parse_who( char *line, char *colorless )
      }
    else
      clientf( C_D "(" C_R "unknown" C_D ")" C_0 );
-   
-   clientf( "\r\n" );
 }
 
 
@@ -4839,33 +4825,28 @@ void check_autobump( )
 
 
 
-void i_mapper_process_server_line_prefix( char *colorless_line, char *colorful_line, char *raw_line )
+void i_mapper_process_server_line( LINE *l )
 {
-   char *line = colorless_line;
+   DEBUG( "i_mapper_process_server_line" );
    
-   DEBUG( "i_mapper_process_server_line_prefix" );
-   
-   if ( auto_walk &&
-	( !cmp( "You cannot move that fast, slow down!", line ) ||
-	  !cmp( "Now now, don't be so hasty!", line ) ) )
+   if ( ( auto_walk && ( !cmp( "You cannot move that fast, slow down!", l->line ) ||
+			 !cmp( "Now now, don't be so hasty!", l->line ) ) ) ||
+	( auto_bump && ( !cmp( "There is no exit in that direction.", l->line ) ) ) )
      {
-	gag_line( 1 );
-	gag_prompt( 1 );
-     }
-   
-   if ( auto_bump && !cmp( "There is no exit in that direction.", line ) )
-     {
-	gag_line( 1 );
-	gag_prompt( 1 );
+	l->gag_entirely = 1;
+	l->gag_ending = 1;
      }
    
    /* Gag/replace the alertness message, with something easier to read. */
-   parse_alertness( colorless_line );
+   parse_alertness( l->line );
    
-   parse_who( colorful_line, colorless_line );
+   parse_who( l );
    
-   parse_pre_room( colorless_line, raw_line );
+   parse_pre_room( l );
+   
+   i_mapper_process_server_line_suffix( l->line, l->raw_line, l->raw_line );
 }
+
 
 
 void i_mapper_process_server_line_suffix( char *colorless_line, char *colorful_line, char *raw_line )
@@ -5031,6 +5012,13 @@ void i_mapper_process_server_line_suffix( char *colorless_line, char *colorful_l
      }
 }
 
+
+
+void i_mapper_process_server_prompt( LINE *line )
+{
+   i_mapper_process_server_prompt_informative( line->line, line->raw_line );
+   i_mapper_process_server_prompt_action( line->line );
+}
 
 
 

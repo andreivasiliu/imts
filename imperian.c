@@ -220,9 +220,11 @@ int AFF_SOMETHING;
 
 void imperian_module_init_data( );
 void imperian_process_server_line_prefix( char *colorless_line, char *colorful_line, char *raw_line );
-void imperian_process_server_line( char *colorless_line, char *colorful_line, char *raw_line );
+void imperian_process_server_line_suffix( char *colorless_line, char *colorful_line, char *raw_line );
+void imperian_process_server_line( LINE *line );
 void imperian_process_server_prompt_informative( char *line, char *rawline );
 void imperian_process_server_prompt_action( char *rawline );
+void imperian_process_server_prompt( LINE *line );
 int  imperian_process_client_command( char *cmd );
 int  imperian_process_client_aliases( char *cmd );
 char *imperian_build_custom_prompt( );
@@ -236,8 +238,10 @@ ENTRANCE( imperian_module_register )
    self->id = imperian_id;
    
    self->init_data = imperian_module_init_data;
+   self->process_server_line = imperian_process_server_line;
    self->process_server_line_prefix = imperian_process_server_line_prefix;
-   self->process_server_line_suffix = imperian_process_server_line;
+   self->process_server_line_suffix = imperian_process_server_line_suffix;
+   self->process_server_prompt = imperian_process_server_prompt;
    self->process_server_prompt_informative = imperian_process_server_prompt_informative;
    self->process_server_prompt_action = imperian_process_server_prompt_action;
    self->process_client_command = imperian_process_client_command;
@@ -2835,6 +2839,15 @@ void send_action( char *string )
 
 
 
+void imperian_process_server_line( LINE *line )
+{
+   imperian_process_server_line_prefix( line->line, line->raw_line, line->raw_line );
+   
+   imperian_process_server_line_suffix( line->line, line->raw_line, line->raw_line );
+}
+
+
+
 void imperian_process_server_line_prefix( char *colorless_line, char *colorful_line, char *raw_line )
 {
    char *line = colorful_line;
@@ -2851,7 +2864,7 @@ void imperian_process_server_line_prefix( char *colorless_line, char *colorful_l
 
 
 
-void imperian_process_server_line( char *colorless_line, char *colorful_line, char *raw_line )
+void imperian_process_server_line_suffix( char *colorless_line, char *colorful_line, char *raw_line )
 {
 //   static long t1, t2, t3;
    
@@ -2878,14 +2891,6 @@ void imperian_process_server_line( char *colorless_line, char *colorful_line, ch
    /* Ignore it if we're told so. */
    if ( ignore_next )
      return;
-   
-   /* Skip rooms, so it will use less CPU. */
-   if ( !strncmp( colorful_line, "\33[35m", 5 ) )
-     {
-	puts( "Room!" );
-	ignore_next = 1;
-	return;
-     }
    
    /* What line is this? Might help us, in the future, to know. */
    line_since_prompt++;
@@ -4177,6 +4182,25 @@ void keep_up_defences( )
 	     prompt_newline = 1;
 	  }
      }
+}
+
+
+
+void imperian_process_server_prompt( LINE *line )
+{
+   char *custom_prompt;
+   
+   imperian_process_server_prompt_informative( line->line, line->raw_line );
+   
+   custom_prompt = imperian_build_custom_prompt( );
+   if ( custom_prompt )
+     {
+	line->gag_entirely = 1;
+	line->gag_ending = 1;
+	clientf( custom_prompt );
+     }
+   
+   imperian_process_server_prompt_action( line->line );
 }
 
 
