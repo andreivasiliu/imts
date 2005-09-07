@@ -152,6 +152,8 @@ char cse_message[5120];
 int close_rmtitle_tag;
 int similar;
 int title_offset;
+int floating_map_enabled;
+int skip_newline_on_map;
 
 /* config.mapper.txt options. */
 int disable_swimming;
@@ -177,6 +179,7 @@ ROOM_DATA *current_room;
 ROOM_DATA *hash_world[MAX_HASH];
 
 ROOM_DATA *link_next_to;
+ROOM_DATA *last_room;
 
 AREA_DATA *areas;
 AREA_DATA *areas_last;
@@ -1864,7 +1867,7 @@ void show_map_new( ROOM_DATA *room )
    
    
    /* Are we able to get a SECURE mode on MXP? */
-   if ( !disable_mxp_map && mxp_tag( TAG_LOCK_SECURE ) )
+   if ( !disable_mxp_map && !skip_newline_on_map && mxp_tag( TAG_LOCK_SECURE ) )
      use_mxp = 1;
    
    /* Upper banner. */
@@ -1876,7 +1879,7 @@ void show_map_new( ROOM_DATA *room )
    
    sprintf( vnum_buf, "v%d", room->vnum );
    
-   s = "/--" C_C;
+   s = C_0 "/--" C_C;
    while( *s )
      *(p++) = *(s++);
    s = room->area->name, len = 0;
@@ -2087,7 +2090,11 @@ void show_map_new( ROOM_DATA *room )
      *(p++) = *(s++), len++;
    for ( x = len; x < MAP_X * 4 - 5; x++ )
      *(p++) = '-';
-   s = "/\r\n";
+   
+   if ( !skip_newline_on_map )
+     s = "/\r\n";
+   else
+     s = "/";
    while( *s )
      *(p++) = *(s++);
    *p = 0;
@@ -2306,6 +2313,26 @@ void show_map( ROOM_DATA *room )
    
    /* Now let's send this big monster we've just created... */
    clientf( big_buffer );
+}
+
+
+
+void show_floating_map( ROOM_DATA *room )
+{
+   if ( !floating_map_enabled || !room )
+     return;
+   
+   if ( !mxp_tag( TAG_LOCK_SECURE ) )
+     return;
+   
+   mxp( "<DEST IMapper X=0 Y=0>" );
+   
+   skip_newline_on_map = 1;
+   show_map_new( room );
+   skip_newline_on_map = 0;
+   
+   mxp( "</DEST>" );
+   mxp_tag( TAG_DEFAULT );
 }
 
 
@@ -3695,6 +3722,8 @@ void show_path( ROOM_DATA *current )
 
 void i_mapper_mxp_enabled( )
 {
+   floating_map_enabled = 0;
+   
    mxp_tag( TAG_LOCK_SECURE );
    mxp( "<!element mpelm '<send \"map path &v;|room look &v;\" "
 	"hint=\"&r;|Vnum: &v;|Type: &t;\">' ATT='v r t'>" );
@@ -3831,6 +3860,9 @@ void mark_player( ROOM_DATA *room, char *name )
      room->person_here = strdup( "Someone" );
    
    add_timer( "remove_players", 5, remove_players, 0, 0, 0 );
+   
+   /* Force an update of the floating map. */
+   last_room = NULL;
 }
 
 
@@ -4927,13 +4959,6 @@ void i_mapper_process_server_line( LINE *l )
    if ( !l->raw_len )
      return;
    
-   if ( close_rmtitle_tag )
-     {
-	mxp_tag( TAG_TEMP_SECURE );
-	mxp( "</RmTitle>" );
-	close_rmtitle_tag = 0;
-     }
-   
    /* Are we sprinting, now? */
    parse_sprint( l->line );
    
@@ -5052,6 +5077,12 @@ void i_mapper_process_server_prompt( LINE *line )
 {
    i_mapper_process_server_prompt_informative( line->line, line->raw_line );
    i_mapper_process_server_prompt_action( line->line );
+   
+   if ( last_room != current_room && current_room )
+     {
+	show_floating_map( current_room );
+	last_room = current_room;
+     }
 }
 
 
@@ -5297,6 +5328,7 @@ void do_map_help( char *arg )
 	    " map queue    - Show the command queue.\r\n"
 	    " map queue cl - Clear the command queue.\r\n"
 	    " map config   - Configure the mapper.\r\n"
+	    " map window   - Open a floating MXP-based window.\r\n"
 	    " map          - Generate a map, from the current room.\r\n"
 	    " map #        - Generate a map centered on vnum #.\r\n"
 	    " landmarks    - Show all the landmarks, in the world.\r\n"
@@ -5422,6 +5454,9 @@ void do_map_path( char *arg )
 {
    ROOM_DATA *room;
    char buf[256];
+   
+   /* Force an update of the floating map. */
+   last_room = NULL;
    
    if ( !isdigit( *(arg) ) && *(arg) != 'n' )
      {
@@ -5762,6 +5797,30 @@ void do_map_config( char *arg )
 	    " map config showarea  - Show the current area after a room title.\r\n"
 	    " map config title_mxp - Mark the room title with MXP tags.\r\n"
 	    " map config map_mxp   - Use MXP tags on map generation.\r\n" );
+}
+
+
+
+void do_map_window( char *arg )
+{
+   if ( floating_map_enabled )
+     {
+	floating_map_enabled = 0;
+	clientfr( "Floating MXP map disabled. Don't forget to close the window!" );
+	return;
+     }
+   
+   if ( !mxp_tag( TAG_TEMP_SECURE ) )
+     {
+	floating_map_enabled = 0;
+	clientfr( "Unable to get a SECURE tag. Maybe your client does not support MXP?" );
+	return;
+     }
+   
+   floating_map_enabled = 1;
+   mxp( "<FRAME IMapper Left=\"-57c\" Top=\"2c\" Height=\"21c\""
+	" Width=\"55c\" FLOATING>" );
+   clientfr( "Enabled. Warning, this may slow you down." );
 }
 
 
@@ -7438,6 +7497,7 @@ FUNC_DATA cmd_table[] =
      { "teleport",	do_map_teleport,CMD_MAP },
      { "queue",		do_map_queue,	CMD_MAP },
      { "config",	do_map_config,	CMD_MAP },
+     { "window",	do_map_window,	CMD_MAP },
    
    /* Area commands. */
      { "help",		do_area_help,	CMD_AREA },

@@ -77,9 +77,11 @@
 
 #define INPUT_BUF 4096
 
+/*
 #ifndef __attribute__
 # define __attribute__( params ) ;
 #endif
+ */
 
 /* Values to be used with mxp_tag. */
 #define TAG_NOTHING	-2
