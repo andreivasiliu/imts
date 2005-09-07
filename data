@@ -367,6 +367,7 @@ A "something"           n/a n/a n/a            no  no   n/a          "---"
 
 # Disfigurement.
 "^ curses you with the visage of a rotting corpse." disfigurement give
+"You feel your body weaken and regress to a more primitive state." disfigurement give
 "Your horribly disfigured body is restored." disfigurement cure
 
 # Disloyalty.

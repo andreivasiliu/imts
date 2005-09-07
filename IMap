@@ -19269,8 +19269,9 @@ UE: up northeast
 ROOM v3340
 Name: Cul-de-sac in Zephyr Plaza.
 Type: Natural underground
-E: north 8472
+DEL: north
 E: east 3339
+DEL: south
 DEL: west
 E: down 3341
 UE: down southwest
@@ -19280,6 +19281,7 @@ Name: Near the end of the cobblestone path.
 Type: Natural underground
 DEL: north
 E: southeast 3337
+DEL: south
 E: west 3340
 SPE: 5260 10 "enter grate" "You step through a marble grate."
 
@@ -19288,16 +19290,20 @@ Name: Passing grand villas.
 Type: Natural underground
 DEL: north
 DEL: east
-E: south 3335
+E: south 8511
 E: west 3337
+EL: west 2
 
 ROOM v3337
 Name: Zephyr Plaza.
 Type: Natural underground
 DEL: north
 E: east 3338
-E: southeast 3335
+EL: east 2
+E: southeast 8512
+EL: southeast 1
 E: south 3336
+EL: south 2
 DEL: west
 E: northwest 3339
 
@@ -19305,7 +19311,8 @@ ROOM v3336
 Name: In the Zephyr Plaza rock garden.
 Type: Natural underground
 E: north 3337
-E: east 3335
+EL: north 2
+E: east 8515
 DEL: south
 E: west 7731
 ES: west 1
@@ -19313,12 +19320,12 @@ ES: west 1
 ROOM v3335
 Name: Within Zephyr Plaza.
 Type: Natural underground
-E: north 3338
+E: north 8510
 E: east 3320
 EL: east 1
 E: south 7736
-E: west 3336
-E: northwest 3337
+E: west 8514
+E: northwest 8512
 
 ROOM v3329
 Name: The Official Celidon Exchange.
@@ -19831,9 +19838,36 @@ Name: A magnificent pool surrounded by stalactites.
 Type: Undefined
 E: south 8334
 
-ROOM v8472
-Name: A glorious, well lit entryway.
-E: south 3340
+ROOM v8510
+Name: A stream-bordered tunnel.
+Type: Natural underground
+E: north 8511
+E: south 3335
+
+ROOM v8511
+Name: A fountain in Zephyr Plaza.
+Type: Natural underground
+E: north 3338
+E: south 8510
+
+ROOM v8512
+Name: A carp-filled pool.
+Type: Natural underground
+E: southeast 3335
+E: northwest 3337
+EL: northwest 1
+
+ROOM v8514
+Name: A gathering place.
+Type: Natural underground
+E: east 3335
+E: west 8515
+
+ROOM v8515
+Name: The Plaza gardens.
+Type: Natural underground
+E: east 8514
+E: west 3336
 
 
 
@@ -47054,8 +47088,6 @@ ROOM v6655
 Name: The sandy Gongen beach.
 Type: Beach
 E: northeast 6665
-E: southeast 6672
-ES: southeast 1
 E: southwest 6654
 E: northwest 6612
 
@@ -47183,8 +47215,6 @@ Type: Ocean
 Underwater
 E: southeast 6671
 E: south 6674
-E: northwest 6655
-ES: northwest 1
 
 ROOM v6674
 Name: Below Gongen Lake's waves.
