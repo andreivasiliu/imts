@@ -253,6 +253,9 @@ ENTRANCE( offensive_module_register )
    self->update_descriptors = NULL;
    
    GET_FUNCTIONS( self );
+#if defined( FOR_WINDOWS )
+   gettimeofday = self->get_func( "gettimeofday" );
+#endif
 }
 
 
