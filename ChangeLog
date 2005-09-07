@@ -1,5 +1,25 @@
+IMTS-unstable
+=============
+(MudBot:)
+- Instead of a raw line, it will send a complicated structure containing
+  a lot more useful stuff to the modules. This allows a module to easily
+  detect raw data instead of printable character, allows to prefix, suffix,
+  replace, and insert text in the line/prompt, and to gag only parts of it.
+(IOffense:)
+- Script block/statement parser added, that supports, in order of creation...
+- C-like comments and spacing.
+- Local and Global string variables.
+- Functions and alias functions.
+- Argument passing to functions, and return values from functions or
+  statements.
+- Variable assignment using a statement's return value, the assignment
+  itself being a statement that can be assigned to yet another variable.
+- Function call stack, allowing unlimited recursive calls.
+
+
+
 IMTS-5
-===============
+======
 (MudBot:)
 - Descriptor handling updated, to allow multiple listening ports.
 - Various small changes, for compatibility with the Nexus client.

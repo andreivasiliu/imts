@@ -211,7 +211,6 @@ int bump_exits;
 void i_mapper_module_init_data( );
 void i_mapper_module_unload( );
 void i_mapper_process_server_line( LINE *line );
-void i_mapper_process_server_line_suffix( char *colorless_line, char *colorful_line, char *raw_line );
 void i_mapper_process_server_prompt( LINE *line );
 void i_mapper_process_server_prompt_informative( char *line, char *rawline );
 void i_mapper_process_server_prompt_action( char *rawline );
@@ -230,8 +229,6 @@ ENTRANCE( i_mapper_module_register )
    self->init_data = i_mapper_module_init_data;
    self->unload = i_mapper_module_unload;
    self->process_server_line = i_mapper_process_server_line;
-   self->process_server_line_prefix = NULL;
-   self->process_server_line_suffix = i_mapper_process_server_line_suffix;
    self->process_server_prompt = i_mapper_process_server_prompt;
    self->process_server_prompt_informative = i_mapper_process_server_prompt_informative;
    self->process_server_prompt_action = i_mapper_process_server_prompt_action;
@@ -806,72 +803,83 @@ void set_reverse( ROOM_DATA *source, int dir, ROOM_DATA *destination )
 }
 
 
-void parse_pre_room( LINE *l )
-{
-   if ( similar )
-     similar = 0;
-   if ( title_offset )
-     title_offset = 0;
-   
-   if ( !parsing_room )
-     {
-	if ( !strncmp( l->line, "In the trees above ", 19 ) )
-	  title_offset = 18, similar = 1;
-	if ( !strncmp( l->line, "Flying above ", 13 ) )
-	  title_offset = 12, similar = 1;
-	
-	if ( !strncmp( l->rawp[title_offset], room_color, room_color_len ) )
-	  parsing_room = 1;
-	
-	if ( title_offset )
-	  title_offset++;
-     }
-   
-   if ( parsing_room == 1 && l->line[0] && !disable_mxp_title )
-     {
-	if ( mxp_tag( TAG_TEMP_SECURE ) )
-	  {
-	     mxp( "<RmTitle>" );
-	     close_rmtitle_tag = 1;
-	  }
-     }
-}
 
-
-void parse_room( char *line, char *raw_line )
+void parse_room( LINE *l )
 {
    ROOM_DATA *new_room;
+   char *line = l->line;
    int created = 0;
+   static int exit_offset;
    int q, i;
    
    DEBUG( "parse_room" );
    
    /* Room title check. */
    
-   /* Moved from here to parse_pre_room( ). */
+   if ( similar )
+     similar = 0;
+   if ( title_offset )
+     title_offset = 0;
    
+   /* Check the beginning, for a color. */
    if ( !parsing_room )
+     {
+	title_offset = 0;
+	if ( !strncmp( l->line, "In the trees above ", 19 ) )
+	  title_offset = 18, similar = 1;
+	if ( !strncmp( l->line, "Flying above ", 13 ) )
+	  title_offset = 12, similar = 1;
+	
+	if ( strstr( l->rawp[title_offset], room_color/*, room_color_len*/ ) )
+	  {
+//	     insert( title_offset, "Y" );
+	     parsing_room = 1;
+	  }
+	
+	if ( title_offset )
+	  title_offset++;
+	
+	/* Still nothing? Maybe the color code is at the end...
+	 * But this means the room is on the next line, not this. */
+	if ( !title_offset && !parsing_room )
+	  {
+	     if ( l->rawp[l->len] && strstr( l->rawp[l->len], "35" ) )
+	       {
+//		  insert( l->len, "Z" );
+		  parsing_room = 1;
+		  return;
+	       }
+	  }
+     }
+   
+   if ( !l->len || !parsing_room )
      return;
    
-   /* Stage one, room name. */
    if ( parsing_room == 1 )
      {
-	/* Room name is after a newline. (e.g. title after a swim) */
-	/* Leave parsing_room as 1. */
-	if ( !line[0] )
-	  return;
-	
-	line += title_offset;
-	
-//	debugf( "Room!" );
-	
-	/* Return if it looks too weird to be a room title. */
-	if ( ( line[0] < 'A' || line[0] > 'Z' ) &&
-	     ( line[0] < 'a' || line[0] > 'a' ) )
+	/* Check if it actually looks like a room. */
+	if ( ( ( l->line[0] < 'A' || l->line[0] > 'Z' ) &&
+	       ( l->line[0] < 'a' || l->line[0] > 'a' ) ) ||
+	     ( l->line[l->len - 1] != '.' && l->line[l->len - 1] != ')' ) )
 	  {
 	     parsing_room = 0;
 	     return;
 	  }
+	
+//	if ( mxp_tag( TAG_TEMP_SECURE ) )
+	if ( !disable_mxp_title )
+	  {
+//	     insert( title_offset, "<RmTitle>" );
+//	     insert( l->len, "</RmTitle>" );
+	  }
+     }
+   
+   /* Stage one, room name. */
+   if ( parsing_room == 1 )
+     {
+	line += title_offset;
+	
+//	debugf( "Room!" );
 	
 	/* Capturing mode. */
 	if ( mode == CREATING && capture_special_exit )
@@ -1159,38 +1167,64 @@ void parse_room( char *line, char *raw_line )
    /* Stage two, look for start of exits list. */
    if ( parsing_room == 2 )
      {
-	if ( current_room )
+	static int sub_stage;
+	/* Sub stages:
+	 * 0 - Looking for a color code.
+	 * 1 - Found it, looking for 'You'.
+	 */
+	
+	if ( !current_room )
 	  {
-	     char *p;
+	     parsing_room = 0;
+	     return;
+	  }
+	
+	for ( i = 0; i < l->len; i++ )
+	  {
+	     /* Blue color. */
+	     if ( !sub_stage && *l->rawp[i] && strstr( l->rawp[i], "34" ) )
+	       sub_stage = 1;
 	     
-	     if ( ( p = strstr( line, "You see exits leading" ) ) )
+	     if ( sub_stage == 1 )
 	       {
-		  line = p + 22;
+//		  debugf( "(%d)", strlen( l->rawp[i] ) );
+//		  insert( i, "X" );
+		  if ( l->line[i] == ' ' || l->line[i] == '\0' )
+		    continue;
 		  
-		  if ( mode == CREATING )
-		    for ( i = 1; dir_name[i]; i++ )
-		      current_room->detected_exits[i] = 0;
-		  else if ( get_unlost_exits )
-		    for ( i = 1; dir_name[i]; i++ )
-		      get_unlost_detected_exits[i] = 0;
-		  
-		  parsing_room = 3;
-		  
+		  if ( l->line[i] == 'Y' && !strncmp( l->line + i, "You", 3 ) )
+		    i += 3;
+		  else if ( !strncmp( l->line + i, "see", 3 ) )
+		    i += 3;
+		  else if ( !strncmp( l->line + i, "exits", 5 ) )
+		    i += 5;
+		  else if ( !strncmp( l->line + i, "a", 1 ) )
+		    i += 1;
+		  else if ( !strncmp( l->line + i, "single", 6 ) )
+		    i += 6;
+		  else if ( !strncmp( l->line + i, "exit", 4 ) )
+		    i += 4;
+		  else if ( !strncmp( l->line + i, "leading", 7 ) )
+		    i += 7, line = l->line + i, sub_stage = 2, exit_offset = i;
+		  else
+		    {
+		       sub_stage = 0;
+		       continue;
+		    }
 	       }
+	  }
+	
+	if ( sub_stage == 2 )
+	  {
+	     if ( mode == CREATING )
+	       for ( i = 1; dir_name[i]; i++ )
+		 current_room->detected_exits[i] = 0;
+	     else if ( get_unlost_exits )
+	       for ( i = 1; dir_name[i]; i++ )
+		 get_unlost_detected_exits[i] = 0;
 	     
-	     if ( !strncmp( line, "You see a single exit leading ", 30 ) )
-	       {
-		  line = line + 30;
-		  
-		  if ( mode == CREATING )
-		    for ( i = 1; dir_name[i]; i++ )
-		      current_room->detected_exits[i] = 0;
-		  else if ( get_unlost_exits )
-		    for ( i = 1; dir_name[i]; i++ )
-		      get_unlost_detected_exits[i] = 0;
-		  
-		  parsing_room = 3;
-	       }
+	     sub_stage = 0;
+	     parsing_room = 3;
 	  }
      }
    
@@ -1198,40 +1232,52 @@ void parse_room( char *line, char *raw_line )
    if ( parsing_room == 3 )
      {
 	char word[128];
-	char *p, *w;
+	char *w;
+	int j;
+	int beginning, end;
 	
-	p = line;
+	i = exit_offset;
 	
-	while( *p )
+	while( i < l->len )
 	  {
 	     w = word;
 	     /* Extract a word. */
-	     while( *p && *p != ',' && *p != ' ' && *p != '.' )
-	       *w++ = *p++;
+	     beginning = i;
+	     while( l->line[i] != ',' && l->line[i] != ' ' && l->line[i] != '.' )
+	       *w++ = l->line[i++];
 	     *w = 0;
+	     end = i;
 	     
 	     /* Skip spaces and weird stuff. */
-	     while( *p && ( *p == ',' || *p == ' ' ) )
-	       p++;
+	     while( l->line[i] && ( l->line[i] == ',' || l->line[i] == ' ' ) )
+	       i++;
 	     
-	     for ( i = 1; dir_name[i]; i++ )
+	     for ( j = 1; dir_name[j]; j++ )
 	       {
-		  if ( !strcmp( word, dir_name[i] ) )
+		  if ( !strcmp( word, dir_name[j] ) )
 		    {
 		       if ( mode == CREATING )
-			 current_room->detected_exits[i] = 1;
+			 current_room->detected_exits[j] = 1;
 		       else if ( get_unlost_exits )
-			 get_unlost_detected_exits[i] = 1;
+			 get_unlost_detected_exits[j] = 1;
+		       else
+			 {
+//			    insert( beginning, "<" );
+//			    insert( end, ">" );
+//			    debugf( "Exit found: [%s]", word );
+			 }
 		       break;
 		    }
 	       }
 	     
-	     if ( *p == '.' )
+	     if ( l->line[i] == '.' )
 	       {
 		  parsing_room = 0;
 		  break;
 	       }
 	  }
+	
+	exit_offset = 0;
      }
 }
 
@@ -1440,14 +1486,13 @@ void go_next( )
    
    if ( !current_room )
      {
-	clientfr( "No current_room." );
+	clientf( C_R "[No current_room.]" C_0 );
 	auto_walk = 0;
      }
    else if ( !current_room->pf_parent )
      {
-	clientff( C_R "[" C_G "Done." C_R "]\r\n" C_0 );
-	show_prompt( );
 	auto_walk = 0;
+	clientff( C_R "(" C_G "Done." C_R ") " C_0 );
      }
    else
      {
@@ -1462,12 +1507,12 @@ void go_next( )
 	       }
 	     else if ( door_locked )
 	       {
-		  clientff( C_R "\r\n[Locked room " C_W "%s" C_R " of v" C_W "%d" C_R ". Speedwalking disabled.]\r\n" C_0,
-			    dir_name[current_room->pf_direction], current_room->vnum );
-		  show_prompt( );
 		  door_locked = 0;
 		  door_closed = 0;
 		  auto_walk = 0;
+		  clientff( C_R "\r\n[Locked room " C_W "%s" C_R " of v" C_W "%d" C_R ". Speedwalking disabled.]\r\n" C_0,
+			    dir_name[current_room->pf_direction], current_room->vnum );
+		  show_prompt( );
 		  return;
 //		  sprintf( buf, "unlock %s", dir_name[current_room->pf_direction] );
 //		  clientfr( buf );
@@ -1477,7 +1522,7 @@ void go_next( )
 	     else
 	       {
 		  if ( !gag_prompt( -1 ) )
-		    clientfr( dir_name[current_room->pf_direction] );
+		    clientff( C_R "(" C_D "%s" C_R ") " C_0, dir_name[current_room->pf_direction] );
 		  
 		  if ( must_swim( current_room, current_room->pf_parent ) )
 		    send_to_server( "swim " );
@@ -1502,7 +1547,7 @@ void go_next( )
 		  if ( spexit->to == current_room->pf_parent &&
 		       spexit->command )
 		    {
-		       clientfr( spexit->command );
+		       clientff( C_R "(" C_D "%s" C_R ") ", spexit->command );
 		       send_to_server( spexit->command );
 		       send_to_server( "\r\n" );
 		       break;
@@ -4388,7 +4433,7 @@ void parse_who( LINE *line )
    
    if ( disable_wholist ||
 	line->line[0] != ' ' ||
-	line->len < 70 )
+	line->len < 53 )
      return;
    
    /* Initialize these two, so we won't do them each time. */
@@ -4827,30 +4872,6 @@ void check_autobump( )
 
 void i_mapper_process_server_line( LINE *l )
 {
-   DEBUG( "i_mapper_process_server_line" );
-   
-   if ( ( auto_walk && ( !cmp( "You cannot move that fast, slow down!", l->line ) ||
-			 !cmp( "Now now, don't be so hasty!", l->line ) ) ) ||
-	( auto_bump && ( !cmp( "There is no exit in that direction.", l->line ) ) ) )
-     {
-	l->gag_entirely = 1;
-	l->gag_ending = 1;
-     }
-   
-   /* Gag/replace the alertness message, with something easier to read. */
-   parse_alertness( l->line );
-   
-   parse_who( l );
-   
-   parse_pre_room( l );
-   
-   i_mapper_process_server_line_suffix( l->line, l->raw_line, l->raw_line );
-}
-
-
-
-void i_mapper_process_server_line_suffix( char *colorless_line, char *colorful_line, char *raw_line )
-{
    const char *block_messages[] =
      {    "You cannot move that fast, slow down!",
 	  "You cannot move until you have regained equilibrium.",
@@ -4885,12 +4906,25 @@ void i_mapper_process_server_line_suffix( char *colorless_line, char *colorful_l
 	  
 	  NULL
      };
-   char *line = colorless_line;
+   char *line = l->raw_line;
    int i;
    
    DEBUG( "i_mapper_process_server_line" );
    
-   if ( !colorful_line[0] )
+   if ( ( auto_walk && ( !cmp( "You cannot move that fast, slow down!", l->line ) ||
+			 !cmp( "Now now, don't be so hasty!", l->line ) ) ) ||
+	( auto_bump && ( !cmp( "There is no exit in that direction.", l->line ) ) ) )
+     {
+	l->gag_entirely = 1;
+	l->gag_ending = 1;
+     }
+   
+   /* Gag/replace the alertness message, with something easier to read. */
+   parse_alertness( l->line );
+   
+   parse_who( l );
+   
+   if ( !l->raw_len )
      return;
    
    if ( close_rmtitle_tag )
@@ -4901,33 +4935,33 @@ void i_mapper_process_server_line_suffix( char *colorless_line, char *colorful_l
      }
    
    /* Are we sprinting, now? */
-   parse_sprint( colorless_line );
+   parse_sprint( l->line );
    
    /* Is this a room? Parse it. */
-   parse_room( colorless_line, raw_line );
+   parse_room( l );
    
    /* Is this a special exit message? */
-   parse_special_exits( colorless_line );
+   parse_special_exits( l->line );
    
    /* Is this a follow message, if we're following someone? */
-   parse_follow( colorless_line );
+   parse_follow( l->line );
    
    /* Is this a sense/seek command? */
    if ( !disable_locating )
      {
-	parse_msense( colorless_line );
-	parse_window( colorless_line );
-	parse_scent( colorless_line );
-	parse_scry( colorless_line );
-	parse_ka( colorless_line );
-	parse_seek( colorless_line );
-	parse_scout( colorless_line );
-	parse_pursue( colorless_line );
-	parse_eventstatus( colorless_line );
+	parse_msense( l->line );
+	parse_window( l->line );
+	parse_scent( l->line );
+	parse_scry( l->line );
+	parse_ka( l->line );
+	parse_seek( l->line );
+	parse_scout( l->line );
+	parse_pursue( l->line );
+	parse_eventstatus( l->line );
 	
 	/* Is this a fullsense command? */
-	parse_fullsense( colorless_line );
-	parse_shrinesight( colorless_line );
+	parse_fullsense( l->line );
+	parse_shrinesight( l->line );
      }
    
    /* Can we get the area name and room type from here? */
@@ -5076,25 +5110,22 @@ void i_mapper_process_server_prompt_informative( char *line, char *rawline )
 	
 	if ( !found )
 	  {
-	     clientfr( "No perfect matches found." );
+	     prefix( C_R "[No perfect matches found.]\r\n" C_0 );
 	     mode = GET_UNLOST;
 	  }
 	else
 	  {
-	     char buf[256];
-	     
 	     current_room = found;
 	     current_area = current_room->area;
 	     mode = FOLLOWING;
 	     
 	     if ( !count )
 	       {
-		  clientfr( "Impossible error." );
+		  prefix( C_W "IMapper: Impossible error.\r\n" );
 		  return;
 	       }
 	     
-	     sprintf( buf, "Match probability: %d%%", 100 / count );
-	     clientfr( buf );
+	     prefixf( C_R "[Match probability: %d%%]\r\n" C_0, 100 / count );
 	  }
      }
 }
@@ -5103,8 +5134,6 @@ void i_mapper_process_server_prompt_informative( char *line, char *rawline )
 
 void i_mapper_process_server_prompt_action( char *line )
 {
-   int prompt_newline = 0;
-   
    DEBUG( "i_mapper_process_server_prompt_action" );
    
    if ( current_room && !pear_defence &&
@@ -5114,20 +5143,15 @@ void i_mapper_process_server_prompt_action( char *line )
 	pear_defence = 1;
 	send_to_server( "outr pear\r\neat pear\r\n" );
 	clientf( C_W "(" C_G "outr/eat pear" C_W ") " C_0 );
-	prompt_newline = 1;
      }
    
    if ( mode == FOLLOWING && auto_walk == 2 )
      {
 	go_next( );
 	/* Tricky. ;) */
-	prompt_newline = 0;
      }
    
    check_autobump( );
-   
-   if ( prompt_newline )
-     clientf( "\r\n" );
 }
 
 
@@ -7316,6 +7340,7 @@ void do_go( char *arg )
      dash_command = NULL;
    
    go_next( );
+   clientf( "\r\n" );
 }
 
 
@@ -7523,9 +7548,9 @@ int i_mapper_process_client_aliases( char *line )
 	  }
 	else if ( capture_special_exit )
 	  {
+	     capture_special_exit = 0;
 	     clientfr( "Capturing disabled." );
 	     show_prompt( );
-	     capture_special_exit = 0;
 	     return 1;
 	  }
      }

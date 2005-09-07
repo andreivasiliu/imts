@@ -75,10 +75,10 @@
 #define TELOPT_COMPRESS2 86 /* MCCPv2 */
 #define TELOPT_MXP 91       /* MXP - Mud eXtension Protocol. */
 
-#define INPUT_BUF 2048
+#define INPUT_BUF 4096
 
-#if defined( FOR_WINDOWS )
-# define __atribute__ ; //
+#ifndef __attribute__
+# define __attribute__( params ) ;
 #endif
 
 /* Values to be used with mxp_tag. */
@@ -192,6 +192,7 @@ struct line_data
    
    char *prefix;
    char *suffix;
+   char *replace;
    char *inlines[INPUT_BUF];
    
    short gag_entirely;

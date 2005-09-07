@@ -566,10 +566,10 @@ void voter_process_connection( DESCRIPTOR *desc )
      }
    else if ( bytes < 0 )
      {
+	voter_close_connection( );
 	clientf( "\r\n" );
 	clientfr( "Connection error." );
 	show_prompt( );
-	voter_close_connection( );
      }
    else
      {
@@ -577,11 +577,11 @@ void voter_process_connection( DESCRIPTOR *desc )
 	
 	if ( response_bytes + bytes > MAX_BODY )
 	  {
+	     voter_close_connection( );
+	     
 	     clientf( "\r\n" );
 	     clientfr( "The response is too big for me. Closing connection." );
 	     show_prompt( );
-	     
-	     voter_close_connection( );
 	  }
 	else
 	  {
@@ -596,9 +596,9 @@ void voter_connection_exception( DESCRIPTOR *desc )
 {
    clientf( "\r\n" );
    clientfr( "Connection error (exception raised on socket)." );
-   show_prompt( );
-   
    voter_close_connection( );
+   
+   show_prompt( );
 }
 
 

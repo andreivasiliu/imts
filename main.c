@@ -64,36 +64,33 @@ extern char *winmain_id;
 
 /*** Functions used by modules. ***/
 
+#ifndef __attribute__
+# define __attribute__( params ) ;
+#endif
+
+
+/* Line operators. */
+void prefix( char *string );
+void suffix( char *string );
+void replace( char *string );
+void insert( int pos, char *string );
+void prefixf( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
+void suffixf( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
+
 /* Communication */
 MODULE *get_modules( );
 void DEBUG( char * );
-#if !defined( FOR_WINDOWS )
 void debugf( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
-#else
-void debugf( char *string, ... );
-#endif
 void debugerr( char *string );
-#if !defined( FOR_WINDOWS )
 void logff( char *type, char *string, ... ) __attribute__ ( ( format( printf, 2, 3 ) ) );
-#else
-void logff( char *type, char *string, ... );
-#endif
 void clientf( char *string );
 void clientfr( char *string );
-#if !defined( FOR_WINDOWS )
 void clientff( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
-#else
-void clientff( char *string, ... );
-#endif
 void send_to_server( char *string );
 void show_prompt( );
 int gag_line( int gag );
 int gag_prompt( int gag );
-#if !defined( FOR_WINDOWS )
 void mxp( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
-#else
-void mxp( char *string, ... );
-#endif
 int mxp_tag( int tag );
 
 /* Utility */
@@ -172,10 +169,16 @@ int bytes_sent;
 int bytes_received;
 int bytes_uncompressed;
 
+/* Pre-allocated dynamic buffers, that will be grown/shrinked.
+ * This is to prevent the many free() and alloc() calls. */
+char *prefix_buffer, *prefix_p, *prefix_max;
+char *suffix_buffer, *suffix_p, *suffix_max;
+char *replace_buffer, *replace_p, *replace_max;
+
+
 char buffer_noclient[65536];
 char buffer_data[65536], *g_b = buffer_data;
 const char *g_blimit = buffer_data + 16384;
-char *suffix_buffer, *suffix_p, *suffix_max;
 char send_buffer[65536];
 char last_prompt[INPUT_BUF];
 int buffer_output;
@@ -213,6 +216,7 @@ char atcp_login_as[512];
 char default_user[512];
 char default_pass[512];
 int default_mxp_mode = 7;
+int strip_telnet_ga;
 
 /* ATCP. */
 int a_hp, a_mana, a_end, a_will, a_exp;
@@ -346,6 +350,13 @@ void *get_function( char *name )
       void *func;
    } functions[ ] =
      {
+	/* Line operators. */
+	  { "prefix", prefix },
+	  { "suffix", suffix },
+	  { "replace", replace },
+	  { "insert", insert },
+	  { "prefixf", prefixf },
+	  { "suffixf", suffixf },
 	/* Communication */
 	  { "get_variable", get_variable },
 	  { "get_modules", get_modules },
@@ -588,6 +599,11 @@ void generate_config( char *file_name )
 	    "host \"imperian.com\"\n"
 	    "port \"23\"\n\n\n" );
    
+   fprintf( fl, "# Autologin. Requires ATCP.\n"
+	    "# Keep your password here at your own risk! Better just leave these empty.\n\n"
+	    "user \"\"\n"
+	    "pass \"\"\n\n\n" );
+   
    fprintf( fl, "# Name to use on ATCP authentication. To disable ATCP use \"none\".\n"
 	    "# To login as \"MudBot <actual version>\" use \"default\" or leave it empty.\n\n"
 	    "atcp_login_as \"default\"\n"
@@ -601,10 +617,8 @@ void generate_config( char *file_name )
 	    "# Read the MXP specifications on www.zuggsoft.com for more info.\n\n"
 	    "default_mxp_mode \"locked\"\n\n\n" );
    
-   fprintf( fl, "# Autologin. Requires ATCP.\n"
-	    "# Keep your password here at your own risk! Better just leave these empty.\n\n"
-	    "user \"\"\n"
-	    "pass \"\"\n\n\n" );
+   fprintf( fl, "# Telnet Go-Ahead sequence. Some clients can't live with it, some can't without it.\n\n"
+	    "strip_telnet_ga \"no\"\n\n\n" );
    
    fprintf( fl, "# Read and parse these files too.\n\n"
 	    "include \"user.txt\"\n\n\n\n" );
@@ -703,6 +717,18 @@ void read_config( char *file_name, int silent )
 	     
 	     default_port = atoi( buf );
 	  }
+	else if ( !strcmp( cmd, "user" ) || !strcmp( cmd, "username" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     strcpy( default_user, buf );
+	  }
+	else if ( !strcmp( cmd, "pass" ) || !strcmp( cmd, "password" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     strcpy( default_pass, buf );
+	  }
 	else if ( !strcmp( cmd, "atcp_login_as" ) )
 	  {
 	     get_string( p, buf, 256 );
@@ -731,17 +757,14 @@ void read_config( char *file_name, int silent )
 	     else
 	       default_mxp_mode = 0;
 	  }
-	else if ( !strcmp( cmd, "user" ) || !strcmp( cmd, "username" ) )
+	else if ( !strcmp( cmd, "strip_telnet_ga" ) )
 	  {
 	     get_string( p, buf, 256 );
 	     
-	     strcpy( default_user, buf );
-	  }
-	else if ( !strcmp( cmd, "pass" ) || !strcmp( cmd, "password" ) )
-	  {
-	     get_string( p, buf, 256 );
-	     
-	     strcpy( default_pass, buf );
+	     if ( !strcmp( buf, "yes" ) )
+	       strip_telnet_ga = 1;
+	     else
+	       strip_telnet_ga = 0;
 	  }
 	else if ( !strcmp( cmd, "load" ) || !strcmp( cmd, "include" ) )
 	  {
@@ -1267,6 +1290,7 @@ void show_prompt( )
 {
    void process_buffer( char *raw_buf, int bytes );
    
+   sent_something = 1;
    process_buffer( last_prompt, strlen( last_prompt ) );
 }
 
@@ -1394,12 +1418,41 @@ void module_process_server_prompt_action( char *line )
 
 void module_process_new_server_line( LINE *line )
 {
+   char mccp_stop[] = { IAC, DONT, TELOPT_COMPRESS2, 0 };
    MODULE *module;
    
    DEBUG( "module_process_new_server_line" );
    
    current_new_line = line;
    clientf_modifies_suffix = 1;
+   
+   /* Our own triggers, to start/stop MCCP when needed. */
+   if ( compressed &&
+	( !cmp( "you are out of the land.", line->line ) ) )
+     {
+	add_timer( "restart_mccp", 20, restart_mccp, 0, 0, 0 );
+	send_to_server( mccp_stop );
+     }
+   if ( !compressed && !disable_mccp &&
+	( !cmp( "You cease your praying.", line->line ) ) )
+     {
+	del_timer( "restart_mccp" );
+	restart_mccp( NULL );
+     }
+#if defined( FOR_WINDOWS )
+   if ( compressed &&
+	( !cmp( "You enter the editor.", line->line ) ||
+	  !cmp( "You begin writing.", line->line ) ) )
+     {
+	char mccp_start[] = { IAC, DO, TELOPT_COMPRESS2, 0 };
+	
+	/* Only briefly, ATCP over MCCP is very buggy. */
+	verbose_mccp = 0;
+	debugf( "Temporarely stopping MCCP." );
+	send_to_server( mccp_stop );
+	send_to_server( mccp_start );
+     }
+#endif
    
    for ( module = modules; module; module = module->next )
      {
@@ -1419,6 +1472,13 @@ void module_process_new_server_prompt( LINE *line )
    
    current_new_line = line;
    clientf_modifies_suffix = 1;
+   
+   /* It won't print that echo_off, so I'll force it. */
+   if ( strstr( line->line, "password" ) )
+     {
+	char telnet_echo_off[ ] = { IAC, WILL, TELOPT_ECHO, '\0' };
+	clientf( telnet_echo_off );
+     }
    
    for ( module = modules; module; module = module->next )
      {
@@ -2232,29 +2292,114 @@ void send_to_client( char *data, int bytes )
 
 
 
-void suffix( char *string )
+void add_buffer( char *string, char **buffer, char **pointer, char **max )
 {
-   if ( !suffix_buffer )
+   if ( !*buffer )
      {
-	suffix_buffer = malloc( 4092 );
-	suffix_p = suffix_buffer;
-	suffix_max = suffix_buffer + 4092;
+	*buffer = malloc( 4092 );
+	*pointer = *buffer;
+	*max = *buffer + 4092;
      }
    
    while ( *string )
      {
-	*(suffix_p++) = *(string++);
-	if ( suffix_p == suffix_max )
+	*((*pointer)++) = *(string++);
+	if ( *pointer == *max )
 	  {
 	     size_t size;
-	     size = suffix_max - suffix_buffer + 4092;
-	     suffix_buffer = realloc( suffix_buffer, size );
-	     suffix_max = suffix_buffer + size;
-	     suffix_p = suffix_buffer + size - 4092;
+	     size = *max - *buffer + 4092;
+	     *buffer = realloc( *buffer, size );
+	     *max = *buffer + size;
+	     *pointer = *buffer + size - 4092;
 	  }
      }
    
-   *suffix_p = 0;
+   **pointer = 0;
+}
+
+
+void shrink_buffer( char **buffer, char **pointer, char **max )
+{
+   /* Shrink it back down, if it was reallocated. */
+   if ( *max - *buffer != 4096 )
+     {
+	*buffer = realloc( *buffer, 4096 );
+	*max = *buffer + 4096;
+     }
+   
+   /* And make sure the pointer points in the right direction. */
+   if ( *pointer != *buffer )
+     *pointer = *buffer;
+   
+   **pointer = 0;
+}
+
+
+
+void prefix( char *string )
+{
+   add_buffer( string, &prefix_buffer, &prefix_p, &prefix_max );
+}
+
+void suffix( char *string )
+{
+   add_buffer( string, &suffix_buffer, &suffix_p, &suffix_max );
+}
+
+void replace( char *string )
+{
+   add_buffer( string, &replace_buffer, &replace_p, &replace_max );
+}
+
+void prefixf( char *string, ... )
+{
+   char buf [ 4096 ];
+   
+   va_list args;
+   va_start( args, string );
+   vsnprintf( buf, 4096, string, args );
+   va_end( args );
+   
+   prefix( buf );
+}
+
+void suffixf( char *string, ... )
+{
+   char buf [ 4096 ];
+   
+   va_list args;
+   va_start( args, string );
+   vsnprintf( buf, 4096, string, args );
+   va_end( args );
+   
+   suffix( buf );
+}
+
+
+void insert( int pos, char *string )
+{
+   if ( !current_new_line )
+     {
+	debugf( "Warning! insert() called with no current line known!" );
+	return;
+     }
+   
+   if ( pos > current_new_line->len )
+     {
+	debugf( "Warning! insert() was attempted over the length limit!" );
+	debugf( "Line: [%s]", current_new_line->line );
+     }
+   
+   if ( !current_new_line->inlines[pos] )
+     {
+	current_new_line->inlines[pos] = malloc( strlen( string ) );
+	strcpy( current_new_line->inlines[pos], string );
+     }
+   else
+     {
+	current_new_line->inlines[pos] = realloc( current_new_line->inlines[pos], strlen( current_new_line->inlines[pos] ) + strlen( string ) );
+	strcat( current_new_line->inlines[pos], string );
+     }
 }
 
 
@@ -2874,7 +3019,7 @@ char *get_string( char *argument, char *arg_first, int max )
    if ( *argument == '"' )
      cEnd = *argument++;
    
-   while ( *argument != '\0' && max )
+   while ( *argument != '\0' && *argument != '\n' && *argument != '\r' && max )
      {
 	if ( *argument == cEnd )
 	  {
@@ -3366,7 +3511,9 @@ int process_client( void )
 	  {
 	     last_client_line[last_client_pos] = '\r';
 	     last_client_line[++last_client_pos] = 0;
-	
+	     
+	     sent_something = 1;
+	     
 	     process_client_line( last_client_line );
 	     
 	     /* Clear the line. */
@@ -3429,31 +3576,39 @@ void print_line( LINE *line, char *ending )
    
    SEND_BYTES_IN_BUFFER( line->prefix );
    
-   for ( i = 0; i < line->len; i++ )
+   if ( !line->gag_entirely )
      {
-	if ( *line->rawp[i] && !line->gag_raw[i] && !line->gag_entirely )
+	SEND_BYTES_IN_BUFFER( line->replace );
+     }
+   
+   if ( !line->gag_entirely && ( !line->replace || !*line->replace ) )
+     {
+	for ( i = 0; i < line->len; i++ )
+	  {
+	     if ( *line->rawp[i] && !line->gag_raw[i] )
+	       {
+		  SEND_BYTES_IN_BUFFER( line->rawp[i] );
+	       }
+	     
+	     SEND_BYTES_IN_BUFFER( line->inlines[i] );
+	     
+	     if ( !line->gag_character[i] )
+	       {
+		  /* Just one byte here. */
+		  *(g_b++) = line->line[i];
+		  if ( g_b == g_blimit )
+		    empty_buffer( );
+	       }
+	  }
+	
+	/* Don't forget raw/inlines from the trailing '\0'. */
+	if ( *line->rawp[i] && !line->gag_raw[i] )
 	  {
 	     SEND_BYTES_IN_BUFFER( line->rawp[i] );
 	  }
 	
 	SEND_BYTES_IN_BUFFER( line->inlines[i] );
-	
-	if ( line->gag_character[i] || line->gag_entirely )
-	  continue;
-	
-	/* Just one byte here. */
-	*(g_b++) = line->line[i];
-	if ( g_b == g_blimit )
-	  empty_buffer( );
      }
-   
-   /* Don't forget raw/inlines from the trailing '\0'. But just don't print it. */
-   if ( *line->rawp[i] && !line->gag_raw[i] && !line->gag_entirely )
-     {
-	SEND_BYTES_IN_BUFFER( line->rawp[i] );
-     }
-   
-   SEND_BYTES_IN_BUFFER( line->inlines[i] );
    
    SEND_BYTES_IN_BUFFER( line->suffix );
    
@@ -3497,27 +3652,17 @@ void clean_line( LINE *line )
    if ( line->gag_ending )
      line->gag_ending = 0;
    
-   if ( line->prefix )
-     {
-	free( line->prefix );
-	line->prefix = NULL;
-     }
-   
-   if ( suffix_max - suffix_buffer != 4096 )
-     {
-	/* Shrink it back down. */
-	suffix_buffer = realloc( suffix_buffer, 4096 );
-	suffix_max = suffix_buffer + 4096;
-     }
-   
-   if ( suffix_p != suffix_buffer )
-     suffix_p = suffix_buffer, *suffix_p = 0;
-   
    line->rawp[0] = line->raw;
    line->len = 0;
    line->raw_len = 0;
    
+   shrink_buffer( &prefix_buffer, &prefix_p, &prefix_max );
+   shrink_buffer( &suffix_buffer, &suffix_p, &suffix_max );
+   shrink_buffer( &replace_buffer, &replace_p, &replace_max );
+   
+   line->prefix = prefix_buffer;
    line->suffix = suffix_buffer;
+   line->replace = replace_buffer;
 }
 
 
@@ -3552,11 +3697,13 @@ void process_new_buffer( char *raw_buf, int bytes )
     */
    
    line.rawp[0] = line.raw;
+   line.prefix = prefix_buffer;
    line.suffix = suffix_buffer;
+   line.replace = replace_buffer;
    
    t1 = t2 = t3 = t4 = 0;
    gettimeofday( &tvold, NULL );
-   debugf( "---" );
+//   debugf( "---" );
    
 #define ADD_TO( timer ) gettimeofday( &tvnew, NULL ); (timer) += tvnew.tv_usec - tvold.tv_usec + ( tvnew.tv_sec - tvold.tv_sec ) * 1000000; tvold = tvnew;
    
@@ -3603,13 +3750,17 @@ void process_new_buffer( char *raw_buf, int bytes )
 		       current_line = 0;
 		    }
 		  
-		  ending = iac_ga;
+		  if ( !strip_telnet_ga )
+		    ending = iac_ga;
+		  else
+		    ending = "";
 	       }
 	     else if ( buf[i] == '\n' )
 	       {
-		  if ( line.len && !current_line && !sent_something )
+		  if ( !line.gag_ending )
+		    current_line++;
+		  if ( line.len && current_line == 1 && !sent_something )
 		    add_newline = 1;
-		  current_line = 1;
 		  sent_something = 0;
 		  
 		  ending = "\r\n";
@@ -3658,8 +3809,8 @@ void process_new_buffer( char *raw_buf, int bytes )
 	  line.within_color_code = 0;
      }
    
-   debugf( "t1: [%d] t2:[%d] t3:[%d] t4:[%d]", (int) t1, (int) t2, (int) t3, (int) t4 );
-   debugf( C_W "Total: [%d]" C_0, (int) (t1 + t2 + t3 + t4 ) );
+//   debugf( "t1: [%d] t2:[%d] t3:[%d] t4:[%d]", (int) t1, (int) t2, (int) t3, (int) t4 );
+//   debugf( C_W "Total: [%d]" C_0, (int) (t1 + t2 + t3 + t4 ) );
    
    if ( show_processing_time )
      gettimeofday( &tvnew2, NULL );

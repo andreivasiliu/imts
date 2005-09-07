@@ -10,10 +10,7 @@ High Priority
 - Windows crash report.
 - do_before's and do_after's.
 - Time args for prompt.
-- Client/Server host fix.
-- Empty Composer contents.
-- MXP tags around Exits/Room title.
-- Player locations.
+- Positive health gain in prompt.
 
 
 

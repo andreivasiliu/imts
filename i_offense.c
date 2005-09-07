@@ -37,6 +37,9 @@ int offensive_version_minor = 4;
 char *i_offense_id = I_OFFENSE_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
 
+/* Running script. */
+char **pos;
+
 /* Chrono timer. */
 char *string_start;
 char *string_stop;
@@ -71,10 +74,13 @@ int punch_damage[] = { 100, 110,  80,  60, 140,  70, 100, 125 };
 
 /* Structures that we'll need. */
 
-typedef struct alias_data ALIAS_DATA;
-typedef struct variable_data VARIABLE_DATA;
-typedef struct trigger_data TRIGGER;
 typedef struct char_data CHAR_DATA;
+typedef struct script_data SCRIPT;
+typedef struct function_data FUNCTION;
+typedef struct call_data CALL;
+typedef struct variable_data VARIABLE;
+typedef struct trigger_data TRIGGER;
+typedef struct alias_data ALIAS_DATA;
 
 struct char_data
 {
@@ -109,12 +115,67 @@ struct char_data
 };
 
 
+/* A script is a piece of memory containing functions, usually loaded
+ * from a file. This is not something that can be directly executed,
+ * only the blocks within the functions within, can be. */
 struct script_data
 {
+   char *name;
+   char *description;
+   
+   FUNCTION *functions;
+   
+   SCRIPT *next;
+};
+
+
+
+struct function_data
+{
+   char *name;
    char *body;
+   short alias;
+   char **args;
+   int size;
    
+   FUNCTION *next;
+};
+
+
+
+/* When a function is called, one such structure is created in the call-stack. */
+struct call_data
+{
+   CALL *below;
    
+   /* Pointers to where it belongs, not to be freed. */
+   char *name;
+   SCRIPT *script;
    
+   /* Variables that will be destroyed when function returns. */
+   /* They include the arguments passed to it. */
+   VARIABLE *locals;
+   
+   /* Current position in the function. */
+   char *position;
+   
+   /* Where to store the value it returns, and how big the buffer is. */
+   char *return_value;
+   int max;
+   
+   /* Was there an error here? */
+   int aborted;
+};
+
+
+
+struct variable_data
+{
+   char *name;
+   
+   char *value;
+   
+   VARIABLE *next;
 };
 
 
@@ -125,16 +186,6 @@ struct alias_data
    char *action;
    
    ALIAS_DATA *next;
-};
-
-
-struct variable_data
-{
-   char *name;
-   
-   char *value;
-   
-   VARIABLE_DATA *next;
 };
 
 
@@ -150,9 +201,11 @@ struct trigger_data
 
 
 ALIAS_DATA *aliases;
-VARIABLE_DATA *vars;
+VARIABLE *variables;
 CHAR_DATA *characters;
 TRIGGER *triggers;
+SCRIPT *scripts;
+CALL *call_stack;
 
 
 /* Common/special variables. */
@@ -170,17 +223,15 @@ char wholist_targets[32][256];
 char searchback_buffer[SB_FULL_SIZE];
 int sb_size;
 
-void execute_block( char *string );
-void execute_line( char *string );
+void execute_block( );
+void execute_single_command( char *returns, int max );
 
 
 /* Here we register our functions. */
 
 void offensive_module_init_data( );
-void offensive_process_server_line_prefix( char *colorless_line, char *colorful_line, char *raw_line );
-void offensive_process_server_line_suffix( char *colorless_line, char *colorful_line, char *raw_line );
-void offensive_process_server_prompt_informative( char *line, char *rawline );
-void offensive_process_server_prompt_action( char *rawline );
+void offensive_process_server_line( LINE *l );
+void offensive_process_server_prompt( LINE *l );
 int  offensive_process_client_command( char *cmd );
 int  offensive_process_client_aliases( char *cmd );
 
@@ -193,10 +244,8 @@ ENTRANCE( offensive_module_register )
    self->id = i_offense_id;
    
    self->init_data = offensive_module_init_data;
-   self->process_server_line_prefix = offensive_process_server_line_prefix;
-   self->process_server_line_suffix = offensive_process_server_line_suffix;
-   self->process_server_prompt_informative = offensive_process_server_prompt_informative;
-   self->process_server_prompt_action = offensive_process_server_prompt_action;
+   self->process_server_line = offensive_process_server_line;
+   self->process_server_prompt = offensive_process_server_prompt;
    self->process_client_command = NULL;
    self->process_client_aliases = offensive_process_client_aliases;
    self->build_custom_prompt = NULL;
@@ -390,7 +439,7 @@ void caiman_targetting( char *line )
    /* Stop the red colour from bleeding. */
    if ( color )
      {
-	clientf( C_0 );
+	prefix( C_0 );
 	color = 0;
      }
    
@@ -399,7 +448,7 @@ void caiman_targetting( char *line )
 	if ( aggressive_caiman )
 	  caiman = aggressive_caiman;
 	
-	clientff( "Target: %s%d%s\r\n" C_0, aggressive_caiman ? C_R : C_G,
+	prefixf( "Target: %s%d%s\r\n" C_0, aggressive_caiman ? C_R : C_G,
 		  caiman, caiman == last_caiman ? C_W " *" : "" );
 	
 	sprintf( name, "%d", caiman );
@@ -434,7 +483,7 @@ void caiman_targetting( char *line )
        {
 	  if ( caiman == nr )
 	    aggressive_caiman = nr;
-	  clientf( C_R );
+	  prefix( C_R );
 	  color = 1;
        }
 }
@@ -456,52 +505,52 @@ int check_pattern( TRIGGER *trigger, char *string )
 
 
 
-void offensive_process_server_line_prefix( char *colorless_line, char *colorful_line, char *raw_line )
+void offensive_process_server_line( LINE *l )
 {
+   void offensive_process_server_line_suffix( char *colorless_line, char *colorful_line, char *raw_line );
    TRIGGER *trigger;
-   int len;
    
-   DEBUG( "offensive_process_server_line_prefix" );
+   DEBUG( "offensive_process_server_line" );
    
-   if ( !cmp( "^ rubs some salve on ^ ^.", colorless_line ) &&
-	cmp( "^ rubs some salve on ^ skin.", colorless_line ) &&
-	cmp( "^ rubs some salve on ^ body.", colorless_line ) )
-     clientf( C_B );
+   if ( !cmp( "^ rubs some salve on ^ ^.", l->line ) &&
+	cmp( "^ rubs some salve on ^ skin.", l->line ) &&
+	cmp( "^ rubs some salve on ^ body.", l->line ) )
+     prefix( C_B );
    
-   if ( !cmp( "^ touches a tree of life tattoo.", colorless_line ) )
-     clientf( C_Y );
+   if ( !cmp( "^ touches a tree of life tattoo.", l->line ) )
+     prefix( C_Y );
    
-   if ( !cmp( "^ stands up and stretches ^ arms out wide.", colorless_line ) )
-     clientf( C_W );
+   if ( !cmp( "^ stands up and stretches ^ arms out wide.", l->line ) )
+     prefix( C_W );
    
-   if ( !cmp( "^ slowly pulls back *", colorless_line ) )
-     clientf( C_W );
+   if ( !cmp( "^ slowly pulls back *", l->line ) )
+     prefix( C_W );
    
-   caiman_targetting( colorless_line );
+   caiman_targetting( l->line );
    
    /* Check for triggers. */
    for ( trigger = triggers; trigger; trigger = trigger->next )
      {
-	if ( check_pattern( trigger, colorless_line ) )
+	if ( check_pattern( trigger, l->line ) )
 	  execute_block( trigger->action );
      }
    
    /* Add the line in our search-back buffer. */
-   len = strlen( colorless_line );
-   
-   if ( len )
+   if ( l->len )
      {
-	if ( len + sb_size + 10 > SB_FULL_SIZE )
+	if ( l->len + sb_size + 10 > SB_FULL_SIZE )
 	  {
 	     /* Copy the second half onto the first half. */
 	     memmove( searchback_buffer, searchback_buffer + SB_HALF_SIZE, SB_HALF_SIZE );
 	     sb_size -= SB_HALF_SIZE;
 	  }
 	
-	memcpy( searchback_buffer + sb_size, colorless_line, len );
-	memcpy( searchback_buffer + sb_size + len, "\n", 2 );
-	sb_size += len + 1;
+	memcpy( searchback_buffer + sb_size, l->line, l->len );
+	memcpy( searchback_buffer + sb_size + l->len, "\n", 2 );
+	sb_size += l->len + 1;
      }
+   
+   offensive_process_server_line_suffix( l->line, l->raw_line, l->raw_line );
 }
 
 
@@ -520,7 +569,7 @@ void check_timer( char *line )
 	if ( usec < 0 )
 	  sec -= 1, usec += 1000000;
 	
-	clientff( C_W " (" C_D "%d.%d" C_W ")" C_0, sec, usec );
+	clientff( C_W " (" C_D "%d.%06d" C_W ")" C_0, sec, usec );
      }
    
    if ( string_start && strstr( line, string_start ) )
@@ -946,9 +995,9 @@ void offensive_process_server_line_suffix( char *colorless_line, char *colorful_
 
 
 
-void offensive_process_server_prompt_informative( char *line, char *rawline )
+void offensive_process_server_prompt( LINE *l )
 {
-   DEBUG( "offensive_process_server_prompt_informative" );
+   DEBUG( "offensive_process_server_prompt" );
    
    /* We may hit with something else. */
    if ( last_hit )
@@ -956,14 +1005,6 @@ void offensive_process_server_prompt_informative( char *line, char *rawline )
    
    if ( parsing_whohere_list )
      parsing_whohere_list = 0;
-}
-
-
-
-void offensive_process_server_prompt_action( char *line )
-{
-   DEBUG( "offensive_process_server_prompt_action" );
-   
 }
 
 
@@ -1190,46 +1231,106 @@ void do_trigger( char *args )
 
 
 
+void skip_whitespace( )
+{
+   while ( **pos && ( **pos == ' ' || **pos == '\n' || **pos == '\r' || **pos == '\t' ) )
+     (*pos)++;
+   
+   /* Consider comments as whitespace. */
+   if ( **pos == '/' )
+     {
+	if ( *((*pos)+1) == '/' )
+	  {
+	     while ( **pos && **pos != '\n' )
+	       (*pos)++;
+	     skip_whitespace( );
+	  }
+	else if ( *((*pos)+1) == '*' )
+	  {
+	     while( **pos && ( **pos != '*' || *((*pos)+1) != '/' ) )
+	       (*pos)++;
+	     if ( **pos )
+	       (*pos) += 2;
+	     skip_whitespace( );
+	  }
+     }
+}
+
+
+
+void link_script( SCRIPT *script )
+{
+   script->next = scripts;
+   scripts = script;
+}
+
+
+
+void destroy_script( SCRIPT *script )
+{
+   SCRIPT *s;
+   FUNCTION *f, *f_next;
+   int i;
+   
+   if ( script == scripts )
+     scripts = script->next;
+   else
+     for ( s = scripts; s; s = s->next )
+       {
+	  if ( s->next == script )
+	    {
+	       s->next = script->next;
+	       break;
+	    }
+       }
+   
+   if ( script->name )
+     free( script->name );
+   if ( script->description )
+     free( script->description );
+   
+   for ( f = script->functions; f; f = f->next )
+     {
+	f_next = f->next;
+	
+	if ( f->name )
+	  free( f->name );
+	if ( f->body )
+	  free( f->body );
+	
+	if ( f->args )
+	  {
+	     for ( i = 0; f->args[i]; i++ )
+	       free( f->args[i] );
+	     free( f->args );
+	  }
+	
+	free( f );
+     }
+   
+   free( script );
+}
+
+
+
 void load_scripts( )
 {
-   FILE *fl;
-   char buf[2048], *p;
-   const char *flname = "scripts";
+   const char *initial_script = "scripts";
    
-   fl = fopen( flname, "r" );
+   SCRIPT *load_script( const char *flname );
+   SCRIPT *script;
    
-   if ( !fl )
-     {
-	clientff( C_R "[Can't open %s: %s]\r\n" C_0,
-		  flname, strerror( errno ) );
-	return;
-     }
-   
-   silent = 1;
-   
-   while( 1 )
-     {
-	fgets( buf, 2048, fl );
-   
-	if ( feof( fl ) )
+   for ( script = scripts; script; script = script->next )
+     if ( !strcmp( script->name, initial_script ) )
+       {
+	  destroy_script( script );
 	  break;
-	
-	if ( buf[0] == '#' || buf[0] == ' ' || buf[0] == '\n' || !buf[0] )
-	  continue;
-	
-	/* Remove the newline from it. */
-	p = buf;
-	while( *p && *p != '\n' )
-	  p++;
-	*p = 0;
-	
-	if ( !strncmp( buf, "alias ", 6 ) )
-	  do_alias( buf + 6 );
-     }
+       }
    
-   silent = 0;
+   script = load_script( initial_script );
    
-   fclose( fl );
+   if ( script )
+     link_script( script );
 }
 
 
@@ -1298,8 +1399,14 @@ const char *get_variable_from_name( char *name )
    
    /* Look in the variable list. */
      {
-	VARIABLE_DATA *var;
-	for ( var = vars; var; var = var->next )
+	VARIABLE *var;
+	
+	if ( call_stack )
+	  for ( var = call_stack->locals; var; var = var->next )
+	    if ( !strcmp( name, var->name ) )
+	      return var->value;
+	
+	for ( var = variables; var; var = var->next )
 	  if ( !strcmp( name, var->name ) )
 	    return var->value;
      }
@@ -1356,169 +1463,771 @@ void convert_variables( char *line, char *dest )
 
 
 
-void script_echo( char *args )
+void set_variable( char *name, char *value )
 {
-   char echo[4096];
+   VARIABLE *var = NULL;
    
-   convert_variables( args, echo );
-   clientff( C_R "%s\r\n" C_0, echo );
-}
-
-
-
-void script_echo_prompt( char *args )
-{
-   show_prompt( );
-}
-
-
-
-void execute_line( char *string )
-{
-   char cmd[256], *args;
+   /* Locals. */
+   if ( call_stack )
+     for ( var = call_stack->locals; var; var = var->next )
+       if ( !strcmp( name, var->name ) )
+	 break;
    
-   while ( *string == ' ' && *string )
-     string++;
+   /* System variables. */
+   if ( !var )
+     if ( !strcmp( name, "t" ) ||
+	  !strcmp( name, "tar" ) ||
+	  !strcmp( name, "target" ) )
+       {
+	  free( target );
+	  target = strdup( value );
+	  return;
+       }
    
-   //clientff( C_R "exec: [%s]\r\n" C_0, string );
+   /* Globals. */
+   if ( !var )
+     for ( var = variables; var; var = var->next )
+       if ( !strcmp( name, var->name ) )
+	 break;
    
-   args = get_string( string, cmd, 256 );
-   
-   /* Commands begin with a period. */
-   if ( cmd[0] == '.' )
+   /* Create it as global, if it doesn't exist. */
+   if ( !var )
      {
-	if ( !strcmp( cmd, ".echo" ) )
-	  script_echo( args );
-	else if ( !strcmp( cmd, ".prompt" ) )
-	  script_echo_prompt( args );
+	var = calloc( 1, sizeof( VARIABLE ) );
+	var->next = variables;
+	variables = var;
+	var->name = strdup( name );
      }
-   /* A simple block, without any command. */
-   else if ( cmd[0] == '{' )
+   
+   if ( var->value )
+     free( var->value );
+   
+   var->value = strdup( value );
+}
+
+
+
+void set_local_variable( CALL *call, char *name, char *value )
+{
+   VARIABLE *var;
+   
+   if ( !call )
      {
-	char *block, *end;
-	int blocks = 1;
+	debugf( "Wha?! No call stack on set_local_variable?" );
+	return;
+     }
+   
+   /* See if it already exists. */
+   for ( var = call->locals; var; var = var->next )
+     if ( !strcmp( name, var->name ) )
+       break;
+   
+   if ( !var )
+     {
+	var = calloc( 1, sizeof( VARIABLE ) );
+	var->next = call->locals;
+	call->locals = var;
+	var->name = strdup( name );
+     }
+   
+   if ( var->value )
+     free( var->value );
+   
+   var->value = strdup( value );
+}
+
+
+
+void copy_variable( char *name, char *dest, int max )
+{
+   char *src;
+   
+   /* Look for common variables. */
+   if ( isdigit( name[0] ) && name[0] != '0' )
+     src = alias_arg[(int)(name[0]-'1')];
+   else if ( name[0] == '*' )
+     src = alias_fullarg;
+   else if ( !strcmp( name, "t" ) ||
+	!strcmp( name, "tar" ) ||
+	!strcmp( name, "target" ) )
+     src = target;
+   else if ( !strcmp( name, "T" ) )
+     src = alias_arg[0][0] ? alias_arg[0] : target;
+   
+   /* Look in the variable list. */
+   else
+     {
+	VARIABLE *var;
 	
-	end = string;
+	src = NULL;
 	
-	while ( blocks )
+	if ( call_stack )
+	  for ( var = call_stack->locals; var; var = var->next )
+	    if ( !strcmp( name, var->name ) )
+	      src = var->value;
+	
+	if ( !src )
+	  for ( var = variables; var; var = var->next )
+	    if ( !strcmp( name, var->name ) )
+	      src = var->value;
+     }
+   
+   if ( !src )
+     src = "";
+   
+   while ( --max && *src )
+     *(dest++) = *(src++);
+   *dest = 0;
+}
+
+
+
+CALL *prepare_call( FUNCTION *function )
+{
+   CALL *call;
+   
+   call = calloc( 1, sizeof( CALL ) );
+   
+   call->name = function->name;
+   call->position = function->body;
+   // Add parent script.
+   
+   return call;
+}
+
+
+
+void call_function( CALL *call, char *returns, int max )
+{
+   call->below = call_stack;
+   call_stack = call;
+   
+   if ( returns )
+     *returns = 0;
+   call->return_value = returns;
+   call->max = max;
+   pos = &call->position;
+   
+   /* Burrrn! */
+   execute_block( );
+   
+   /* Kill all local variables. */
+   if ( call->locals )
+     {
+	VARIABLE *v, *v_next;
+	
+	for ( v = call->locals; v; v = v_next )
 	  {
-	     end++;
+	     v_next = v->next;
+	     if ( v->name )
+	       free( v->name );
+	     if ( v->value )
+	       free( v->value );
+	     free( v );
+	  }
+     }
+   
+   call_stack = call->below;
+   pos = &call_stack->position;
+   free( call );
+}
+
+
+
+void do_echo( )
+{
+   char buf[4096];
+   char buf2[4096];
+   
+   execute_single_command( buf, 4096 );
+   if ( *pos )
+     {
+	convert_variables( buf, buf2 );
+	strcat( buf2, "\r\n" );
+	clientf( buf2 );
+     }
+}
+
+
+
+void do_send( )
+{
+   char buf[4096];
+   char buf2[4096];
+   char *p;
+   
+   execute_single_command( buf, 4096 );
+   if ( *pos )
+     {
+	/* Fixme. Overflow! */
+	convert_variables( buf, buf2 );
+	for ( p = buf2; *p; p++ )
+	  if ( *p == ';' )
+	    *p = '\n';
+	
+	strcat( buf2, "\n" );
+	send_to_server( buf2 );
+     }
+}
+
+
+
+void get_identifier( char *dest, int max )
+{
+   skip_whitespace( );
+   
+   while ( --max && ( ( **pos >= 'A' && **pos <= 'Z' ) ||
+		      ( **pos >= 'a' && **pos <= 'z' ) ||
+		      ( **pos >= '0' && **pos <= '9' ) ||
+		      **pos == '_' ) )
+     *(dest++) = *((*pos)++);
+   
+   *dest = 0;
+   
+   skip_whitespace( );
+}
+
+
+
+/* After parsing an identifier, see what to do with it. */
+void handle_results( char *results, char *dest, int max )
+{
+   // Check for ==, &&, ||
+   // Check for +
+   
+   /* Nothing? Then we're finished here. Copy the results. */
+   
+   if ( !dest || !results )
+     return;
+   
+   while ( --max && *results )
+     *(dest++) = *(results++);
+   *dest = 0;
+}
+
+
+
+/* Something between parantheses will be returned as a whole. */
+void group_results( char *dest, int max )
+{
+   char buf[4096], *b;
+   
+   (*pos)++;
+   
+   execute_single_command( buf, 4096 );
+   
+   skip_whitespace( );
+   if ( **pos != ')' )
+     {
+	debugf( "Expected ')'." );
+	return;
+     }
+   
+   (*pos)++;
+   
+   if ( !dest )
+     return;
+   
+   b = buf;
+   
+   while ( --max && *b )
+     *(dest++) = *(b++);
+   *dest = 0;
+}
+
+
+
+/* Parse a single command. */
+void execute_single_command( char *returns, int max )
+{
+   VARIABLE *variable;
+   FUNCTION *function;
+   SCRIPT *script;
+   char ident[4096];
+   char buf[4096], *b = buf;
+   int b_max = 4096, i;
+   
+   buf[0] = 0;
+   
+   skip_whitespace( );
+   
+   /* Special cases. */
+   if ( **pos == '>' )
+     {
+	(*pos)++;
+	do_send( buf, b_max );
+	handle_results( buf, returns, max );
+	return;
+     }
+   
+   /* Constant string. */
+   if ( **pos == '\"' )
+     {
+	(*pos)++;
+	
+	while ( --b_max && **pos && **pos != '\"' )
+	  *(b++) = *((*pos)++);
+	*b = 0;
+	
+	if ( **pos != '\"' )
+	  {
+	     debugf( "Expected end of string." );
+	     *pos = NULL;
+	     return;
+	  }
+	(*pos)++;
+	skip_whitespace( );
+	
+	handle_results( buf, returns, max );
+	return;
+     }
+   
+   /* Group. */
+   if ( **pos == '(' )
+     {
+	group_results( buf, b_max );
+	
+	handle_results( buf, returns, max );
+     }
+   
+   get_identifier( ident, 4096 );
+   /* Skip white space has been called by it. */
+   
+   if ( !ident[0] )
+     return;
+   
+   /* Maybe it's a variable. Locals, then globals. */
+   for ( variable = call_stack->locals; variable; variable = variable->next )
+     if ( !strcmp( ident, variable->name ) )
+       break;
+   if ( !variable )
+     for ( variable = variables; variable; variable = variable->next )
+       if ( !strcmp( ident, variable->name ) )
+	 break;
+   
+   if ( variable )
+     {
+	/* Assignment. */
+	if ( **pos == '=' && *((*pos)+1) != '=' )
+	  {
+	     char var_buf[4096];
 	     
-	     if ( *end == '{' )
-	       blocks++;
-	     else if ( *end == '}' )
-	       blocks--;
-	     else if ( !*end )
+	     (*pos)++;
+	     
+	     execute_single_command( var_buf, 4096 );
+	     // Bail out, like everywhere else.
+	     
+	     set_variable( ident, var_buf );
+	     
+	     handle_results( var_buf, returns, max );
+	     return;
+	  }
+	
+	copy_variable( ident, buf, b_max );
+	handle_results( buf, returns, max );
+	return;
+     }
+   
+   /* Maybe it's a function. */
+   for ( script = scripts; script; script = script->next )
+     {
+	for ( function = script->functions; function; function = function->next )
+	  if ( !strcmp( ident, function->name ) )
+	    break;
+	
+	if ( function )
+	  break;
+     }
+   
+   if ( function )
+     {
+	CALL *call;
+	char var_buf[4096];
+	int expect_ending;
+	
+	if ( **pos == '(' )
+	  {
+	     (*pos)++;
+	     expect_ending = 1;
+	  }
+	else
+	  expect_ending = 0;
+	
+	call = prepare_call( function );
+	for ( i = 0; function->args[i]; i++ )
+	  {
+	     execute_single_command( var_buf, 4096 );
+	     
+	     // Bail out. Kill variables, same as below!
+	     
+	     set_local_variable( call, function->args[i], var_buf );
+	     
+	     /* A single comma is allowed between arguments, but not required. */
+	     if ( function->args[i+1] )
 	       {
-		  clientfr( "Syntax error: Matching '}' not found in a script." );
-		  return;
+		  skip_whitespace( );
+		  if ( **pos == ',' )
+		    (*pos)++;
 	       }
 	  }
 	
-	block = calloc( 1, end - string );
-	memcpy( block, string + 1, end - string - 1 );
-	block[end - string - 1] = 0;
+	if ( expect_ending )
+	  {
+	     skip_whitespace( );
+	     if ( **pos != ')' )
+	       {
+		  debugf( "Expected ')' on end of argument list." );
+		  // Bail out.
+		  
+		  return;
+	       }
+	     (*pos)++;
+	  }
 	
-	execute_block( block );
+	call_function( call, buf, b_max );
 	
-	free( block );
+	// Perhaps check for errors.
+	
+	handle_results( buf, returns, max );
+	return;
      }
-   else
+   
+   /* Perhaps it's a built-in function. */
+   if ( !cmp( "echo", ident ) )
      {
-	char line[4096];
-	
-	/* Convert the variables, and send it away. */
-	
-	convert_variables( string, line );
-	
-	strcat( line, "\r\n" );
-	
-	send_to_server( line );
+	do_echo( buf, b_max );
+	handle_results( buf, returns, max );
+	return;
      }
+   if ( !cmp( "send", ident ) )
+     {
+	do_send( buf, b_max );
+	handle_results( buf, returns, max );
+	return;
+     }
+   
+   /* Assignment of a new variable? This our last chance... */
+   if ( **pos == '=' && *((*pos)+1) != '=' )
+     {
+	char var_buf[4096];
+	
+	(*pos)++;
+	
+	execute_single_command( var_buf, 4096 );
+	// Bail out, like everywhere else.
+	     
+	set_variable( ident, var_buf );
+	
+	handle_results( var_buf, returns, max );
+	return;
+     }
+   
+   if ( call_stack )
+     debugf( "In %s():", call_stack->name );
+   debugf( "Syntax error near '%s'.", ident );
+   *pos = NULL;
+   return;
 }
 
 
 
-/* Execute a block of commands.
- * This does not need a temporary buffer, as it leaves *string unchaged. */
+/* Execute a block of commands. */
 
-void execute_block( char *string )
+void execute_block( )
 {
-   int cmd_end;
-   int finished = 0;
-   char *cmd;
-   int end_as_block = 0;
+   int expect_end_of_block = 0;
    
-   //clientff( C_B "block: [%s]\r\n" C_0, string );
+   if ( !*pos || !**pos )
+     return;
    
-   cmd_end = 0;
+   if ( **pos == '{' )
+     expect_end_of_block = 1, (*pos)++;
    
    while ( 1 )
      {
-	if ( string[cmd_end] == ';' || string[cmd_end] == 0 ||
-	     string[cmd_end] == '{' )
+	skip_whitespace( );
+	
+	if ( !**pos )
 	  {
-	     if ( string[cmd_end] == 0 )
-	       finished = 1;
-	     
-	     if ( string[cmd_end] == '{' )
-	       {
-		  /* Skip until the matching '}'. */
-		  int blocks = 1;
-		  
-		  while ( blocks )
-		    {
-		       cmd_end++;
-		       
-		       if ( string[cmd_end] == '{' )
-			 blocks++;
-		       else if ( string[cmd_end] == '}' )
-			 blocks--;
-		       else if ( !string[cmd_end] )
-			 {
-			    clientfr( "Syntax error: Matching '}' not found in a script." );
-			    return;
-			 }
-		    }
-		  
-		  end_as_block = 1;
-	       }
-	     
-	     /*
-	      * Make a copy of the piece, and execute it.
-	      * Unless it's empty.
-	      */
-	     
-	     if ( cmd_end + 1 + end_as_block > 1 )
-	       {
-		  cmd = calloc( 1, cmd_end + 1 + end_as_block );
-		  memcpy( cmd, string, cmd_end );
-		  if ( !end_as_block )
-		    cmd[cmd_end] = 0;
-		  else
-		    {
-		       cmd[cmd_end] = '}';
-		       cmd[cmd_end+1] = 0;
-		       end_as_block = 0;
-		    }
-		  
-		  execute_line( cmd );
-		  
-		  free( cmd );
-	       }
-	     
-	     string = string + cmd_end + 1;
-	     cmd_end = -1;
+	     debugf( "Unexpected EOB." );
+	     return;
 	  }
 	
-	if ( finished )
+	/* Done here? */
+	if ( expect_end_of_block && **pos == '}' )
+	  {
+	     (*pos)++;
+	     return;
+	  }
+	
+	/* Block in a block? */
+	if ( **pos == '{' )
+	  {
+	     execute_block( );
+	     if ( !*pos )
+	       return;
+	     continue;
+	  }
+	
+	/* We have a command here. */
+	execute_single_command( NULL, 0 );
+	if ( !*pos )
+	  return;
+	
+	skip_whitespace( );
+	
+	if ( **pos != ';' )
+	  {
+	     if ( **pos )
+	       debugf( "Expected ';' instead of '%c'.", **pos );
+	     else
+	       debugf( "Expected ';' instead of EOB." );
+	     return;
+	  }
+	
+	(*pos)++;
+	
+	if ( expect_end_of_block )
+	  continue;
+	else
+	  return;
+     }
+}
+
+
+
+SCRIPT *load_script( const char *flname )
+{
+   SCRIPT *script;
+   FUNCTION *function, *f;
+   FILE *fl;
+   char buf[4096], *body = NULL;
+   int bytes, size, i, brackets, within_string;
+   int aborted = 0, expect_ending, expect_argument;
+   char **old_pos, *position;
+   
+   fl = fopen( flname, "r" );
+   
+   if ( !fl )
+     return NULL;
+   
+   while ( 1 )
+     {
+	bytes = fread( buf, 1, 4096, fl );
+	
+	if ( !bytes )
 	  break;
 	
-	cmd_end++;
+	if ( !body )
+	  {
+	     size = bytes;
+	     body = malloc( size + 1 );
+	     memcpy( body, buf, bytes );
+	  }
+	else
+	  {
+	     body = realloc( body, size + 1 + 4096);
+	     memcpy( body + size, buf, bytes );
+	     size += bytes;
+	  }
      }
    
-   //clientff( C_B "block end\r\n" C_0 );
+   fclose( fl );
+   if ( !body )
+     {
+	debugf( "Empty script file." );
+	free( script );
+	return NULL;
+     }
+   
+   body[size] = 0;
+   
+   script = calloc( 1, sizeof( SCRIPT ) );
+   
+   script->name = strdup( flname );
+   
+   /* Careful not to call anything that uses the call-stack. */
+   old_pos = pos;
+   position = body;
+   pos = &position;
+   
+   /* Seek all functions within it. */
+   
+   while ( 1 )
+     {
+	/* Expect... '#', function, alias, or trigger. */
+	
+	skip_whitespace( );
+//	if ( **pos == '#' )
+//	  {
+//	     (*pos)++;
+//	     skip_whitespace( );
+//	     
+//	     get_identifier( buf, 4096 );
+//	     
+//	     
+//	     continue;
+//	  }
+	
+	if ( !**pos )
+	  break;
+	
+	get_identifier( buf, 4096 );
+	if ( !buf[0] )
+	  {
+	     debugf( "Syntax error while loading a script, before '%c'", **pos );
+	     aborted = 1;
+	     break;
+	  }
+	
+	if ( !strcmp( buf, "function" ) )
+	  {
+	     /* Format: function <name> [ [(] [arg1 [[,] arg2]... ] [)] ] { ... } */
+	     get_identifier( buf, 4096 );
+	     
+	     if ( !buf[0] )
+	       {
+		  debugf( "Function name not provided." );
+		  aborted = 1;
+		  break;
+	       }
+	     
+	     function = calloc( 1, sizeof( FUNCTION ) );
+	     function->name = strdup( buf );
+	     
+	     if ( **pos == '(' )
+	       {
+		  expect_ending = 1;
+		  (*pos)++;
+		  skip_whitespace( );
+	       }
+	     else
+	       expect_ending = 0;
+	     
+	     function->args = calloc( 1, sizeof( char * ) );
+	     i = 0;
+	     
+	     /* Find all arguments. */
+	     while ( 1 )
+	       {
+		  if ( i && **pos == ',' )
+		    {
+		       expect_argument = 1;
+		       (*pos)++;
+		    }
+		  else
+		    expect_argument = 0;
+		  
+		  get_identifier( buf, 4096 );
+		  
+		  if ( !buf[0] )
+		    break;
+		  
+		  if ( expect_argument )
+		    expect_argument = 0;
+		  function->args = realloc( function->args, sizeof( char * ) * (i + 1) );
+		  function->args[i] = strdup( buf );
+		  i++;
+	       }
+	     
+	     function->args[i] = NULL;
+	     
+	     if ( expect_argument )
+	       {
+		  debugf( "Expected a function argument." );
+		  aborted = 1;
+		  break;
+	       }
+	     
+	     if ( expect_ending )
+	       {
+		  if ( **pos != ')' )
+		    {
+		       debugf( "Mismatched '(', expected ')' on argument list." );
+		       aborted = 1;
+		       break;
+		    }
+		  (*pos)++;
+		  skip_whitespace( );
+	       }
+	  }
+	else if ( !strcmp( buf, "alias" ) )
+	  {
+	     /* Format: alias <name> { ... } */
+	     get_identifier( buf, 4096 );
+	     
+	     if ( !buf[0] )
+	       {
+		  debugf( "Alias name not provided." );
+		  aborted = 1;
+		  break;
+	       }
+	     
+	     function = calloc( 1, sizeof( FUNCTION ) );
+	     function->name = strdup( buf );
+	     function->alias = 1;
+	  }
+	
+	if ( **pos != '{' )
+	  {
+	     debugf( "No body provided to an alias or function '%s', expected '{'.", function->name );
+	     aborted = 1;
+	     break;
+	  }
+	
+	/* Find the matching '}'. */
+	size = 1, brackets = 1, within_string = 0;
+	while ( brackets )
+	  {
+	     switch ( *((*pos)+size) )
+	       {
+		case '\"':
+		  within_string = !within_string; break;
+		case '{':
+		  if ( !within_string ) brackets++; break;
+		case '}':
+		  if ( !within_string ) brackets--; break;
+		case 0:
+		  debugf( "Mismatched '{', unexpected EOB." );
+		  aborted = 1;
+		  break;
+	       }
+	     size++;
+	  }
+	if ( aborted )
+	  break;
+	
+	function->body = malloc( size + 1 );
+	memcpy( function->body, *pos, size );
+	function->body[size] = 0;
+	function->size = size;
+	*pos += size;
+	
+	/* Link it. */
+	if ( !script->functions )
+	  script->functions = function;
+	else
+	  {
+	     for ( f = script->functions; f->next; f = f->next );
+	     f->next = function;
+	  }
+     }
+   
+   pos = old_pos;
+   free( body );
+   
+   if ( aborted )
+     {
+	destroy_script( script );
+	return NULL;
+     }
+   
+   if ( !script->description )
+     script->description = strdup( "No Description" );
+   
+   return script;
 }
+
 
 
 void do_char_list( )
@@ -2485,9 +3194,11 @@ void set_target( char *name )
 }
 
 
+
 int offensive_process_client_aliases( char *line )
 {
-   ALIAS_DATA *alias;
+   SCRIPT *script;
+   FUNCTION *function;
    char command[4096], *args;
    
    DEBUG( "offensive_process_client_aliases" );
@@ -2513,6 +3224,100 @@ int offensive_process_client_aliases( char *line )
    else if ( !strcmp( line, "load" ) )
      {
 	load_scripts( );
+	show_prompt( );
+	return 1;
+     }
+   else if ( !strcmp( line, "scripts" ) )
+     {
+	SCRIPT *script;
+	FUNCTION *f;
+	
+	if ( !scripts )
+	  clientfr( "No scripts loaded." );
+	else
+	  clientfr( "Loaded scripts:" );
+	
+	for ( script = scripts; script; script = script->next )
+	  {
+	     clientff( C_W "* " C_B "%s" C_0 " (" C_B "%s" C_0 ")\r\n",
+		       script->name, script->description );
+	     for ( f = script->functions; f; f = f->next )
+	       {
+		  clientff( C_D " %s%s (" C_G "%d" C_D " bytes)" C_0 "\r\n",
+			    f->name,
+			    f->alias ? C_D " [" C_W "A" C_D "]" : "",
+			    f->size );
+	       }
+	  }
+	
+	show_prompt( );
+	return 1;
+     }
+   else if ( !strncmp( line, "call ", 5 ) )
+     {
+	CALL *call;
+	SCRIPT *script;
+	FUNCTION *f;
+	char name[256];
+	char buf[256];
+	struct timeval call_start, call_end;
+	int sec, usec;
+	int first_arg = 1;
+	int i;
+	
+	line = get_string( line + 5, name, 256 );
+	if ( !name )
+	  {
+	     clientfr( "Call which function/alias?" );
+	     show_prompt( );
+	     return 1;
+	  }
+	
+	for ( script = scripts; script; script = script->next )
+	  for ( f = script->functions; f; f = f->next )
+	    if ( !strcmp( name, f->name ) )
+	      break;
+	
+	if ( !f )
+	  {
+	     clientfr( "Function not found. Perhaps you misspelled it?" );
+	     show_prompt( );
+	     return 1;
+	  }
+	
+	call = prepare_call( f );
+	if ( f->args )
+	  for ( i = 0; f->args[i]; i++ )
+	    {
+	       line = get_string( line, buf, 256 );
+	       if ( first_arg )
+		 {
+		    clientf( C_R "Args:" C_0 );
+		    first_arg = 0;
+		 }
+	       clientff( " " C_W "%s" C_0 "=" C_g "\"%s\"" C_0, f->args[i], buf );
+	       
+	       set_local_variable( call, f->args[i], buf );
+	    }
+	if ( !first_arg )
+	  clientf( ".\r\n" );
+	clientff( C_R "Calling " C_W "%s" C_0 "...\r\n" C_0, f->name );
+	
+	gettimeofday( &call_start, NULL );
+	
+	call_function( call, buf, 256 );
+	
+	gettimeofday( &call_end, NULL );
+	
+	sec = call_end.tv_sec - call_start.tv_sec;
+	usec = call_end.tv_usec - call_start.tv_usec;
+	
+	if ( usec < 0 )
+	  sec -= 1, usec += 1000000;
+	
+	clientff( C_R "Execution time: " C_W "%d.%06d" C_R " seconds.\r\n" C_0, sec, usec );
+	clientff( C_R "Return value: " C_g "\"%s\"" C_R ".\r\n" C_0, buf );
+	
 	show_prompt( );
 	return 1;
      }
@@ -2616,25 +3421,22 @@ int offensive_process_client_aliases( char *line )
 	return 1;
      }
    
-   /* Look around the alias list. */
-   
    args = get_string( line, command, 4096 );
    
-   for ( alias = aliases; alias; alias = alias->next )
-     {
-	char *block;
-	
-	if ( strcmp( command, alias->name ) )
-	  continue;
-	
-	set_args( args );
-	
-	block = strdup( alias->action );
-	
-	execute_block( block );
-	
-	return 1;
-     }
+   /* Look around the function list. */
+   
+   for ( script = scripts; script; script = script->next )
+     for ( function = script->functions; function; function = function->next )
+       if ( function->alias && !strcmp( function->name, command ) )
+	 {
+	    CALL *call;
+	    set_args( args );
+	    
+	    call = prepare_call( function );
+	    call_function( call, NULL, 0 );
+	    
+	    return 1;
+	 }
    
    return 0;
 }

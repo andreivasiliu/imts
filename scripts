@@ -1,90 +1,119 @@
-# Aliases
+/* Main script file. All other scripts will be loaded from here. */
 
-# Variables: $t = target
-#            $T = $1 if not null, or else target
-#            $1 - $9 = argument
-#            $* = all arguments
+//#script "Initial iScript"
 
-alias clear
+/* ToDo: disable, enable, if, ==, +, local, unset, groups!, not/!, return,
+         load
+   Triggers: everyline, prompt
+ */
 
-# Misc
-alias add ice point ring47309 $1
-alias add fire point ring13771 at $T
-alias add oeat outr $1;eat $1
-alias add ms mind sense $T
-alias add - get $T
-alias add = get 5 $T
-alias add spr outr primrose;eat primrose;search;who here
-alias add tbow taekyonbow $1
-alias add pnod politenod $1
-#alias add lure land;drop bottle;say Phasma phasmatis;get bottle;sk
-#alias add salt land;get saltpetre;sk
-alias add flint wield flintlock;wield flintlock
-alias add load1 outr shot;outr blackpowder;load 152344
-alias add load2 outr shot;outr blackpowder;load 152667
-alias add unw unwield left;unwield right
-alias add key1_n get key102502 from pouch;unlock door n;open door n;n;close door s;lock door s;put 102502 in pouch
-alias add key1_s get key102502 from pouch;unlock door s;open door s;s;close door n;lock door n;put 102502 in pouch
-alias add key2_ne get key104250 from pouch;unlock door ne;open door ne;ne;close door sw;lock door sw;put 104250 in pouch
-alias add key2_sw get key104250 from pouch;unlock door sw;open door sw;sw;close door ne;lock door ne;put 104250 in pouch
+function init ( localvarry )
+{
+   echo "Hello world.";
+   echo localvarry;
+}
 
-# Taekate
-alias add sl spp $T left
-alias add hl hfp $T left
-alias add sr spp $T right
-alias add hr hfp $T right
-alias add lleg hfp $T left;hfp $T left;hfp $T left;hfp $T left
-alias add rleg hfp $T right;hfp $T right;hfp $T right;hfp $T right
-alias add larm spp $T left;spp $T left;spp $T left;spp $T left
-alias add rarm spp $T right;spp $T right;spp $T right;spp $T right
-alias add legs hfp $T left;hfp $T right;hfp $T left;hfp $T right
-alias add arms spp $T left;spp $T right;spp $T left;spp $T right
-alias add head ucp $T;ucp $T;ucp $T;ucp $T
-alias add k ucp $T;ucp $T;ucp $T;ucp $T
-alias add bk brs;ucp $T;ucp $T
-alias add torso hkp $T;hkp $T;hkp $T;hkp $T
-alias add all hfp $T left;hfp $T right;spp $T left;spp $T right
-alias add f feint $T torso
-alias add hunt sdk $T;ucp $T;ucp $T
-alias add shunt scs;ucp $T;ucp $T
+alias kill
+{
+//   init( "Yay" );
+   ucp; ucp; ucp; ucp;
+   // Ow!
+}
 
-alias add jaa jpk $T;swk $T;spp $T left;spp $T right
-alias add jll jpk $T;swk $T;hfp $T left;hfp $T right
-alias add sll swk $T;hfp $T left;hfp $T right
-alias add saa swk $T;spp $T left;spp $T right
-alias add kaicombo slt $T;pmp $T;pmp $T
-alias add selfkaicombo kon;slt $T;pmp $T;pmp $T;koff
-alias add bbt bbt $T
-alias add bbtc bbt $T;mind command apply restoration to head
-alias add cc swk $T;jpk $T;feint $T torso;trueassess $T;hfp $T right;trueassess $T
+function ucp
+{
+//   target = "asdf";
+   send( "ucp $target" );
+//   echo "Ucp!";
+}
 
-# Telepathy.
-alias add ml mind lock $T
-alias add mdl mind deadening $T;mind lock $T
-alias add prl mind paralyse $T
-alias add conf mind confuse $T
-alias add drain mind drain $T
-alias add epil mind epilepsy $T
-alias add stp mind stupidity $T
-alias add stup mind stupidity $T
-alias add pacif mind pacify $T
-alias add amn mind amnesia $T
-alias add batter mind batter $T
-alias add dis mind disrupt $T
-alias add div mind divine $T
-alias add mr mind radiance
-alias add mc mind command $*
-alias add md mind deadening $T
-alias add cr mind crush $T
-alias add strip mind strip $T
-alias add b mind blackout
+// Aliases
 
-# Kaido
-alias add kc kai choke $T
-alias add kcr kai cripple $T
-alias add kb kai banish $T
-alias add kl kai strike $T left leg
-alias add kr kai strike $T right leg
-alias add ki kai immolate $T
-alias add ke kai enfeeble $T
+// Variables: $t = target
+//            $T = $1 if not null, or else target
+//            $1 - $9 = argument
+//            $* = all arguments
+
+//alias clear
+
+// Misc
+alias ice { send "point ring47309 $1"; }
+alias fire { send "point ring13771 at $T"; }
+alias oeat { send "outr $1;eat $1"; }
+alias ms { send "mind sense $T"; }
+//alias - get { send "$T"; }
+//alias = get { send "5 $T"; }
+alias spr { send "outr primrose;eat primrose;search;who here"; }
+alias tbow { send "taekyonbow $1"; }
+alias pnod { send "politenod $1"; }
+//alias lure { send "land;drop bottle;say Phasma phasmatis;get bottle;sk"; }
+//alias salt { send "land;get saltpetre;sk"; }
+alias flint { send "wield flintlock;wield flintlock"; }
+alias load1 { send "outr shot;outr blackpowder;load 152344"; }
+alias load2 { send "outr shot;outr blackpowder;load 152667"; }
+alias unw { send "unwield left;unwield right"; }
+alias key1_n { send "get key102502 from pouch;unlock door n;open door n;n;close door s;lock door s;put 102502 in pouch"; }
+alias key1_s { send "get key102502 from pouch;unlock door s;open door s;s;close door n;lock door n;put 102502 in pouch"; }
+alias key2_ne { send "get key104250 from pouch;unlock door ne;open door ne;ne;close door sw;lock door sw;put 104250 in pouch"; }
+alias key2_sw { send "get key104250 from pouch;unlock door sw;open door sw;sw;close door ne;lock door ne;put 104250 in pouch"; }
+
+// Taekate
+alias sl { send "spp $T left"; }
+alias hl { send "hfp $T left"; }
+alias sr { send "spp $T right"; }
+alias hr { send "hfp $T right"; }
+alias lleg { send "hfp $T left;hfp $T left;hfp $T left;hfp $T left"; }
+alias rleg { send "hfp $T right;hfp $T right;hfp $T right;hfp $T right"; }
+alias larm { send "spp $T left;spp $T left;spp $T left;spp $T left"; }
+alias rarm { send "spp $T right;spp $T right;spp $T right;spp $T right"; }
+alias legs { send "hfp $T left;hfp $T right;hfp $T left;hfp $T right"; }
+alias arms { send "spp $T left;spp $T right;spp $T left;spp $T right"; }
+alias head { send "ucp $T;ucp $T;ucp $T;ucp $T"; }
+alias k { send "ucp $T;ucp $T;ucp $T;ucp $T"; }
+alias bk { send "brs;ucp $T;ucp $T"; }
+alias torso { send "hkp $T;hkp $T;hkp $T;hkp $T"; }
+alias all { send "hfp $T left;hfp $T right;spp $T left;spp $T right"; }
+alias f { send "feint $T torso"; }
+alias hunt { send "sdk $T;ucp $T;ucp $T"; }
+alias shunt { send "scs;ucp $T;ucp $T"; }
+
+alias jaa { send "jpk $T;swk $T;spp $T left;spp $T right"; }
+alias jll { send "jpk $T;swk $T;hfp $T left;hfp $T right"; }
+alias sll { send "swk $T;hfp $T left;hfp $T right"; }
+alias saa { send "swk $T;spp $T left;spp $T right"; }
+alias kaicombo { send "slt $T;pmp $T;pmp $T"; }
+alias selfkaicombo { send "kon;slt $T;pmp $T;pmp $T;koff"; }
+alias bbt { send "bbt $T"; }
+alias bbtc { send "bbt $T;mind command apply restoration to head"; }
+alias cc { send "swk $T;jpk $T;feint $T torso;trueassess $T;hfp $T right;trueassess $T"; }
+
+// Telepathy.
+alias ml { send "mind lock $T"; }
+alias mdl { send "mind deadening $T;mind lock $T"; }
+alias prl { send "mind paralyse $T"; }
+alias conf { send "mind confuse $T"; }
+alias drain { send "mind drain $T"; }
+alias epil { send "mind epilepsy $T"; }
+alias stp { send "mind stupidity $T"; }
+alias stup { send "mind stupidity $T"; }
+alias pacif { send "mind pacify $T"; }
+alias amn { send "mind amnesia $T"; }
+alias batter { send "mind batter $T"; }
+alias dis { send "mind disrupt $T"; }
+alias div { send "mind divine $T"; }
+alias mr { send "mind radiance"; }
+alias mc { send "mind command $*"; }
+alias md { send "mind deadening $T"; }
+alias cr { send "mind crush $T"; }
+alias strip { send "mind strip $T"; }
+alias b { send "mind blackout"; }
+
+// Kaido
+alias kc { send "kai choke $T"; }
+alias kcr { send "kai cripple $T"; }
+alias kb { send "kai banish $T"; }
+alias kl { send "kai strike $T left leg"; }
+alias kr { send "kai strike $T right leg"; }
+alias ki { send "kai immolate $T"; }
+alias ke { send "kai enfeeble $T"; }
 

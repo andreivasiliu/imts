@@ -351,22 +351,22 @@ void mm_send_file_block( CONN *conn )
 	  }
 	
 	mm_send_packet( conn, (char) CHAT_FILE_END, "" );
-	clientff( "\r\n" C_W "%s" C_0 ": File transfer completed.\r\n",
-		  conn->name );
-	show_prompt( );
 	
 	free( conn->filename );
 	conn->filename = NULL;
 	
+	clientff( "\r\n" C_W "%s" C_0 ": File transfer completed.\r\n",
+		  conn->name );
+	show_prompt( );
 	return;
      }
    
    if ( !conn->accepted )
      {
+	conn->accepted = 1;
 	clientff( "\r\n" C_W "%s" C_0 ": File transfer started.\r\n",
 		  conn->name );
 	show_prompt( );
-	conn->accepted = 1;
      }
    
    conn->file_bytes_sent += length;
@@ -445,10 +445,11 @@ void mm_process_packet( CONN *conn, char *packet )
      {
 	/* Return a ping reply, containg the same message. */
 	
+	mm_send_packet( conn, (char) CHAT_PING_RESPONSE, packet );
+	
 	clientff( C_R "\r\n<CHAT> Ping from " C_W "%s" C_R ". Reply sent.\r\n" C_0,
 		  conn->name );
 	show_prompt( );
-	mm_send_packet( conn, (char) CHAT_PING_RESPONSE, packet );
      }
    else if ( type == (char) CHAT_SNOOP_DATA )
      {
@@ -475,12 +476,12 @@ void mm_process_packet( CONN *conn, char *packet )
      }
    else if ( type == (char) CHAT_FILE_DENY )
      {
-	clientff( C_W "\r\nFile denied by " C_W "%s" C_0 ": %s\r\n" C_0,
-		  conn->name, packet );
-	show_prompt( );
 	if ( conn->filename )
 	  free( conn->filename );
 	conn->filename = NULL;
+	clientff( C_W "\r\nFile denied by " C_W "%s" C_0 ": %s\r\n" C_0,
+		  conn->name, packet );
+	show_prompt( );
      }
    else
      {
@@ -553,11 +554,11 @@ void mm_read_from_connection( DESCRIPTOR *self )
    
    if ( bytes == 0 )
      {
+	c_close( self->fd );
+	mm_remove_connection( conn );
 	clientff( C_R "\r\n[Connection closed by " C_W "%s" C_R ".]\r\n" C_0,
 		  conn->name );
 	show_prompt( );
-	c_close( self->fd );
-	mm_remove_connection( conn );
 	return;
      }
    if ( bytes < 0 )
@@ -575,10 +576,10 @@ void mm_read_from_connection( DESCRIPTOR *self )
    /* Connection refused? */
    if ( !strncmp( buf, "NO", 2 ) )
      {
-	clientff( C_R "\r\n[Connection rejected.]\r\n" C_0 );
-	show_prompt( );
 	c_close( self->fd );
 	mm_remove_connection( conn );
+	clientff( C_R "\r\n[Connection rejected.]\r\n" C_0 );
+	show_prompt( );
 	return;
      }
    
@@ -597,12 +598,12 @@ void mm_read_from_connection( DESCRIPTOR *self )
 	conn->name = strdup( name );
 	conn->accepted = 1;
 	
+	/* Send our version string. */
+	mm_send_version( conn );
+	
 	clientff( C_R "\r\n[Connection accepted from " C_W "%s" C_R ".]" C_0 "\r\n",
 		  name );
 	show_prompt( );
-	
-	/* Send our version string. */
-	mm_send_version( conn );
 	
 	return;
      }

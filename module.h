@@ -45,37 +45,29 @@
 
 /*** Global functions. ***/
 
+/* Line operators. */
+void	(*prefix)( char *string );
+void	(*suffix)( char *string );
+void	(*replace)( char *string );
+void	(*insert)( int pos, char *string );
+void	(*prefixf)( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
+void	(*suffixf)( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
+
 /* Communication */
 MODULE* (*get_modules)( );
 void *	(*get_variable)( char *name );
 void	(*DEBUG)( char *name );
-#if !defined( FOR_WINDOWS )
 void	(*debugf)( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
-#else
-void	(*debugf)( char *string, ... );
-#endif
 void	(*debugerr)( char *string );
-#if !defined( FOR_WINDOWS )
 void	(*logff)( char *type, char *string, ... ) __attribute__ ( ( format( printf, 2, 3 ) ) );
-#else
-void	(*logff)( char *type, char *string, ... );
-#endif
 void	(*clientf)( char *string );
 void	(*clientfr)( char *string );
-#if !defined( FOR_WINDOWS )
 void	(*clientff)( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
-#else
-void	(*clientff)( char *string, ... );
-#endif
 void	(*send_to_server)( char *string );
 void	(*show_prompt)( );
 int	(*gag_line)( int gag );
 int	(*gag_prompt)( int gag );
-#if !defined( FOR_WINDOWS )
 void	(*mxp)( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
-#else
-void	(*mxp)( char *string, ... );
-#endif
 int	(*mxp_tag)( int tag );
 
 /* Utility */
@@ -104,6 +96,13 @@ int	(*c_close)( int fd );
 
 
 #define GET_FUNCTIONS( self ) \
+   /* Line operators. */ \
+   prefix = self->get_func( "prefix" ); \
+   suffix = self->get_func( "suffix" ); \
+   replace = self->get_func( "replace" ); \
+   insert = self->get_func( "insert" ); \
+   prefixf = self->get_func( "prefixf" ); \
+   suffixf = self->get_func( "suffixf" ); \
    /* Communication */ \
    get_modules = self->get_func( "get_modules" ); \
    get_variable = self->get_func( "get_variable" ); \
