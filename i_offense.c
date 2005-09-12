@@ -25,6 +25,7 @@
 
 #define I_OFFENSE_ID "$Name$ $Id$"
 
+#include <stdarg.h>
 #include <sys/time.h>
 #include <pcre.h>
 
@@ -224,7 +225,7 @@ char searchback_buffer[SB_FULL_SIZE];
 int sb_size;
 
 void execute_block( );
-void execute_single_command( char *returns, int max );
+void execute_single_command( char *returns, int max, int priority );
 
 
 /* Here we register our functions. */
@@ -1353,6 +1354,12 @@ void offensive_module_init_data( )
    
    load_scripts( );
    do_char_load( );
+   
+   {
+//      int a = 1, b = 1, c = 3;
+//      a = b == c == !0 + 3 and 3 == 2 or 2;
+//      debugf( "a: %d b: %d c: %d.", a, b, c );
+   }
 }
 
 
@@ -1466,6 +1473,77 @@ void convert_variables( char *line, char *dest )
 
 
 
+void get_identifier( char *dest, int max )
+{
+   skip_whitespace( );
+   
+   while ( --max && ( ( **pos >= 'A' && **pos <= 'Z' ) ||
+		      ( **pos >= 'a' && **pos <= 'z' ) ||
+		      ( **pos >= '0' && **pos <= '9' ) ||
+		      **pos == '_' ) )
+     *(dest++) = *((*pos)++);
+   
+   *dest = 0;
+   
+   skip_whitespace( );
+}
+
+
+
+void abort_script( int syntax, char *error, ... )
+{
+   char buf[1024];
+   char what[1024];
+   char func[1024];
+   char error_buf[1024];
+   
+   va_list args;
+   if ( error )
+     {
+	va_start( args, error );
+	vsnprintf( error_buf, 1024, error, args );
+	va_end( args );
+     }
+   
+   /* Figure out what exactly is at *pos. */
+   if ( *pos )
+     get_identifier( buf, 512 );
+   
+   if ( !*pos )
+     what[0] = 0;
+   else if ( buf[0] )
+     sprintf( what, " before '%s'", buf );
+   else if ( !**pos )
+     strcpy( what, " before the End of Buffer" );
+   else
+     sprintf( what, " before character '%c'", **pos );
+   
+   if ( call_stack )
+     sprintf( func, " in function %s,", call_stack->name );
+   else
+     func[0] = 0;
+   
+   sprintf( buf, "%s%s%s%c", syntax ? "Syntax error" : "Script aborted",
+	    func, what, error ? ':' : '.' );
+   
+   clientff( C_0 "(" C_W "iScript" C_0 "): " C_R "%s\r\n" C_0, buf );
+   if ( error )
+     clientff( C_0 "(" C_W "iScript" C_0 "): " C_R "%s\r\n" C_0, error_buf );
+   
+   *pos = NULL;
+   
+   if ( call_stack )
+     call_stack->aborted = 1;
+}
+
+
+void script_warning( char *warning )
+{
+   clientff( C_0 "(" C_W "iScript" C_0 "): " C_R "Warning: %s\r\n", warning );
+}
+
+
+
 void set_variable( char *name, char *value )
 {
    VARIABLE *var = NULL;
@@ -1478,14 +1556,16 @@ void set_variable( char *name, char *value )
    
    /* System variables. */
    if ( !var )
-     if ( !strcmp( name, "t" ) ||
-	  !strcmp( name, "tar" ) ||
-	  !strcmp( name, "target" ) )
-       {
-	  free( target );
-	  target = strdup( value );
-	  return;
-       }
+     {
+	if ( !strcmp( name, "t" ) ||
+	     !strcmp( name, "tar" ) ||
+	     !strcmp( name, "target" ) )
+	  {
+	     free( target );
+	     target = strdup( value );
+	     return;
+	  }
+     }
    
    /* Globals. */
    if ( !var )
@@ -1516,7 +1596,7 @@ void set_local_variable( CALL *call, char *name, char *value )
    
    if ( !call )
      {
-	debugf( "Wha?! No call stack on set_local_variable?" );
+	script_warning( "No call stack on set_local_variable?!" );
 	return;
      }
    
@@ -1600,6 +1680,26 @@ CALL *prepare_call( FUNCTION *function )
 
 
 
+void kill_local_variables( CALL *call )
+{
+   if ( call->locals )
+     {
+	VARIABLE *v, *v_next;
+	
+	for ( v = call->locals; v; v = v_next )
+	  {
+	     v_next = v->next;
+	     if ( v->name )
+	       free( v->name );
+	     if ( v->value )
+	       free( v->value );
+	     free( v );
+	  }
+     }
+}
+
+
+
 void call_function( CALL *call, char *returns, int max )
 {
    call->below = call_stack;
@@ -1615,26 +1715,37 @@ void call_function( CALL *call, char *returns, int max )
    execute_block( );
    
    /* Kill all local variables. */
-   if ( call->locals )
+   kill_local_variables( call );
+   
+   call_stack = call->below;
+   
+   if ( call_stack )
      {
-	VARIABLE *v, *v_next;
+	pos = &call_stack->position;
 	
-	for ( v = call->locals; v; v = v_next )
+	if ( call->aborted )
 	  {
-	     v_next = v->next;
-	     if ( v->name )
-	       free( v->name );
-	     if ( v->value )
-	       free( v->value );
-	     free( v );
+	     *pos = NULL;
+	     call_stack->aborted = 1;
 	  }
      }
    
-   call_stack = call->below;
-   pos = &call_stack->position;
    free( call );
 }
 
+
+
+/* Operator priority. */
+
+#define PRIORITY_INVERT	6 /* <-- Also for Argument. */
+#define PRIORITY_PLUS	5
+#define PRIORITY_EQUAL	4
+#define PRIORITY_ASSIGN	3
+#define PRIORITY_OR	2
+#define PRIORITY_AND	1
+#define PRIORITY_NORMAL	0
+
+#define PRIORITY_ARGUMENT PRIORITY_INVERT
 
 
 void do_echo( )
@@ -1642,7 +1753,7 @@ void do_echo( )
    char buf[4096];
    char buf2[4096];
    
-   execute_single_command( buf, 4096 );
+   execute_single_command( buf, 4096, PRIORITY_NORMAL );
    if ( *pos )
      {
 	convert_variables( buf, buf2 );
@@ -1659,7 +1770,7 @@ void do_send( )
    char buf2[4096];
    char *p;
    
-   execute_single_command( buf, 4096 );
+   execute_single_command( buf, 4096, PRIORITY_NORMAL );
    if ( *pos )
      {
 	/* Fixme. Overflow! */
@@ -1675,28 +1786,184 @@ void do_send( )
 
 
 
-void get_identifier( char *dest, int max )
+void do_arg( char *returns, int max )
 {
-   skip_whitespace( );
+   char buf[4096];
+   char *src;
    
-   while ( --max && ( ( **pos >= 'A' && **pos <= 'Z' ) ||
-		      ( **pos >= 'a' && **pos <= 'z' ) ||
-		      ( **pos >= '0' && **pos <= '9' ) ||
-		      **pos == '_' ) )
-     *(dest++) = *((*pos)++);
+   execute_single_command( buf, 4096, PRIORITY_ARGUMENT );
    
-   *dest = 0;
+   if ( !returns )
+     return;
    
-   skip_whitespace( );
+   if ( buf[0] >= '1' && buf[0] <= '9' && !buf[1] )
+     src = alias_arg[(int)(buf[0]-'1')];
+   else
+     src = "";
+   
+   while ( --max && *src )
+     *(returns++) = *(src++);
+   *returns = 0;
+}
+
+
+
+void do_showprompt( char *returns, int max )
+{
+   if ( returns )
+     *returns = 0;
+   
+   show_prompt( );
+}
+
+
+
+void do_not( char *returns, int max )
+{
+   char buf[4096];
+   char *src;
+   
+   execute_single_command( buf, 4096, PRIORITY_INVERT );
+   
+   if ( buf[0] )
+     src = "";
+   else
+     src = "true";
+   
+   while ( --max && *src )
+     *(returns++) = *(src++);
+   *returns = 0;
 }
 
 
 
 /* After parsing an identifier, see what to do with it. */
-void handle_results( char *results, char *dest, int max )
+void handle_results( char *results, char *dest, int max, int priority )
 {
-   // Check for ==, &&, ||
-   // Check for +
+   char buf[4096], *b = buf;
+   int b_max = 4096;
+   // Check for !=
+
+   skip_whitespace( );
+   
+   if ( **pos == '+' && priority <= PRIORITY_PLUS )
+     {
+	char right[4096];
+	
+	(*pos)++;
+	
+	if ( results )
+	  while ( --b_max && *results )
+	    *(b++) = *(results++);
+	
+	/* Concatenate this with the next. */
+	execute_single_command( right, 4096, PRIORITY_PLUS );
+	if ( !*pos )
+	  return;
+	
+	results = right;
+	if ( b_max )
+	  while ( --b_max && *results )
+	    *(b++) = *(results++);
+	*b = 0;
+	
+	handle_results( buf, dest, max, priority );
+	return;
+     }
+   
+   // ToDo: Gonna have to find a way of... automatic grouping?
+   
+   /* ("asd" == "asd") == "asd" */
+   /* Exception: ("" == "") == "true" */
+   if ( **pos == '=' && *((*pos)+1) == '=' && priority <= PRIORITY_EQUAL )
+     {
+	char right[4096];
+	
+	*pos += 2;
+	
+	execute_single_command( right, 4096, PRIORITY_EQUAL );
+	if ( !*pos )
+	  return;
+	
+	if ( results )
+	  {
+	     if ( strcmp( results, right ) )
+	       results = "";
+	     else if ( !*results )
+	       results = "true";
+	     /* else, leave the results as they were. */
+	  }
+	else
+	  {
+	     if ( right[0] )
+	       results = "";
+	     else
+	       results = "true";
+	  }
+	
+	while ( --b_max && *results )
+	  *(b++) = *(results++);
+	*b = 0;
+	
+	handle_results( buf, dest, max, priority );
+	return;
+     }
+   
+   /* Compare, and update the position if true, at the same time.
+    * Yeah, tricky, but convenient. */
+   
+   /* ( "asd" && "qwe" ) == "true" */
+   else if ( priority <= PRIORITY_AND &&
+	     ( ( **pos == '&' && *((*pos)+1) == '&' && *((*pos)+=2) ) ||
+	       ( **pos == '&' && *((*pos)+=1) ) ||
+	       ( **pos == 'a' && *((*pos)+1) == 'n' && *((*pos)+2) == 'd' && *((*pos)+=3) ) ) )
+     {
+	char right[4096];
+	
+	execute_single_command( right, 4096, PRIORITY_AND );
+	if ( !*pos )
+	  return;
+	
+	
+	if ( results && results[0] && right[0] )
+	  results = "true";
+	else if ( !results && !right[0] )
+	  results = "true";
+	else
+	  results = "";
+	
+	while ( --b_max && *results )
+	  *(b++) = *(results++);
+	*b = 0;
+	
+	handle_results( buf, dest, max, priority );
+	return;
+     }
+   
+   /* "asd" || "" == "true" */
+   else if ( priority <= PRIORITY_OR &&
+	     ( ( **pos == '|' && *((*pos)+1) == '|' && *((*pos)+=2) ) ||
+	       ( **pos == '|' && *((*pos)+=1) ) ||
+	       ( **pos == 'o' && *((*pos)+1) == 'r' && *((*pos)+=2) ) ) )
+     {
+	char right[4096];
+	
+	execute_single_command( right, 4096, PRIORITY_OR );
+	if ( !*pos )
+	  return;
+	
+	if ( ( results && results[0] ) || right[0] )
+	  results = "true";
+	else
+	  results = "";
+	
+	while ( --b_max && *results )
+	  *(b++) = *(results++);
+	*b = 0;
+	
+	handle_results( buf, dest, max, priority );
+	return;
+     }
    
    /* Nothing? Then we're finished here. Copy the results. */
    
@@ -1717,12 +1984,14 @@ void group_results( char *dest, int max )
    
    (*pos)++;
    
-   execute_single_command( buf, 4096 );
+   execute_single_command( buf, 4096, PRIORITY_NORMAL );
+   if ( !*pos )
+     return;
    
    skip_whitespace( );
    if ( **pos != ')' )
      {
-	debugf( "Expected ')'." );
+	abort_script( 1, "Expected ')'." );
 	return;
      }
    
@@ -1741,7 +2010,7 @@ void group_results( char *dest, int max )
 
 
 /* Parse a single command. */
-void execute_single_command( char *returns, int max )
+void execute_single_command( char *returns, int max, int priority )
 {
    VARIABLE *variable;
    FUNCTION *function;
@@ -1759,7 +2028,21 @@ void execute_single_command( char *returns, int max )
      {
 	(*pos)++;
 	do_send( buf, b_max );
-	handle_results( buf, returns, max );
+	if ( !*pos )
+	  return;
+	
+	handle_results( buf, returns, max, priority );
+	return;
+     }
+   
+   if ( **pos == '!' )
+     {
+	(*pos)++;
+	do_not( buf, b_max );
+	if ( !*pos )
+	  return;
+	
+	handle_results( buf, returns, max, priority );
 	return;
      }
    
@@ -1774,14 +2057,13 @@ void execute_single_command( char *returns, int max )
 	
 	if ( **pos != '\"' )
 	  {
-	     debugf( "Expected end of string." );
-	     *pos = NULL;
+	     abort_script( 1, "Expected end of string." );
 	     return;
 	  }
 	(*pos)++;
 	skip_whitespace( );
 	
-	handle_results( buf, returns, max );
+	handle_results( buf, returns, max, priority );
 	return;
      }
    
@@ -1789,12 +2071,18 @@ void execute_single_command( char *returns, int max )
    if ( **pos == '(' )
      {
 	group_results( buf, b_max );
+	if ( !*pos )
+	  return;
 	
-	handle_results( buf, returns, max );
+	handle_results( buf, returns, max, priority );
+	return;
      }
    
    get_identifier( ident, 4096 );
-   /* Skip white space has been called by it. */
+   /* Skip white space has been called by it, don't call it again. */
+   
+   if ( returns && max )
+     returns[0] = 0;
    
    if ( !ident[0] )
      return;
@@ -1817,17 +2105,19 @@ void execute_single_command( char *returns, int max )
 	     
 	     (*pos)++;
 	     
-	     execute_single_command( var_buf, 4096 );
-	     // Bail out, like everywhere else.
+	     // Normal, Assignment, or highest from priority and assignment?
+	     execute_single_command( var_buf, 4096, PRIORITY_ASSIGN );
+	     if ( !*pos )
+	       return;
 	     
 	     set_variable( ident, var_buf );
 	     
-	     handle_results( var_buf, returns, max );
+	     handle_results( var_buf, returns, max, priority );
 	     return;
 	  }
 	
 	copy_variable( ident, buf, b_max );
-	handle_results( buf, returns, max );
+	handle_results( buf, returns, max, priority );
 	return;
      }
    
@@ -1859,9 +2149,13 @@ void execute_single_command( char *returns, int max )
 	call = prepare_call( function );
 	for ( i = 0; function->args[i]; i++ )
 	  {
-	     execute_single_command( var_buf, 4096 );
+	     execute_single_command( var_buf, 4096, expect_ending ? PRIORITY_NORMAL : PRIORITY_ARGUMENT );
 	     
-	     // Bail out. Kill variables, same as below!
+	     if ( !*pos )
+	       {
+		  kill_local_variables( call );
+		  return;
+	       }
 	     
 	     set_local_variable( call, function->args[i], var_buf );
 	     
@@ -1879,33 +2173,72 @@ void execute_single_command( char *returns, int max )
 	     skip_whitespace( );
 	     if ( **pos != ')' )
 	       {
-		  debugf( "Expected ')' on end of argument list." );
-		  // Bail out.
-		  
+		  abort_script( 1, "Expected ')' on end of argument list." );
+		  kill_local_variables( call );
+		  *pos = NULL;
 		  return;
 	       }
 	     (*pos)++;
 	  }
 	
 	call_function( call, buf, b_max );
+	if ( !*pos )
+	  return;
 	
-	// Perhaps check for errors.
-	
-	handle_results( buf, returns, max );
+	handle_results( buf, returns, max, priority );
 	return;
      }
    
    /* Perhaps it's a built-in function. */
+   if ( !cmp( "return", ident ) )
+     {
+	if ( call_stack )
+	  execute_single_command( call_stack->return_value, call_stack->max, PRIORITY_NORMAL );
+	else
+	  {
+	     script_warning( "Returning with no call stack." );
+	     execute_single_command( NULL, 0, PRIORITY_NORMAL );
+	  }
+	
+	if ( !*pos )
+	  return;
+	
+	*pos = NULL;
+	return;
+     }
+   if ( !cmp( "not", ident ) )
+     {
+	do_not( buf, b_max );
+	if ( *pos )
+	  handle_results( buf, returns, max, priority );
+	return;
+     }
    if ( !cmp( "echo", ident ) )
      {
 	do_echo( buf, b_max );
-	handle_results( buf, returns, max );
+	if ( *pos )
+	  handle_results( buf, returns, max, priority );
 	return;
      }
    if ( !cmp( "send", ident ) )
      {
 	do_send( buf, b_max );
-	handle_results( buf, returns, max );
+	if ( *pos )
+	  handle_results( buf, returns, max, priority );
+	return;
+     }
+   if ( !cmp( "arg", ident ) )
+     {
+	do_arg( buf, b_max );
+	if ( *pos )
+	  handle_results( buf, returns, max, priority );
+	return;
+     }
+   if ( !cmp( "show_prompt", ident ) )
+     {
+	do_showprompt( buf, b_max );
+	if ( *pos )
+	  handle_results( buf, returns, max, priority );
 	return;
      }
    
@@ -1916,29 +2249,97 @@ void execute_single_command( char *returns, int max )
 	
 	(*pos)++;
 	
-	execute_single_command( var_buf, 4096 );
-	// Bail out, like everywhere else.
+	execute_single_command( var_buf, 4096, PRIORITY_ASSIGN );
+	
+	if ( !*pos )
+	  return;
 	     
 	set_variable( ident, var_buf );
 	
-	handle_results( var_buf, returns, max );
+	handle_results( var_buf, returns, max, priority );
 	return;
      }
    
-   if ( call_stack )
-     debugf( "In %s():", call_stack->name );
-   debugf( "Syntax error near '%s'.", ident );
-   *pos = NULL;
+   abort_script( 0, "Unknown identifier '%s'.", ident );
    return;
 }
 
 
 
-/* Execute a block of commands. */
+/* Skip a block of commands. */
+void skip_block( )
+{
+   /* Here's the deal... If the first thing we see is a semicolon, that's all.
+    * However... If the first thing we see is a '{', find the matching '}' and
+    * don't look for a semicolon. Of course, beware of strings and comments.
+    */
+   
+   if ( !*pos )
+     return;
+   
+   while ( **pos && **pos != ';' && **pos != '{' )
+     (*pos)++;
+   
+   if ( **pos == ';' )
+     {
+	(*pos)++;
+	return;
+     }
+   
+   if ( !**pos )
+     return;
+   
+   (*pos)++;
+   
+     {
+	/* Find the matching '}'. */
+	int brackets = 1, within_string = 0, within_comment = 0;
+	while ( brackets )
+	  {
+	     switch ( **pos )
+	       {
+		case '\"':
+		  if ( !within_comment )
+		    within_string = !within_string; break;
+		case '{':
+		  if ( !within_string && !within_comment ) brackets++; break;
+		case '}':
+		  if ( !within_string && !within_comment ) brackets--; break;
+		case '/':
+		  if ( !within_string && !within_comment )
+		    {
+		       if ( *((*pos)+1) == '/' )
+			 within_comment = 1, *pos += 1;
+		       else if ( *((*pos)+1) == '*' )
+			 within_comment = 2, *pos += 1;
+		    }
+		       break;
+		case '\n':
+		  if ( within_comment == 1 )
+		    within_comment = 0;
+		  break;
+		case '*':
+		  if ( *((*pos)+1) == '/' && within_comment == 2 )
+		    within_comment = 0, *pos += 1;
+		  break;
+		case 0:
+		  abort_script( 0, "Mismatched '{', unexpected End of Buffer." );
+		  return;
+	       }
+	     
+	     (*pos)++;
+	  }
+     }
+}
 
+
+
+/* Execute a block of commands. */
 void execute_block( )
 {
    int expect_end_of_block = 0;
+   char *temp_pos;
+   char buf[4096];
    
    if ( !*pos || !**pos )
      return;
@@ -1952,7 +2353,7 @@ void execute_block( )
 	
 	if ( !**pos )
 	  {
-	     debugf( "Unexpected EOB." );
+	     abort_script( 1, NULL );
 	     return;
 	  }
 	
@@ -1972,19 +2373,65 @@ void execute_block( )
 	     continue;
 	  }
 	
+	/* Block controls? If's, While's, For's.. */
+	if ( **pos == 'i' )
+	  {
+	     temp_pos = *pos;
+	     get_identifier( buf, 4096 );
+	     
+	     if ( !strcmp( buf, "if" ) )
+	       {
+		  int truth;
+		  
+		  /* if <command> <block> else <block> */
+		  execute_single_command( buf, 4096, PRIORITY_NORMAL );
+		  if ( !*pos )
+		    return;
+		  
+		  if ( buf[0] )
+		    truth = 1;
+		  else
+		    truth = 0;
+		  
+		  if ( truth )
+		    execute_block( );
+		  else
+		    skip_block( );
+		  if ( !*pos )
+		    return;
+		  
+		  temp_pos = *pos;
+		  get_identifier( buf, 4096 );
+		  if ( !strcmp( buf, "else" ) )
+		    {
+		       if ( !truth )
+			 execute_block( );
+		       else
+			 skip_block( );
+		       if ( !*pos )
+			 return;
+		    }
+		  else
+		    *pos = temp_pos;
+		  
+		  if ( expect_end_of_block )
+		    continue;
+		  else
+		    return;
+	       }
+	     
+	     *pos = temp_pos;
+	  }
+	
 	/* We have a command here. */
-	execute_single_command( NULL, 0 );
+	execute_single_command( NULL, 0, PRIORITY_NORMAL );
 	if ( !*pos )
 	  return;
-	
 	skip_whitespace( );
 	
 	if ( **pos != ';' )
 	  {
-	     if ( **pos )
-	       debugf( "Expected ';' instead of '%c'.", **pos );
-	     else
-	       debugf( "Expected ';' instead of EOB." );
+	     abort_script( 0, "Expected ';' instead." );
 	     return;
 	  }
 	
@@ -2038,7 +2485,7 @@ SCRIPT *load_script( const char *flname )
    fclose( fl );
    if ( !body )
      {
-	debugf( "Empty script file." );
+	script_warning( "Empty script file." );
 	free( script );
 	return NULL;
      }
@@ -2078,7 +2525,7 @@ SCRIPT *load_script( const char *flname )
 	get_identifier( buf, 4096 );
 	if ( !buf[0] )
 	  {
-	     debugf( "Syntax error while loading a script, before '%c'", **pos );
+	     abort_script( 1, NULL );
 	     aborted = 1;
 	     break;
 	  }
@@ -2090,7 +2537,7 @@ SCRIPT *load_script( const char *flname )
 	     
 	     if ( !buf[0] )
 	       {
-		  debugf( "Function name not provided." );
+		  abort_script( 0, "Function name not provided." );
 		  aborted = 1;
 		  break;
 	       }
@@ -2137,7 +2584,7 @@ SCRIPT *load_script( const char *flname )
 	     
 	     if ( expect_argument )
 	       {
-		  debugf( "Expected a function argument." );
+		  abort_script( 0, "Expected a function argument." );
 		  aborted = 1;
 		  break;
 	       }
@@ -2146,7 +2593,7 @@ SCRIPT *load_script( const char *flname )
 	       {
 		  if ( **pos != ')' )
 		    {
-		       debugf( "Mismatched '(', expected ')' on argument list." );
+		       abort_script( 0, "Mismatched '(', expected ')' on argument list." );
 		       aborted = 1;
 		       break;
 		    }
@@ -2161,7 +2608,7 @@ SCRIPT *load_script( const char *flname )
 	     
 	     if ( !buf[0] )
 	       {
-		  debugf( "Alias name not provided." );
+		  abort_script( 0, "Alias name not provided." );
 		  aborted = 1;
 		  break;
 	       }
@@ -2173,7 +2620,7 @@ SCRIPT *load_script( const char *flname )
 	
 	if ( **pos != '{' )
 	  {
-	     debugf( "No body provided to an alias or function '%s', expected '{'.", function->name );
+	     abort_script( 0, "No body provided to function '%s', expected '{'.", function->name );
 	     aborted = 1;
 	     break;
 	  }
@@ -2191,7 +2638,7 @@ SCRIPT *load_script( const char *flname )
 		case '}':
 		  if ( !within_string ) brackets--; break;
 		case 0:
-		  debugf( "Mismatched '{', unexpected EOB." );
+		  abort_script( 0, "Mismatched '{', unexpected End of Buffer." );
 		  aborted = 1;
 		  break;
 	       }

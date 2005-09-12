@@ -2,23 +2,27 @@
 
 //#script "Initial iScript"
 
-/* ToDo: disable, enable, if, ==, +, local, unset, groups!, not/!, return,
-         load
-   Triggers: everyline, prompt
+/* ToDo: disable, enable, local, unset, groups!, load
+   Triggers: pattern, everyline, prompt
  */
 
-function init ( localvarry )
+function init ( localvar )
 {
-   echo "Hello world.";
-   echo localvarry;
+//   echo "a" + !"ss" + "s" + "d" == "as" + "d" == "asd";
+   echo ( !"a" == "a" + "a" );
+
+/*   if ( localvar == "asd" )
+     echo "Hello world.";
+   else
+     {
+	if ( localvar == "qwe" )
+	  echo "Hello world?";
+	else
+	  echo "Hello world...";
+     }*/
 }
 
-alias kill
-{
-//   init( "Yay" );
-   ucp; ucp; ucp; ucp;
-   // Ow!
-}
+
 
 function ucp
 {
@@ -26,6 +30,75 @@ function ucp
    send( "ucp $target" );
 //   echo "Ucp!";
 }
+
+
+function get_key( name )
+{
+   if ( ( name == "bedroom" ) or ( name == "2" ) )
+     return "key104250";
+
+   if ( ( name == "house" ) or ( name == "1" ) )
+     return "key102502";
+   
+   return;
+}
+
+
+function opposite_of( dir )
+{ 
+   if ( ( dir == "n" ) or ( dir == "north" ) )
+     return "s";
+   if ( ( dir == "ne" ) or ( dir == "northeast" ) )
+     return "sw";
+   if ( ( dir == "e" ) or ( dir == "east" ) )
+     return "w";
+   if ( ( dir == "se" ) or ( dir == "southeast" ) )
+     return "nw";
+   if ( ( dir == "s" ) or ( dir == "south" ) )
+     return "n";
+   if ( ( dir == "sw" ) or ( dir == "southwest" ) )
+     return "ne";
+   if ( ( dir == "w" ) or ( dir == "west" ) )
+     return "e";
+   if ( ( dir == "nw" ) or ( dir == "northwest" ) )
+     return "se";
+   if ( ( dir == "u" ) or ( dir == "up" ) )
+     return "d";
+   if ( ( dir == "d" ) or ( dir == "down" ) )
+     return "u";
+   if ( ( dir == "in" ) )
+     return "out";
+   if ( ( dir == "out" ) )
+     return "in";
+   
+   return;
+}
+
+
+alias key
+{
+   /* $1 holds the key name, $2 holds the direction. */
+   
+   keyname = get_key( arg "1" );
+   dir = arg "2";
+   opp = opposite_of( dir );
+   
+   if ( !keyname || !opp )
+     {
+	echo "Huh?";
+	show_prompt;
+	return;
+     }
+   
+   send "get $keyname from pouch";
+   send "unlock door $dir";
+   send "open door $dir";
+   send dir;
+   send "close door $opp";
+   send "lock door $opp";
+   send "put $keyname in pouch";
+}
+
 
 // Aliases
 
