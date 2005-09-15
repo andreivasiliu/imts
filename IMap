@@ -60,6 +60,7 @@ GSE: -1 "vortex" "you through the ether to ^."
 GSE: -1 "thk" "You are hurled ^ by the force of the blow."
 GSE: 716 "portals" "of the Gods to rescue you."
 GSE: 8509 "suriel" "far above the clouds."
+GSE: -1 "prism" "An irresistible force pulls you along to the other end of the prismatic light."
 
 
 AREA
@@ -174,6 +175,7 @@ E: south 1074
 ROOM v1108
 Name: On the edge of a path. (road)
 Type: Road
+E: northeast 8516
 E: east 1107
 E: south 1109
 
@@ -8960,7 +8962,7 @@ E: southeast 137
 E: northwest 143
 
 ROOM v139
-Name: Yn'Chionnal Supplies.
+Name: The Amethyst Trading Post.
 Type: Urban
 E: east 137
 DEL: down
@@ -9279,6 +9281,7 @@ ROOM v945
 Name: A small sapphire walk leading to the Crimson Tower.
 Type: Urban
 E: northeast 106
+E: west 8606
 
 ROOM v946
 Name: Amethyst avenue in front of Leaf Tower.
@@ -9440,6 +9443,27 @@ ROOM v8321
 Name: A gloomy graveyard.
 Type: Garden
 E: west 131
+
+ROOM v8606
+Name: A simple arched anteroom.
+E: east 945
+E: southwest 8609
+E: northwest 8607
+
+ROOM v8607
+Name: A peaceful sanctuary.
+E: southeast 8606
+E: southwest 8608
+
+ROOM v8608
+Name: A tranquil garden of sapphire-hued orchids.
+E: northeast 8607
+E: southeast 8609
+
+ROOM v8609
+Name: A quiet chapel.
+E: northeast 8606
+E: northwest 8608
 
 
 
@@ -27367,10 +27391,11 @@ E: north 3600
 E: down 3598
 
 ROOM v3598
-Name: At the base of a small mountain range.
-Type: Mountains
+Name: At the base of a small mountain range. (road)
+Type: Road
 E: south 3268
 E: up 3599
+E: in 8556
 
 ROOM v3597
 Name: Wide open plains.
@@ -27429,20 +27454,13 @@ E: southeast 3586
 E: south 3587
 E: west 3270
 
-ROOM v3588
-Name: Wide open plains.
-Type: Grasslands
-E: east 3587
-EL: east 2
-E: south 3266
-
 ROOM v3587
 Name: Wide open plains.
 Type: Grasslands
 E: north 3589
 E: east 3586
-E: west 3588
-EL: west 2
+E: west 8554
+EL: west 1
 
 ROOM v3586
 Name: Wide open plains.
@@ -27628,6 +27646,7 @@ Type: Mountains
 E: north 3279
 E: up 3277
 UE: up northwest
+E: in 8560
 
 ROOM v3277
 Name: A snow-lined pathway.
@@ -27687,10 +27706,12 @@ E: east 3270
 E: west 3268
 
 ROOM v3268
-Name: Wide open plains.
-Type: Grasslands
+Name: Road approaching a small mountain range. (road)
+Type: Road
 E: north 3598
 E: east 3269
+E: south 3266
+EL: south 1
 E: southwest 3267
 
 ROOM v3267
@@ -27701,37 +27722,39 @@ E: southeast 3266
 E: south 3597
 
 ROOM v3266
-Name: Wide open plains.
-Type: Grasslands
-E: north 3588
+Name: Road through wide open plains. (road)
+Type: Road
+E: north 3268
+EL: north 1
+E: northeast 8554
 E: south 3265
 E: west 3597
 E: northwest 3267
 
 ROOM v3265
-Name: Wide open plains.
-Type: Grasslands
+Name: Road through wide open plains. (road)
+Type: Road
 E: north 3266
 E: south 3264
 E: west 3596
 
 ROOM v3264
-Name: Wide open plains.
-Type: Grasslands
+Name: Road through wide open plains. (road)
+Type: Road
 E: north 3265
 E: south 3263
 E: northwest 3596
 
 ROOM v3263
-Name: Wide open plains.
-Type: Grasslands
+Name: Road through wide open plains. (road)
+Type: Road
 E: north 3264
 E: east 3568
 E: southwest 3262
 
 ROOM v3262
-Name: Wide open plains.
-Type: Grasslands
+Name: Road through wide open plains. (road)
+Type: Road
 E: northeast 3263
 E: southwest 3257
 
@@ -27763,10 +27786,12 @@ E: northeast 3257
 E: west 3259
 
 ROOM v3257
-Name: Deep in the Bardosi Plains.
-Type: Grasslands
+Name: Following a road deep within the plains. (road)
+Type: Road
 E: northeast 3262
 E: southeast 3256
+E: south 3245
+EL: south 3
 E: southwest 3258
 
 ROOM v3256
@@ -27849,19 +27874,22 @@ E: south 3252
 E: west 3245
 
 ROOM v3245
-Name: Surrounded by tall grasses.
-Type: Grasslands
+Name: Road through tall grasses. (road)
+Type: Road
+E: north 3257
+EL: north 3
 E: east 3246
 E: southeast 3252
 E: south 3244
 
 ROOM v3244
-Name: Surrounded by tall grasses.
-Type: Grasslands
+Name: Following a winding road through tall grass. (road)
+Type: Road
 E: north 3245
 E: east 3252
 E: south 3251
 E: southwest 3243
+E: west 3242
 
 ROOM v3243
 Name: In the tall grasses of the Bardosi Plains.
@@ -27870,56 +27898,59 @@ E: north 3242
 E: northeast 3244
 
 ROOM v3242
-Name: In the tall grasses of the Bardosi Plains.
-Type: Grasslands
+Name: Narrow road through tall grass. (road)
+Type: Road
 E: north 3241
+EL: north 1
+E: east 3244
 E: south 3243
+E: northwest 3240
 
 ROOM v3241
 Name: In the tall grasses of the Bardosi Plains.
 Type: Grasslands
 E: south 3242
+EL: south 1
 E: southwest 3240
 
 ROOM v3240
-Name: Wide open plains.
-Type: Grasslands
+Name: Road through wide open plains. (road)
+Type: Road
 E: northeast 3241
+E: southeast 3242
 E: southwest 3237
-ES: southwest 1
 E: northwest 3239
 
 ROOM v3239
 Name: Wide open plains.
 Type: Grasslands
 E: north 3238
+ES: north 1
 E: southeast 3240
 
 ROOM v3238
 Name: Wide open plains.
 Type: Grasslands
 E: south 3239
+ES: south 1
 E: west 3237
-EL: west 1
 
 ROOM v3237
-Name: Wide open plains.
-Type: Grasslands
+Name: Wide open plains. (road)
+Type: Road
 E: northeast 3240
-ES: northeast 1
 E: east 3238
-EL: east 1
 E: south 3236
 
 ROOM v3236
-Name: Wide open plains.
-Type: Grasslands
+Name: Road through wide open plains. (road)
+Type: Road
 E: north 3237
 E: southeast 3158
 
 ROOM v2391
-Name: Open prairies of the Bardosi Plains.
-Type: Grasslands
+Name: A road through open prairies of the Bardosi Plains. (road)
+Type: Road
 E: east 3158
 E: south 2392
 E: west 68
@@ -27996,11 +28027,48 @@ EL: north 1
 E: northwest 66
 
 ROOM v3158
-Name: Wide open plains.
-Type: Grasslands
+Name: Road through wide open plains. (road)
+Type: Road
 E: east 3567
 E: west 2391
 E: northwest 3236
+
+ROOM v8554
+Name: Wide open plains.
+Type: Grasslands
+E: east 3587
+EL: east 1
+E: southwest 3266
+
+ROOM v8556
+Name: Western gate of the Bardosi Passage.
+Type: Constructed underground
+E: northeast 8557
+E: out 3598
+
+ROOM v8557
+Name: Following a wide passage.
+Type: Constructed underground
+E: northeast 8558
+E: southwest 8556
+
+ROOM v8558
+Name: Passage through a natural cavern.
+Type: Constructed underground
+E: northeast 8559
+E: southwest 8557
+
+ROOM v8559
+Name: Following a wide passage.
+Type: Constructed underground
+E: northeast 8560
+E: southwest 8558
+
+ROOM v8560
+Name: Eastern gate of the Bardosi Passage.
+Type: Constructed underground
+E: southwest 8559
+E: out 3278
 
 
 
@@ -45255,6 +45323,7 @@ E: down 6413
 ROOM v6407
 Name: A rocky beach near the Aori Cliffs.
 Type: Beach
+E: north 8563
 E: northeast 6408
 E: southeast 6409
 E: up 6405
@@ -55291,6 +55360,500 @@ E: southwest 462
 E: west 5480
 E: northwest 2050
 E: down 3283
+
+
+
+AREA
+Name: Sintcega Creek.
+
+ROOM v8516
+Name: A well-worn path.
+Type: Forest
+E: east 8517
+E: southwest 1108
+
+ROOM v8517
+Name: A pinewood fragrant path.
+Type: Forest
+E: north 8519
+E: east 8518
+E: west 8516
+
+ROOM v8518
+Name: A copse of pine trees.
+Type: Forest
+E: north 8520
+E: east 8521
+E: west 8517
+
+ROOM v8519
+Name: Beneath the shade a tall willow.
+Type: Forest
+E: east 8520
+E: south 8517
+
+ROOM v8520
+Name: Surrounded by pine trees.
+Type: Forest
+E: north 8546
+E: northeast 8527
+E: south 8518
+E: west 8519
+
+ROOM v8521
+Name: A fragrant alcove.
+Type: Forest
+E: north 8522
+E: west 8518
+
+ROOM v8522
+Name: Wading in a sparkling pool.
+Type: Freshwater
+E: northeast 8523
+EL: northeast 1
+E: south 8521
+
+ROOM v8523
+Name: Beneath a swinging bridge.
+Type: Freshwater
+E: northeast 8524
+E: southwest 8522
+EL: southwest 1
+
+ROOM v8524
+Name: Nearing the waterfall.
+Type: Freshwater
+E: northeast 8525
+E: southwest 8523
+
+ROOM v8525
+Name: Beneath a beautiful waterfall.
+Type: Freshwater
+E: southwest 8524
+E: in 8526
+
+ROOM v8526
+Name: Behind the waterfall.
+Type: Natural underground
+E: out 8525
+
+ROOM v8527
+Name: Approaching a swinging bridge.
+Type: Hills
+E: north 8544
+E: northeast 8541
+E: east 8528
+E: southwest 8520
+E: west 8546
+
+ROOM v8528
+Name: Crossing the swinging bridge. (path)
+Type: Path
+E: east 8529
+E: west 8527
+
+ROOM v8529
+Name: A shallow canyon amidst the stone.
+Type: Hills
+E: east 8530
+E: south 8533
+E: west 8528
+
+ROOM v8530
+Name: Nearing a crevice in the outcrop.
+Type: Hills
+E: north 8532
+E: east 8531
+E: west 8529
+E: in 8540
+
+ROOM v8531
+Name: At the end of a canyon of grey stone.
+Type: Hills
+E: west 8530
+
+ROOM v8532
+Name: Quiet shop near the creek.
+Type: Hills
+E: south 8530
+
+ROOM v8533
+Name: A brightly lit tunnel.
+Type: Natural underground
+E: north 8529
+E: east 8540
+E: south 8539
+E: west 8534
+
+ROOM v8534
+Name: Inside a torch-lit cavern.
+Type: Natural underground
+E: east 8533
+E: south 8535
+
+ROOM v8535
+Name: A bustling passage along the tunnel.
+Type: Natural underground
+E: north 8534
+E: south 8536
+
+ROOM v8536
+Name: The Sintcega dining area.
+Type: Natural underground
+E: north 8535
+E: east 8538
+E: south 8537
+
+ROOM v8537
+Name: A secluded kitchen.
+Type: Natural underground
+E: north 8536
+
+ROOM v8538
+Name: The central chamber in the cave.
+Type: Natural underground
+E: west 8536
+
+ROOM v8539
+Name: A quiet lair in the outcrop.
+Type: Natural underground
+E: north 8533
+
+ROOM v8540
+Name: Before an opening to the canyon.
+Type: Natural underground
+E: south 8548
+E: west 8533
+E: out 8530
+
+ROOM v8541
+Name: Nearing a natural overhang of stone.
+Type: Hills
+E: north 8543
+E: northeast 8542
+E: southwest 8527
+E: west 8544
+
+ROOM v8542
+Name: A rocky incline.
+Type: Hills
+E: southwest 8541
+E: west 8543
+
+ROOM v8543
+Name: Along the edge of a rocky incline.
+Type: Hills
+E: east 8542
+E: south 8541
+
+ROOM v8544
+Name: A rocky outcrop.
+Type: Hills
+E: north 8545
+E: east 8541
+E: south 8527
+
+ROOM v8545
+Name: A shop sheltered beneath an overhang of stone.
+Type: Hills
+E: south 8544
+
+ROOM v8546
+Name: Climbing a rocky path.
+Type: Hills
+E: north 8547
+E: east 8527
+E: south 8520
+
+ROOM v8547
+Name: A small cavern carved into the stone.
+Type: Hills
+E: south 8546
+
+ROOM v8548
+Name: A hidden cavern off the tunnel.
+Type: Natural underground
+E: north 8540
+
+
+
+AREA
+Name: village of Kaln.
+
+ROOM v8563
+Name: A cragy shore along the rockface.
+Type: Beach
+E: north 8566
+E: south 6407
+E: west 8564
+
+ROOM v8564
+Name: Azure water just off the bay shore.
+Type: Ocean
+E: north 8565
+E: east 8563
+
+ROOM v8565
+Name: Azure water just off the bay shore.
+Type: Ocean
+E: east 8566
+E: south 8564
+E: northwest 8567
+
+ROOM v8566
+Name: Sandy shore before a cavern.
+Type: Beach
+E: south 8563
+E: west 8565
+E: in 8580
+
+ROOM v8567
+Name: The temperate waters of the Aori Bay.
+Type: Ocean
+E: north 8568
+E: southeast 8565
+E: northwest 8569
+
+ROOM v8568
+Name: A wide, yet teetering pier.
+Type: Undefined
+E: north 8570
+E: east 8571
+EL: east 1
+E: south 8567
+E: west 8569
+
+ROOM v8569
+Name: The temperate waters of the Aori Bay.
+Type: Ocean
+E: northeast 8570
+E: east 8568
+E: southeast 8567
+
+ROOM v8570
+Name: The temperate waters of the Aori Bay.
+Type: Ocean
+E: northeast 8573
+E: south 8568
+E: southwest 8569
+
+ROOM v8571
+Name: Upon a rocky beach.
+Type: Beach
+E: north 8572
+EL: north 1
+E: east 8574
+EL: east 1
+E: west 8568
+EL: west 1
+
+ROOM v8572
+Name: Along the rockbound shore.
+Type: Beach
+E: south 8571
+EL: south 1
+E: west 8573
+E: up 8590
+
+ROOM v8573
+Name: Azure water just off the bay shore.
+Type: Ocean
+E: east 8572
+E: southwest 8570
+
+ROOM v8574
+Name: A well-worn passageway.
+Type: Natural underground
+E: south 8575
+E: west 8571
+EL: west 1
+
+ROOM v8575
+Name: A spacious cavern.
+Type: Natural underground
+E: north 8574
+E: south 8576
+
+ROOM v8576
+Name: A craggy passage.
+Type: Natural underground
+E: north 8575
+E: southwest 8577
+
+ROOM v8577
+Name: A high-ceilinged cavern.
+Type: Natural underground
+E: northeast 8576
+E: south 8578
+
+ROOM v8578
+Name: A simple hallway.
+Type: Constructed underground
+E: north 8577
+E: east 8586
+E: south 8579
+
+ROOM v8579
+Name: A hexagonal hallway.
+Type: Constructed underground
+E: north 8578
+E: east 8585
+E: south 8580
+
+ROOM v8580
+Name: A breezy antechamber.
+Type: Natural underground
+E: north 8579
+E: east 8584
+E: south 8581
+E: out 8566
+
+ROOM v8581
+Name: A quaint dining area.
+Type: Constructed underground
+E: north 8580
+E: south 8582
+
+ROOM v8582
+Name: An aroma-filled kitchen.
+Type: Constructed underground
+E: north 8581
+E: down 8583
+
+ROOM v8583
+Name: A cool root cellar.
+Type: Constructed underground
+E: up 8582
+
+ROOM v8584
+Name: A cavernous room.
+Type: Natural underground
+E: northeast 8589
+E: southeast 8587
+E: west 8580
+
+ROOM v8585
+Name: Chamber of Murals.
+Type: Constructed underground
+E: west 8579
+
+ROOM v8586
+Name: Kaln's Postal Service.
+Type: Constructed underground
+E: west 8578
+
+ROOM v8587
+Name: A narrow corridor carved through granite.
+Type: Constructed underground
+E: northeast 8588
+E: northwest 8584
+
+ROOM v8588
+Name: Amidst an illusionary oasis.
+Type: Constructed underground
+E: southwest 8587
+
+ROOM v8589
+Name: A bright candlelit shop.
+Type: Constructed underground
+E: southwest 8584
+
+ROOM v8590
+Name: Climbing a wooden ladder.
+Type: Undefined
+E: south 8601
+E: up 8591
+E: down 8572
+E: in 8603
+
+ROOM v8591
+Name: Climbing a wooden ladder.
+Type: Undefined
+E: south 8600
+E: up 8592
+E: down 8590
+E: in 8604
+
+ROOM v8592
+Name: Top of a wooden ladder.
+Type: Undefined
+E: down 8591
+E: in 8593
+UE: in north
+
+ROOM v8593
+Name: Lofty alcove overlooking the ocean.
+Type: Undefined
+E: up 8594
+E: out 8592
+UE: out south
+
+ROOM v8594
+Name: A rock face overlooking water.
+Type: Garden
+E: north 8595
+E: down 8593
+
+ROOM v8595
+Name: A thicket of fruit trees.
+Type: Garden
+E: north 8597
+E: east 8596
+E: south 8594
+
+ROOM v8596
+Name: The fringes of an orchard.
+Type: Garden
+E: northeast 8598
+E: southeast 8599
+E: west 8595
+
+ROOM v8597
+Name: Within a copse of olive trees.
+Type: Garden
+E: south 8595
+
+ROOM v8598
+Name: Emerging from an orchard.
+Type: Hills
+E: southwest 8596
+
+ROOM v8599
+Name: A wooden-fenced animal enclosure.
+Type: Valley
+E: northwest 8596
+
+ROOM v8600
+Name: Traveling a wooden walkway.
+Type: Undefined
+E: north 8591
+E: in 8605
+
+ROOM v8601
+Name: Along a wooden walkway.
+Type: Undefined
+E: north 8590
+E: in 8602
+
+ROOM v8602
+Name: A natural cavern abode.
+Type: Natural underground
+E: out 8601
+
+ROOM v8603
+Name: A natural cavern.
+Type: Natural underground
+E: out 8590
+
+ROOM v8604
+Name: A natural cavern abode.
+Type: Natural underground
+E: out 8591
+
+ROOM v8605
+Name: A natural cavern abode.
+Type: Natural underground
+E: out 8600
 
 
 

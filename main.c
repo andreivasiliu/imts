@@ -180,7 +180,6 @@ char buffer_noclient[65536];
 char buffer_data[65536], *g_b = buffer_data;
 const char *g_blimit = buffer_data + 16384;
 char send_buffer[65536];
-char last_prompt[INPUT_BUF];
 int buffer_output;
 int buffer_send_to_server;
 int safe_mode;
@@ -200,6 +199,9 @@ int verbose_mccp;
 int mxp_enabled;
 int clientf_modifies_suffix;
 int add_newline;
+int show_prompt_again;
+int processing;
+LINE last_prompt;
 
 char *connection_error;
 
@@ -1282,16 +1284,6 @@ int gag_prompt( int gag )
      gag_prompt_value = gag;
    
    return gag_prompt_value;
-}
-
-
-
-void show_prompt( )
-{
-   void process_buffer( char *raw_buf, int bytes );
-   
-   sent_something = 1;
-   process_buffer( last_prompt, strlen( last_prompt ) );
 }
 
 
@@ -2532,15 +2524,6 @@ void copy_over( char *reason )
 
 
 
-void exec_timer( TIMER *timer )
-{
-//   debugf( "Timer: Executing [%s].", timer->name );
-   
-   if ( timer->callback )
-     (*timer->callback)( timer );
-}
-
-
 void remove_timer( TIMER *timer )
 {
    TIMER *t;
@@ -2595,11 +2578,15 @@ void check_timers( )
 	
 	if ( t->delay <= 0 )
 	  {
-	     /* Put it -1. In case it will be 0 again, don't delete it. */
-	     t->delay = -1;
-	     exec_timer( t );
-	     if ( t->delay == -1 )
-	       remove_timer( t );
+	     TIMER temp;
+	     
+	     /* Remove first, execute later. Why? Because it may be added again. */
+	     temp = *t;
+	     temp.next = NULL;
+	     remove_timer( t );
+	     
+	     if ( temp.callback )
+	       (*temp.callback)( &temp );
 	  }
      }
 }
@@ -3136,7 +3123,7 @@ void process_client_line( char *buf )
 	     
 	     clientfb( "Disconnected." );
 	     clientfb( "Syntax: connect hostname portnumber" );
-	     last_prompt[0] = 0;
+	     memset( &last_prompt, 0, sizeof( LINE ) );
 	  }
 	else if ( !strcmp( buf, "`reboot" ) )
 	  {
@@ -3557,12 +3544,42 @@ void empty_buffer( )
 /* Too repetitive. But performance is critical here, we can't make it a function. */
 #define SEND_BYTES_IN_BUFFER( source ) if ( (source) ) { s = (source); while ( *s ) { *(g_b++) = *(s++); if ( g_b == g_blimit ) empty_buffer( ); } }
 
-void print_line( LINE *line, char *ending )
+void print_line( LINE *line, int prompt )
 {
+   char iac_ga[] = { IAC, GA, 0 };
+   char *ending;
    char *s;
    int i;
    
    DEBUG( "print_line" );
+   
+   if ( prompt == 1 )
+     {
+	if ( !current_line && !sent_something )
+	  add_newline = 1;
+	else
+	  {
+	     sent_something = 0;
+	     current_line = 0;
+	  }
+	
+	if ( !strip_telnet_ga )
+	  ending = iac_ga;
+	else
+	  ending = "";
+     }
+   else if ( prompt == 0 )
+     {
+	if ( !line->gag_ending )
+	  current_line++;
+	if ( line->len && current_line == 1 && !sent_something )
+	  add_newline = 1;
+	sent_something = 0;
+	
+	ending = "\r\n";
+     }
+   else
+     ending = "";
    
    /* Add a new line whenever this line/prompt comes right after the last one. */
    if ( add_newline )
@@ -3669,15 +3686,16 @@ void clean_line( LINE *line )
 
 void process_new_buffer( char *raw_buf, int bytes )
 {
-   char iac_ga[] = { IAC, GA, 0 };
    char buf[INPUT_BUF];
-   char *ending;
+//   char *ending;
    static LINE line;
    int i;
    struct timeval tvold, tvnew, tvold2, tvnew2;
    static time_t t1, t2, t3, t4;
    
    DEBUG( "process_new_buffer" );
+   
+   processing = 1;
    
    bytes_uncompressed += bytes;
    
@@ -3727,54 +3745,50 @@ void process_new_buffer( char *raw_buf, int bytes )
 	     line.raw[line.raw_len] = 0;
 	     line.raw_offset[line.len+1] = 0;
 	     
+	     if ( buf[i] == (char) GA )
+	       {
+		  last_prompt = line;
+	       }
+	     
 	     /* Let the modules do some processing on it, then print it. */
 	     if ( buf[i] == (char) GA )
-	       module_process_new_server_prompt( &line );
+	       {
+		  module_process_new_server_prompt( &line );
+		  print_line( &line, 1 );
+	       }
 	     else if ( buf[i] == '\n' )
-	       module_process_new_server_line( &line );
+	       {
+		  module_process_new_server_line( &line );
+		  print_line( &line, 0 );
+	       }
 	     else
-	       module_process_new_server_line( &line );
+	       {
+		  module_process_new_server_line( &line );
+		  print_line( &line, -1 );
+	       }
 	     
 	     ADD_TO( t2 );
-	     
-	     if ( buf[i] == (char) GA )
-	       {
-		  strcpy( last_prompt, line.raw_line );
-		  strcat( last_prompt, iac_ga );
-		  
-		  if ( !current_line && !sent_something )
-		    add_newline = 1;
-		  else
-		    {
-		       sent_something = 0;
-		       current_line = 0;
-		    }
-		  
-		  if ( !strip_telnet_ga )
-		    ending = iac_ga;
-		  else
-		    ending = "";
-	       }
-	     else if ( buf[i] == '\n' )
-	       {
-		  if ( !line.gag_ending )
-		    current_line++;
-		  if ( line.len && current_line == 1 && !sent_something )
-		    add_newline = 1;
-		  sent_something = 0;
-		  
-		  ending = "\r\n";
-	       }
-	     else
-	       ending = "";
-	     
-	     print_line( &line, ending );
-	     
-	     ADD_TO( t3 );
 	     
 	     clean_line( &line );
 	     
 	     ADD_TO( t4 );
+	     
+	     if ( show_prompt_again )
+	       {
+		  debugf( "Here." );
+		  
+		  show_prompt_again = 0;
+		  
+		  sent_something = 1;
+		  line = last_prompt;
+		  line.rawp[0] = line.raw;
+		  line.prefix = prefix_buffer;
+		  line.suffix = suffix_buffer;
+		  line.replace = replace_buffer;
+		  module_process_new_server_prompt( &line );
+		  print_line( &line, 1 );
+		  clean_line( &line );
+	       }
 	     
 	     if ( buf[i] == '\n' || buf[i] == (char) GA )
 	       continue;
@@ -3826,6 +3840,8 @@ void process_new_buffer( char *raw_buf, int bytes )
 	
 	clientff( "(%d)", usec + ( sec * 1000000 ) );
      }
+   
+   processing = 0;
 }
 
 
@@ -4036,6 +4052,33 @@ void process_buffer( char *raw_buf, int bytes )
 #endif
 }
 
+
+
+
+void show_prompt( )
+{
+   void process_buffer( char *raw_buf, int bytes );
+   
+   if ( processing )
+     {
+	show_prompt_again = 1;
+     }
+   else
+     {
+	LINE line;
+	
+	sent_something = 1;
+	line = last_prompt;
+	line.rawp[0] = line.raw;
+	line.prefix = prefix_buffer;
+	line.suffix = suffix_buffer;
+	line.replace = replace_buffer;
+	module_process_new_server_prompt( &line );
+	print_line( &line, 1 );
+	clean_line( &line );
+	empty_buffer( );
+     }
+}
 
 
 

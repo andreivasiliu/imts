@@ -160,11 +160,13 @@ char prompt[4096];
 char custom_prompt[4096];
 
 /* Inventory parser. */
-int rats;
-int rat_value;
 int inventory;
 char inventory_buf[32767];
+int rat_value;
 int spider_value;
+int serpent_value;
+int caiman_value;
+int locust_value;
 
 /* Kick/punch counter, for each limb. */
 //int hit_counter[7][12];
@@ -218,8 +220,6 @@ int AFF_SOMETHING;
 /* Here we register our functions. */
 
 void imperian_module_init_data( );
-void imperian_process_server_line_prefix( char *colorless_line, char *colorful_line, char *raw_line );
-void imperian_process_server_line_suffix( char *colorless_line, char *colorful_line, char *raw_line );
 void imperian_process_server_line( LINE *line );
 void imperian_process_server_prompt_informative( char *line, char *rawline );
 void imperian_process_server_prompt_action( char *rawline );
@@ -238,8 +238,6 @@ ENTRANCE( imperian_module_register )
    
    self->init_data = imperian_module_init_data;
    self->process_server_line = imperian_process_server_line;
-   self->process_server_line_prefix = imperian_process_server_line_prefix;
-   self->process_server_line_suffix = imperian_process_server_line_suffix;
    self->process_server_prompt = imperian_process_server_prompt;
    self->process_server_prompt_informative = imperian_process_server_prompt_informative;
    self->process_server_prompt_action = imperian_process_server_prompt_action;
@@ -2246,9 +2244,33 @@ void parse_stances( char *line )
 
 
 
-int parse_special( char *line, char *colorless_line, char *colorful_line )
+int parse_special( LINE *l )
 {
+   char *line = l->line;
+   char *colorless_line = l->line;
+   char *colorful_line = l->raw_line;
    int i;
+   
+   /* What line is this? Might help us, in the future, to know. */
+   line_since_prompt++;
+   
+   if ( !strcmp( "You force your command into the unwilling mind of your victim.", line ) ||
+	!cmp( "^'s aura of weapons rebounding disappears.", line ) ||
+	!strcmp( "reflections", line ) ||
+	!strcmp( "weirdshield", line ) )
+     line_since_prompt--;
+   
+   if ( !cmp( "Your pipe has gone cold and dark.", l->line ) )
+     {
+	pipes_lit = 0;
+	pipes_going_dark++;
+	
+	if ( pipes_going_dark > 1 )
+	  {
+	     l->gag_entirely = 1;
+	     l->gag_ending = 1;
+	  }
+     }
    
    /* We have a cure after we ate something, so it's good. */
    if ( ( last_cure || last_cure_balance ) &&
@@ -2263,7 +2285,7 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
      }
    
    /* Most messages begin with the "You" or "Your". Don't bother with the rest. */
-   if ( !cmp( "You*", line ) )
+   if ( !cmp( "You*", colorless_line ) )
      {
 	/* Check special (balance) triggers first. */
 	if ( !cmp( "You may drink another healing elixir.", line ) )
@@ -2395,18 +2417,6 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
 	     failed_toadstool_commands = 0;
 	     del_timer( "toadstool_balance_reset" );
 	  }
-	else if ( !cmp( "You pick up 2 rats.", line ) )
-	  {
-	     rats += 2;
-	     clientff( C_W " (" C_B "%d" C_W ")" C_0, rats );
-	     return 1;
-	  }
-	else if ( !cmp( "You pick up 3 rats.", line ) )
-	  {
-	     rats += 3;
-	     clientff( C_W " (" C_B "%d" C_W ")" C_0, rats );
-	     return 1;
-	  }
 	else if ( !cmp( "You close your eyes, curl up in a ball, and fall asleep.", line ) ||
 		  !cmp( "You feel incredibly tired, and fall asleep immediately.", line ) ||
 		  !cmp( "Your exhausted mind can stay awake no longer, and you fall into a deep sleep.", line ) )
@@ -2454,12 +2464,14 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
 	else if ( !cmp( "You are holding:", colorless_line ) )
 	  {
 	     inventory = 1;
+	     debugf( "Start" );
 	     return 1;
 	  }
 	else if ( !cmp( "You are wearing:", colorless_line ) ||
 		  !cmp( "You have *", colorless_line ) )
 	  {
 	     inventory = 0;
+	     debugf( "Stop" );
 	  }
 	else if ( !cmp( "You touch the tree of life tattoo.", colorless_line ) ||
 		  !cmp( "Your senses return in a rush.", colorless_line ) )
@@ -2522,7 +2534,7 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
 	     balance_kai_heal = 0;
 	  }
 	/* Clot until we have reached a certain mana level. */
-	else if ( !cmp( "Your wounds cause you to bleed * health.", colorful_line ) )
+	else if ( !cmp( "Your wounds cause you to bleed * health.", line ) )
 	  {
 	     /* strlen( "Your wounds cause you to bleed " ) = 31 */
 	     bleeding = atoi( line + 31 );
@@ -2650,11 +2662,6 @@ int parse_special( char *line, char *colorless_line, char *colorful_line )
 	waiting_for_healing_command = 0;
 	failed_healing_commands = 0;
 	del_timer( "healing_balance_reset" );
-     }
-   
-   if ( !cmp( "Phillipus's eyes light up brightly and he grabs the rats from your hands, ", line ) )
-     {
-	rats = 0;
      }
    
    /* Don't check for other triggers, in case this parser found somethin. */
@@ -2837,81 +2844,16 @@ void send_action( char *string )
 
 
 
-void imperian_process_server_line( LINE *line )
+void parse_triggers( LINE *l )
 {
-   imperian_process_server_line_prefix( line->line, line->raw_line, line->raw_line );
-   
-   imperian_process_server_line_suffix( line->line, line->raw_line, line->raw_line );
-}
-
-
-
-void imperian_process_server_line_prefix( char *colorless_line, char *colorful_line, char *raw_line )
-{
-   char *line = colorful_line;
-   
-   if ( !cmp( "Your pipe has gone cold and dark.", line ) )
-     {
-	pipes_lit = 0;
-	pipes_going_dark++;
-	
-	if ( pipes_going_dark > 1 )
-	  gag_line( 1 );
-     }
-}
-
-
-
-void imperian_process_server_line_suffix( char *colorless_line, char *colorful_line, char *raw_line )
-{
-//   static long t1, t2, t3;
-   
-   char *line = colorful_line;
+   char *line;
    int i;
    
-   DEBUG( "imperian_process_server_line" );
-   
-//   debugf( "t1: %ld t2: %ld t3: %ld", t1, t2, t3 );
-//   t1 = t2 =t3 = 0;
-   
-   /* Have we've been sent an empty line? */
-   if ( !line[0] )
-     return;
-   
-//   get_timer( );
-   
-   if ( ignore_illusion )
-     {
-	clientff( C_W " (" C_G "i" C_W ")" C_0 );
-	return;
-     }
-   
-   /* Ignore it if we're told so. */
-   if ( ignore_next )
-     return;
-   
-   /* What line is this? Might help us, in the future, to know. */
-   line_since_prompt++;
-   
-   if ( !strcmp( "You force your command into the unwilling mind of your victim.", line ) ||
-	!cmp( "^'s aura of weapons rebounding disappears.", line ) ||
-	!strcmp( "reflections", line ) ||
-	!strcmp( "weirdshield", line ) )
-     line_since_prompt--;
-   
-//   t1 += get_timer( );
-   
-   /* Things that just don't fit in triggers. */
-   if ( parse_special( line, colorless_line, colorful_line ) )
-     return;
-   
-//   t2 += get_timer( );
-   
-   /* The main big thing. This is what the module will do most of its time. */
+   DEBUG( "parse_triggers" );
    
    for ( i = 0; triggers[i].message; i++ )
      {
-	line = triggers[i].nocolors ? colorless_line : colorful_line;
+	line = triggers[i].nocolors ? l->line : l->raw_line;
 	
 	if ( !trigger_cmp( triggers[i].message, line, triggers[i].missing_chars ) )
 	  {
@@ -3256,8 +3198,34 @@ void imperian_process_server_line_suffix( char *colorless_line, char *colorful_l
 	       }
 	  }
      }
+}
+
+
+
+void imperian_process_server_line( LINE *l )
+{
+   DEBUG( "imperian_process_server_line" );
    
-//   t3 += get_timer( );
+   /* We've been sent an empty line? */
+   if ( !l->len )
+     return;
+   
+   if ( ignore_illusion )
+     {
+	clientff( C_W " (" C_G "i" C_W ")" C_0 );
+	return;
+     }
+   
+   /* Ignore it if we're told so. */
+   if ( ignore_next )
+     return;
+   
+   /* Things that just don't fit in triggers. */
+   if ( parse_special( l ) )
+     return;
+   
+   /* The main big thing. This is what the module will do most of its time. */
+   parse_triggers( l );
 }
 
 
@@ -3978,7 +3946,7 @@ void list_triggers( char *str )
 void parse_inventory( )
 {
    int baby_rat = 0, young_rat = 0, rat = 0, old_rat = 0, black_rat = 0;
-   int spider = 0;
+   int spider = 0, caiman = 0, serpents = 0, locusts = 0;
    char *p = inventory_buf, *b;
    char buf[256];
    
@@ -4022,6 +3990,13 @@ void parse_inventory( )
 	  spider = 1;
 	else if ( strstr( buf, "corpses of a large black spider" ) )
 	  spider = atoi( buf );
+	/* Sewer.. things. */
+	else if ( strstr( buf, "corpses of a vile serpent" ) )
+	  serpents += atoi( buf );
+	else if ( strstr( buf, "corpses of a hungry caiman" ) )
+	  caiman += atoi( buf );
+	else if ( strstr( buf, "corpses of a short-horned desert locust" ) )
+	  locusts += atoi( buf );
 	
 	/* The end? */
 	if ( *p == '.' || *p == 0 )
@@ -4033,8 +4008,10 @@ void parse_inventory( )
    
    rat_value = 7 * baby_rat + 14 * young_rat + 21 * rat +
      28 * old_rat + 35 * black_rat;
-   rats = baby_rat + young_rat + rat + old_rat + black_rat;
    spider_value = spider * 15;
+   serpent_value = serpents * 15;
+   caiman_value = caiman * 30;
+   locust_value = locusts * 10;
 }
 
 
@@ -4206,7 +4183,6 @@ void imperian_process_server_prompt( LINE *line )
 
 void imperian_process_server_prompt_informative( char *line, char *rawline )
 {
-   char buf[256];
    int i;
    
    DEBUG( "imperian_process_server_prompt_informative" );
@@ -4242,14 +4218,14 @@ void imperian_process_server_prompt_informative( char *line, char *rawline )
    if ( pipes_going_dark )
      {
 	if ( pipes_going_dark > 1 )
-	  clientff( C_R "(" C_D "+%d more..." C_R ")" C_0 "\r\n", pipes_going_dark - 1 );
+	  prefixf( C_R "(" C_D "+%d more..." C_R ")" C_0 "\r\n", pipes_going_dark - 1 );
 	pipes_going_dark = 0;
      }
    
    /* A possible instant kill? Show a very visible warning. */
    if ( instakill_warning )
      {
-	clientf( C_R "[ " C_B "*" C_G "*" C_R "*" C_W
+	prefix( C_R "[ " C_B "*" C_G "*" C_R "*" C_W
 		 " Warning!! Possible instant kill! "
 		 C_R "*" C_G "*" C_B "*" C_R " ]" C_0 "\r\n" );
 	
@@ -4260,14 +4236,14 @@ void imperian_process_server_prompt_informative( char *line, char *rawline )
    if ( !was_aeon && aeon )
      {
 	was_aeon = 1;
-	clientf( C_R "[ " C_B "*" C_G "*" C_R "*" C_W
+	prefix( C_R "[ " C_B "*" C_G "*" C_R "*" C_W
 		 " Warning! Aeon mode enabled! " C_R "*" 
 		 C_G "*" C_B "*" C_R " ]" C_0 "\r\n" );
      }
    else if ( was_aeon && !aeon )
      {
 	was_aeon = 0;
-	clientf( C_R "[ " C_B "*" C_G "*" C_R "*" C_W
+	prefix( C_R "[ " C_B "*" C_G "*" C_R "*" C_W
 		 " Aeon mode disabled. " C_R "*" 
 		 C_G "*" C_B "*" C_R " ]" C_0 "\r\n" );
      }
@@ -4281,18 +4257,37 @@ void imperian_process_server_prompt_informative( char *line, char *rawline )
    
    if ( rat_value )
      {
-	sprintf( buf, C_R "[" C_B "Rat value: " C_G "%d" C_R "]\r\n" C_0,
+	prefixf( C_R "[" C_B "Rat worth: " C_G "%d" C_R "]\r\n" C_0,
 		 rat_value );
-	clientf( buf );
 	rat_value = 0;
      }
    
    if ( spider_value )
      {
-	sprintf( buf, C_R "[" C_B "Spider value: " C_G "%d" C_R "]\r\n" C_0,
+	prefixf( C_R "[" C_B "Spider worth: " C_G "%d" C_R "]\r\n" C_0,
 		 spider_value );
-	clientf( buf );
 	spider_value = 0;
+     }
+   
+   if ( serpent_value )
+     {
+	prefixf( C_R "[" C_B "Serpent worth: " C_G "%d" C_R "]\r\n" C_0,
+		 serpent_value );
+	serpent_value = 0;
+     }
+   
+   if ( caiman_value )
+     {
+	prefixf( C_R "[" C_B "Caiman worth: " C_G "%d" C_R "]\r\n" C_0,
+		 caiman_value );
+	caiman_value = 0;
+     }
+   
+   if ( locust_value )
+     {
+	prefixf( C_R "[" C_B "Locust worth: " C_G "%d" C_R "]\r\n" C_0,
+		 locust_value );
+	locust_value = 0;
      }
    
    /* No cures after we ate something? */
@@ -4317,18 +4312,18 @@ void imperian_process_server_prompt_informative( char *line, char *rawline )
 	     
 	     if ( first )
 	       {
-		  clientf( C_R "[Removing afflictions: " C_B );
+		  prefix( C_R "[Removing afflictions: " C_B );
 		  first = 0;
 	       }
 	     else
-	       clientf( C_R ", " C_B );
+	       prefix( C_R ", " C_B );
 	     
-	     clientf( afflictions[i].name );
+	     prefix( afflictions[i].name );
 	     afflictions[i].afflicted = 0;
 	     afflictions[i].tried = 0;
 	  }
 	if ( !first )
-	  clientf( C_R ".]\r\n" C_0 );
+	  prefix( C_R ".]\r\n" C_0 );
 	
 	last_cure = 0;
      }
@@ -4355,12 +4350,12 @@ void imperian_process_server_prompt_informative( char *line, char *rawline )
 	     
 	     if ( first )
 	       {
-		  clientf( C_R "[Removing afflictions: " C_B );
+		  prefix( C_R "[Removing afflictions: " C_B );
 		  first = 0;
 	       }
 	     else
-	       clientf( C_R ", " C_B );
-	     clientf( afflictions[i].name );
+	       prefix( C_R ", " C_B );
+	     prefix( afflictions[i].name );
 	     afflictions[i].afflicted = 0;
 	     afflictions[i].tried = 0;
 	  }

@@ -17,6 +17,14 @@
 # Level 3: Afflictions.
 
 
+# Balance Table.
+
+#B "herb" reset_timer 3 writhing yoth aff "anorexia"
+#"You quickly eat *" special balance herb give
+#"You may eat another herb or plant." special balance herb take
+
+
+
 # Cure Table.
 
 # C "curename" "command" type ["plant name"]

@@ -154,6 +154,7 @@ int similar;
 int title_offset;
 int floating_map_enabled;
 int skip_newline_on_map;
+int gag_next_prompt;
 
 /* config.mapper.txt options. */
 int disable_swimming;
@@ -215,8 +216,6 @@ void i_mapper_module_init_data( );
 void i_mapper_module_unload( );
 void i_mapper_process_server_line( LINE *line );
 void i_mapper_process_server_prompt( LINE *line );
-void i_mapper_process_server_prompt_informative( char *line, char *rawline );
-void i_mapper_process_server_prompt_action( char *rawline );
 int  i_mapper_process_client_command( char *cmd );
 int  i_mapper_process_client_aliases( char *cmd );
 void i_mapper_mxp_enabled( );
@@ -233,8 +232,6 @@ ENTRANCE( i_mapper_module_register )
    self->unload = i_mapper_module_unload;
    self->process_server_line = i_mapper_process_server_line;
    self->process_server_prompt = i_mapper_process_server_prompt;
-   self->process_server_prompt_informative = i_mapper_process_server_prompt_informative;
-   self->process_server_prompt_action = i_mapper_process_server_prompt_action;
    self->process_client_command = NULL;
    self->process_client_aliases = i_mapper_process_client_aliases;
    self->build_custom_prompt = NULL;
@@ -1524,8 +1521,8 @@ void go_next( )
 	       }
 	     else
 	       {
-		  if ( !gag_prompt( -1 ) )
-		    clientff( C_R "(" C_D "%s" C_R ") " C_0, dir_name[current_room->pf_direction] );
+		  if ( !gag_next_prompt )
+		    clientff( C_R "(%s) " C_0, dir_name[current_room->pf_direction] );
 		  
 		  if ( must_swim( current_room, current_room->pf_parent ) )
 		    send_to_server( "swim " );
@@ -1550,7 +1547,7 @@ void go_next( )
 		  if ( spexit->to == current_room->pf_parent &&
 		       spexit->command )
 		    {
-		       clientff( C_R "(" C_D "%s" C_R ") ", spexit->command );
+		       clientff( C_R "(" C_D "%s" C_R ") " C_0, spexit->command );
 		       send_to_server( spexit->command );
 		       send_to_server( "\r\n" );
 		       break;
@@ -2923,6 +2920,8 @@ int load_binary_map( char *file )
 	  {
 	     fread( &room, sizeof( ROOM_DATA ), 1, fl );
 	     r = create_room( room.vnum );
+	     if ( r->vnum > last_vnum )
+	       last_vnum = r->vnum;
 	     
 	     r->underwater = room.underwater;
 	     memcpy( r->vnum_exits, room.vnum_exits, sizeof(int)*13 + sizeof(short)*13*5 );
@@ -4949,6 +4948,8 @@ void i_mapper_process_server_line( LINE *l )
      {
 	l->gag_entirely = 1;
 	l->gag_ending = 1;
+	clientf( "." );
+//	gag_next_prompt = 1;
      }
    
    /* Gag/replace the alertness message, with something easier to read. */
@@ -5073,23 +5074,9 @@ void i_mapper_process_server_line( LINE *l )
 
 
 
-void i_mapper_process_server_prompt( LINE *line )
+void i_mapper_process_server_prompt( LINE *l )
 {
-   i_mapper_process_server_prompt_informative( line->line, line->raw_line );
-   i_mapper_process_server_prompt_action( line->line );
-   
-   if ( last_room != current_room && current_room )
-     {
-	show_floating_map( current_room );
-	last_room = current_room;
-     }
-}
-
-
-
-void i_mapper_process_server_prompt_informative( char *line, char *rawline )
-{
-   DEBUG( "i_mapper_process_server_prompt_informative" );
+   DEBUG( "i_mapper_process_server_prompt" );
    
    if ( parsing_room )
      parsing_room = 0;
@@ -5159,13 +5146,6 @@ void i_mapper_process_server_prompt_informative( char *line, char *rawline )
 	     prefixf( C_R "[Match probability: %d%%]\r\n" C_0, 100 / count );
 	  }
      }
-}
-
-
-
-void i_mapper_process_server_prompt_action( char *line )
-{
-   DEBUG( "i_mapper_process_server_prompt_action" );
    
    if ( current_room && !pear_defence &&
 	( current_room->underwater ||
@@ -5179,23 +5159,23 @@ void i_mapper_process_server_prompt_action( char *line )
    if ( mode == FOLLOWING && auto_walk == 2 )
      {
 	go_next( );
-	/* Tricky. ;) */
      }
    
    check_autobump( );
+   
+   if ( last_room != current_room && current_room )
+     {
+	show_floating_map( current_room );
+	last_room = current_room;
+     }
+   
+   if ( gag_next_prompt )
+     {
+	gag_next_prompt = 0;
+	l->gag_entirely = 1;
+	l->gag_ending = 1;
+     }
 }
-
-
-
-/* Not needed, for now. Everything is in process_client_aliases..
-int i_mapper_process_client_command( char *cmd )
-{
-   static char buf[256];
-   
-   DEBUG( "process_client_command" );
-   
-   return 0;
-} */
 
 
 
