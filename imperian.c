@@ -2464,14 +2464,12 @@ int parse_special( LINE *l )
 	else if ( !cmp( "You are holding:", colorless_line ) )
 	  {
 	     inventory = 1;
-	     debugf( "Start" );
 	     return 1;
 	  }
 	else if ( !cmp( "You are wearing:", colorless_line ) ||
 		  !cmp( "You have *", colorless_line ) )
 	  {
 	     inventory = 0;
-	     debugf( "Stop" );
 	  }
 	else if ( !cmp( "You touch the tree of life tattoo.", colorless_line ) ||
 		  !cmp( "Your senses return in a rush.", colorless_line ) )
