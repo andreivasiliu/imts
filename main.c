@@ -3546,14 +3546,18 @@ void empty_buffer( )
 
 void print_line( LINE *line, int prompt )
 {
-   char iac_ga[] = { IAC, GA, 0 };
    char *ending;
    char *s;
    int i;
    
    DEBUG( "print_line" );
    
-   if ( prompt == 1 )
+   if ( strip_telnet_ga && prompt )
+     ending = "";
+   else
+     ending = line->ending;
+   
+   if ( prompt > 0 )
      {
 	if ( !current_line && !sent_something )
 	  add_newline = 1;
@@ -3562,11 +3566,6 @@ void print_line( LINE *line, int prompt )
 	     sent_something = 0;
 	     current_line = 0;
 	  }
-	
-	if ( !strip_telnet_ga )
-	  ending = iac_ga;
-	else
-	  ending = "";
      }
    else if ( prompt == 0 )
      {
@@ -3575,11 +3574,7 @@ void print_line( LINE *line, int prompt )
 	if ( line->len && current_line == 1 && !sent_something )
 	  add_newline = 1;
 	sent_something = 0;
-	
-	ending = "\r\n";
      }
-   else
-     ending = "";
    
    /* Add a new line whenever this line/prompt comes right after the last one. */
    if ( add_newline )
@@ -3729,43 +3724,56 @@ void process_new_buffer( char *raw_buf, int bytes )
    for ( i = 0; i < bytes; i++ )
      {
 	/* Check for the end. Either new line, prompt GA, or byte limit. */
-	if ( buf[i] == '\n' || buf[i] == (char) GA ||
+	if ( buf[i] == '\n' || buf[i] == (char) GA || buf[i] == (char) EOR ||
 	     line.raw_len == INPUT_BUF - 1 )
 	  {
+	     int prompt;
+	     
 	     /* End of the line/prompt/limit? Good! Process it and show it! */
 	     
 	     ADD_TO( t1 );
 	     
 	     /* Remove the IAC byte... If there is one. */
-	     if ( buf[i] == (char) GA && line.raw_len > 0 )
-	       line.raw_len--;
+	     if ( ( buf[i] == (char) GA || buf[i] == (char) EOR ) && line.raw_len > 0 )
+	       {
+		  line.ending[0] = (char) IAC;
+		  line.ending[1] = buf[i];
+		  line.ending[2] = 0;
+		  
+		  line.raw_len--;
+		  prompt = 1;
+	       }
+	     else
+	       {
+		  if ( buf[i] == '\n' )
+		    {
+		       line.ending[0] = '\r';
+		       line.ending[1] = '\n';
+		       line.ending[2] = 0;
+		       prompt = 0;
+		    }
+		  else
+		    {
+		       line.ending[0] = 0;
+		       prompt = -1;
+		    }
+	       }
 	     
 	     line.line[line.len] = 0;
 	     line.raw_line[line.raw_len] = 0;
 	     line.raw[line.raw_len] = 0;
 	     line.raw_offset[line.len+1] = 0;
 	     
-	     if ( buf[i] == (char) GA )
-	       {
-		  last_prompt = line;
-	       }
+	     if ( prompt > 0 )
+	       last_prompt = line;
 	     
 	     /* Let the modules do some processing on it, then print it. */
-	     if ( buf[i] == (char) GA )
-	       {
-		  module_process_new_server_prompt( &line );
-		  print_line( &line, 1 );
-	       }
-	     else if ( buf[i] == '\n' )
-	       {
-		  module_process_new_server_line( &line );
-		  print_line( &line, 0 );
-	       }
+	     if ( prompt )
+	       module_process_new_server_prompt( &line );
 	     else
-	       {
-		  module_process_new_server_line( &line );
-		  print_line( &line, -1 );
-	       }
+	       module_process_new_server_line( &line );
+	     
+	     print_line( &line, prompt );
 	     
 	     ADD_TO( t2 );
 	     
@@ -3790,7 +3798,7 @@ void process_new_buffer( char *raw_buf, int bytes )
 		  clean_line( &line );
 	       }
 	     
-	     if ( buf[i] == '\n' || buf[i] == (char) GA )
+	     if ( prompt >= 0 )
 	       continue;
 	     
 	     /* Don't continue, current character must not be skipped. */

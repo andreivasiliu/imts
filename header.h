@@ -181,11 +181,12 @@ struct timer_data
 struct line_data
 {
    char line[INPUT_BUF];
+   char raw_line[INPUT_BUF];
+   char ending[32];
+   
    char raw[INPUT_BUF];
    int raw_offset[INPUT_BUF];
    char *rawp[INPUT_BUF];
-   
-   char raw_line[INPUT_BUF];
    
    int len;
    int raw_len;
