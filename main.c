@@ -3580,7 +3580,10 @@ void print_line( LINE *line, int prompt )
    if ( add_newline )
      {
 	add_newline = 0;
-	SEND_BYTES_IN_BUFFER( "\r\n" );
+	if ( !line->gag_ending )
+	  {
+	     SEND_BYTES_IN_BUFFER( "\r\n" );
+	  }
      }
    
    /* Order:
