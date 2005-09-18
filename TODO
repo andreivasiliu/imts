@@ -14,11 +14,10 @@ High Priority
 - Focus while impatient.
 - Balance table.
 - Paralysis (limbs too) while standing.
-- Rat/Caiman counter.
 - Logging bytes off client.
-- Map Autolink.
 - Undo.
-- Telnet EOR.
+- Arenas should be shown as a whole.
+- MXP Support.
 
 
 
@@ -42,8 +41,6 @@ IMAPPER
 
 - Customizable colors.
 - Personal rooms, stored in a personal map file.
-- NPC says before room titles need to be fixed.
-- Arenas should be shown as a whole.
 
 IOFFENSE
 ========

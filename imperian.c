@@ -4359,7 +4359,7 @@ void imperian_process_server_prompt_informative( char *line, char *rawline )
 	  }
 	
 	if ( !first )
-	  clientf( C_R ".]\r\n" C_0 );
+	  prefix( C_R ".]\r\n" C_0 );
 	
 	last_cure_balance = 0;
      }

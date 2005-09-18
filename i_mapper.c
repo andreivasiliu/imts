@@ -155,6 +155,7 @@ int title_offset;
 int floating_map_enabled;
 int skip_newline_on_map;
 int gag_next_prompt;
+int check_for_duplicates;
 
 /* config.mapper.txt options. */
 int disable_swimming;
@@ -164,6 +165,7 @@ int disable_locating;
 int disable_areaname;
 int disable_mxp_title;
 int disable_mxp_map;
+int disable_autolink;
 
 
 char *dash_command;
@@ -804,13 +806,326 @@ void set_reverse( ROOM_DATA *source, int dir, ROOM_DATA *destination )
 
 
 
-void parse_room( LINE *l )
+/* This is a title. Do something with it. */
+int parse_title( char *line )
 {
    ROOM_DATA *new_room;
-   char *line = l->line;
    int created = 0;
-   static int exit_offset;
    int q, i;
+   
+   /* Capturing mode. */
+   if ( mode == CREATING && capture_special_exit )
+     {
+	EXIT_DATA *spexit;
+	
+	if ( !current_room )
+	  {
+	     clientf( C_R " (Current Room is NULL! Capturing disabled)" C_0 );
+	     capture_special_exit = 0;
+	     mode = FOLLOWING;
+	     return -1;
+	  }
+	
+	if ( !cse_message[0] )
+	  {
+	     clientf( C_R " (No message found! Capturing disabled)" C_0 );
+	     capture_special_exit = 0;
+	     mode = FOLLOWING;
+	     return -1;
+	  }
+	
+	if ( capture_special_exit > 0 )
+	  {
+	     new_room = get_room( capture_special_exit );
+	     
+	     if ( !new_room )
+	       {
+		  clientf( C_R " (Destination room is now NULL! Capturing disabled)" C_0 );
+		  capture_special_exit = 0;
+		  mode = FOLLOWING;
+		  return -1;
+	       }
+	     
+	     /* Make sure the destination matches. */
+	     if ( strcmp( line, new_room->name ) &&
+		  !( similar && !room_cmp( new_room->name, line ) ) )
+	       {
+		  clientf( C_R " (Destination does not match! Capturing disabled)" C_0 );
+		  capture_special_exit = 0;
+		  mode = FOLLOWING;
+		  return -1;
+	       }
+	  }
+	else
+	  {
+	     new_room = create_room( -1 );
+	     new_room->name = strdup( line );
+	  }
+	
+	clientff( C_R " (" C_W "sp:" C_G "%d" C_R ")" C_0, new_room->vnum );
+	clientff( C_R "\r\n[Special exit created.]" );
+	spexit = create_exit( current_room );
+	spexit->to = new_room;
+	
+	clientff( C_R "\r\nCommand: '" C_W "%s" C_R "'" C_0,
+		  cse_command[0] ? cse_command : "null" );
+	if ( cse_command[0] )
+	  spexit->command = strdup( cse_command );
+	
+	clientff( C_R "\r\nMessage: '" C_W "%s" C_R "'" C_0,
+		  cse_message );
+	spexit->message = strdup( cse_message );
+	
+	current_room = new_room;
+	current_area = current_room->area;
+	capture_special_exit = 0;
+	return -1;
+     }
+   
+   
+   /* Following or Mapping mode. */
+   if ( mode == FOLLOWING || mode == CREATING )
+     {
+	/* Queue empty? */
+	if ( !q_top )
+	  {
+	     /* parsing_room = 0; */
+	     return 0;
+	  }
+	
+	q = queue[q_top-1];
+	q_top--;
+	
+	if ( !q_top )
+	  del_timer( "queue_reset_timer" );
+	
+	if ( !current_room )
+	  {
+	     clientf( " (Current room is null, while mapping is not!)" );
+	     mode = NONE;
+	     /* parsing_room = 0; */
+	     return 0;
+	  }
+	
+	/* Not just a 'look'? */
+	if ( q > 0 )
+	  {
+	     if ( mode == FOLLOWING )
+	       {
+		  if ( current_room->exits[q] )
+		    {
+		       current_room = current_room->exits[q];
+		       current_area = current_room->area;
+		    }
+		  else
+		    {
+		       /* We moved into a strange exit, while not creating. */
+		       clientf( C_R " (" C_G "lost" C_R ")" C_0 );
+		       current_room = NULL;
+		       mode = GET_UNLOST;
+		    }
+	       }
+	     
+	     else if ( mode == CREATING )
+	       {
+		  if ( current_room->exits[q] )
+		    {
+		       /* Just follow around. */
+		       new_room = current_room->exits[q];
+		    }
+		  else
+		    {
+		       char *color = C_G;
+		       
+		       /* Check for autolinking. */
+		       if ( !link_next_to && !disable_autolink && !switch_exit_stops_mapping )
+			 {
+			    ROOM_DATA *get_room_at( int dir, int length );
+			    int length;
+			    
+			    if ( set_length_to == -1 )
+			      length = 1;
+			    else
+			      length = set_length_to + 1;
+			    
+			    link_next_to = get_room_at( q, length );
+			    
+			    if ( link_next_to && strcmp( line, link_next_to->name ) )
+			      link_next_to = NULL;
+			    
+			    if ( link_next_to && link_next_to->exits[reverse_exit[q]] )
+			      link_next_to = NULL;
+			    
+			    color = C_C;
+			 }
+		       
+		       /* Create or link an exit. */
+		       if ( link_next_to )
+			 {
+			    new_room = link_next_to;
+			    link_next_to = NULL;
+			    clientff( C_R " (%slinked" C_R ")" C_0, color );
+			 }
+		       else
+			 {
+			    new_room = create_room( -1 );
+			    clientf( C_R " (" C_G "created" C_R ")" C_0 );
+			    created = 1;
+			    if ( !disable_autolink )
+			      check_for_duplicates = 1;
+			 }
+		       
+		       current_room->exits[q] = new_room;
+		       set_reverse( current_room, q, new_room );
+		       if ( !unidirectional_exit )
+			 {
+			    if ( !new_room->exits[reverse_exit[q]] )
+			      new_room->exits[reverse_exit[q]] = current_room;
+			    else
+			      {
+				 current_room->exits[q] = NULL;
+				 clientf( C_R " (" C_G "unlinked: reverse error" C_R ")" );
+			      }
+			 }
+		       else
+			 unidirectional_exit = 0;
+		    }
+		  
+		  /* Change the length, if asked so. */
+		  if ( set_length_to )
+		    {
+		       if ( set_length_to == -1 )
+			 set_length_to = 0;
+		       
+		       current_room->exit_length[q] = set_length_to;
+		       if ( new_room->exits[reverse_exit[q]] == current_room )
+			 new_room->exit_length[reverse_exit[q]] = set_length_to;
+		       clientf( C_R " (" C_G "l set" C_R ")" C_0 );
+		       
+		       set_length_to = 0;
+		    }
+		  
+		  /* Stop mapping from here on? */
+		  if ( switch_exit_stops_mapping )
+		    {
+		       i = current_room->exit_stops_mapping[q];
+		       
+		       i = !i;
+		       
+		       current_room->exit_stops_mapping[q] = i;
+		       if ( new_room->exits[reverse_exit[q]] == current_room )
+			 new_room->exit_stops_mapping[reverse_exit[q]] = i;
+		       
+		       if ( i )
+			 clientf( C_R " (" C_G "s set" C_R ")" C_0 );
+		       else
+			 clientf( C_R " (" C_G "s unset" C_R ")" C_0 );
+		       
+		       switch_exit_stops_mapping = 0;
+		    }
+		  
+		  /* Show this somewhere else on the map, instead? */
+		  if ( use_direction_instead )
+		    {
+		       if ( use_direction_instead == -1 )
+			 use_direction_instead = 0;
+		       
+		       current_room->use_exit_instead[q] = use_direction_instead;
+		       if ( new_room->exits[reverse_exit[q]] == current_room )
+			 new_room->use_exit_instead[reverse_exit[q]] = reverse_exit[use_direction_instead];
+		       if ( use_direction_instead )
+			 clientf( C_R " (" C_G "u set" C_R ")" C_0 );
+		       else
+			 clientf( C_R " (" C_G "u unset" C_R ")" C_0 );
+		       
+		       use_direction_instead = 0;
+		    }
+		  
+		  current_room = new_room;
+		  current_area = new_room->area;
+	       }
+	  }
+	
+	if ( mode == CREATING )
+	  {
+	     if ( !current_room->name || strcmp( line, current_room->name ) )
+	       {
+		  if ( !created )
+		    clientf( C_R " (" C_G "updated" C_R ")" C_0 );
+		  
+		  if ( current_room->name )
+		    free( current_room->name );
+		  current_room->name = strdup( line );
+	       }
+	  }
+	else if ( mode == FOLLOWING )
+	  {
+	     if ( strcmp( line, current_room->name ) &&
+		  !( similar && !room_cmp( current_room->name, line ) ) )
+	       {
+		  /* Didn't enter where we expected to? */
+		  clientf( C_R " (" C_G "lost" C_R ")" C_0 );
+		  current_room = NULL;
+		  mode = GET_UNLOST;
+	       }
+	  }
+     }
+   
+   if ( mode == GET_UNLOST )
+     {
+	ROOM_DATA *r, *found = NULL;
+	int more = 0;
+	
+	for ( r = world; r; r = r->next_in_world )
+	  {
+	     if ( !strcmp( line, r->name ) )
+	       {
+		  if ( !found )
+		    found = r;
+		  else
+		    {
+		       more = 1;
+		       break;
+		    }
+	       }
+	  }
+	
+	if ( found )
+	  {
+	     current_room = found;
+	     current_area = found->area;
+	     mode = FOLLOWING;
+	     
+	     get_unlost_exits = more;
+	  }
+     }
+   
+   if ( mode == CREATING )
+     {
+	clientff( C_R " (" C_G "%d" C_R ")" C_0, current_room->vnum );
+     }
+   else if ( mode == FOLLOWING )
+     {
+	if ( !disable_areaname )
+	  clientff( C_R " (" C_g "%s" C_R "%s)" C_0,
+		    current_room->area->name, get_unlost_exits ? "?" : "" );
+     }
+   
+   /* We're ready to move. */
+   if ( mode == FOLLOWING && auto_walk == 1 )
+     auto_walk = 2;
+   
+   /* parsing_room = 2; */
+   return 2;
+}
+
+
+
+void parse_room( LINE *l )
+{
+   char *line = l->line;
+   static int exit_offset;
+   int i;
    
    DEBUG( "parse_room" );
    
@@ -881,287 +1196,9 @@ void parse_room( LINE *l )
 	
 //	debugf( "Room!" );
 	
-	/* Capturing mode. */
-	if ( mode == CREATING && capture_special_exit )
-	  {
-	     EXIT_DATA *spexit;
-	     
-	     if ( !current_room )
-	       {
-		  clientf( C_R " (Current Room is NULL! Capturing disabled)" C_0 );
-		  capture_special_exit = 0;
-		  mode = FOLLOWING;
-		  return;
-	       }
-	     
-	     if ( !cse_message[0] )
-	       {
-		  clientf( C_R " (No message found! Capturing disabled)" C_0 );
-		  capture_special_exit = 0;
-		  mode = FOLLOWING;
-		  return;
-	       }
-	     
-	     if ( capture_special_exit > 0 )
-	       {
-		  new_room = get_room( capture_special_exit );
-		  
-		  if ( !new_room )
-		    {
-		       clientf( C_R " (Destination room is now NULL! Capturing disabled)" C_0 );
-		       capture_special_exit = 0;
-		       mode = FOLLOWING;
-		       return;
-		    }
-		  
-		  /* Make sure the destination matches. */
-		  if ( strcmp( line, new_room->name ) &&
-		    !( similar && !room_cmp( new_room->name, line ) ) )
-		    {
-		       clientf( C_R " (Destination does not match! Capturing disabled)" C_0 );
-		       capture_special_exit = 0;
-		       mode = FOLLOWING;
-		       return;
-		    }
-	       }
-	     else
-	       {
-		  new_room = create_room( -1 );
-		  new_room->name = strdup( line );
-	       }
-	     
-	     clientff( C_R " (" C_W "sp:" C_G "%d" C_R ")" C_0, new_room->vnum );
-	     clientff( C_R "\r\n[Special exit created.]" );
-	     spexit = create_exit( current_room );
-	     spexit->to = new_room;
-	     
-	     clientff( C_R "\r\nCommand: '" C_W "%s" C_R "'" C_0,
-		       cse_command[0] ? cse_command : "null" );
-	     if ( cse_command[0] )
-	       spexit->command = strdup( cse_command );
-	     
-	     clientff( C_R "\r\nMessage: '" C_W "%s" C_R "'" C_0,
-		       cse_message );
-	     spexit->message = strdup( cse_message );
-	     
-	     current_room = new_room;
-	     current_area = current_room->area;
-	     capture_special_exit = 0;
-	     return;
-	  }
-	
-	
-	/* Following or Mapping mode. */
-	if ( mode == FOLLOWING || mode == CREATING )
-	  {
-	     /* Queue empty? */
-	     if ( !q_top )
-	       {
-		  parsing_room = 0;
-		  return;
-	       }
-	     
-	     q = queue[q_top-1];
-	     q_top--;
-	     
-	     if ( !q_top )
-	       del_timer( "queue_reset_timer" );
-	     
-	     if ( !current_room )
-	       {
-		  clientf( " (Current room is null, while mapping is not!)" );
-		  mode = NONE;
-		  parsing_room = 0;
-		  return;
-	       }
-	     
-	     /* Not just a 'look'? */
-	     if ( q > 0 )
-	       {
-		  if ( mode == FOLLOWING )
-		    {
-		       if ( current_room->exits[q] )
-			 {
-			    current_room = current_room->exits[q];
-			    current_area = current_room->area;
-			 }
-		       else
-			 {
-			    /* We moved into a strange exit, while not creating. */
-			    clientf( C_R " (" C_G "lost" C_R ")" C_0 );
-			    current_room = NULL;
-			    mode = GET_UNLOST;
-			 }
-		    }
-		  
-		  else if ( mode == CREATING )
-		    {
-		       if ( current_room->exits[q] )
-			 {
-			    /* Just follow around. */
-			    new_room = current_room->exits[q];
-			 }
-		       else
-			 {
-			    /* Create or link an exit. */
-			    if ( link_next_to )
-			      {
-				 new_room = link_next_to;
-				 link_next_to = NULL;
-				 clientf( C_R " (" C_G "linked" C_R ")" C_0 );
-			      }
-			    else
-			      {
-				 new_room = create_room( -1 );
-				 clientf( C_R " (" C_G "created" C_R ")" C_0 );
-				 created = 1;
-			      }
-			    
-			    current_room->exits[q] = new_room;
-			    set_reverse( current_room, q, new_room );
-//			    new_room->reverse_exits[q] = current_room;
-			    if ( !unidirectional_exit )
-			      {
-				 if ( !new_room->exits[reverse_exit[q]] )
-				   new_room->exits[reverse_exit[q]] = current_room;
-				 else
-				   {
-				      current_room->exits[q] = NULL;
-//				      current_room->reverse_exits[q] = NULL;
-				      clientf( C_R " (" C_G "unlinked: reverse error" C_R ")" );
-				   }
-			      }
-			    else
-			      unidirectional_exit = 0;
-			 }
-		       
-		       /* Change the length, if asked so. */
-		       if ( set_length_to )
-			 {
-			    if ( set_length_to == -1 )
-			      set_length_to = 0;
-			    
-			    current_room->exit_length[q] = set_length_to;
-			    if ( new_room->exits[reverse_exit[q]] == current_room )
-			      new_room->exit_length[reverse_exit[q]] = set_length_to;
-			    clientf( C_R " (" C_G "l set" C_R ")" C_0 );
-			    
-			    set_length_to = 0;
-			 }
-		       
-		       /* Stop mapping from here on? */
-		       if ( switch_exit_stops_mapping )
-			 {
-			    i = current_room->exit_stops_mapping[q];
-			    
-			    i = !i;
-			    
-			    current_room->exit_stops_mapping[q] = i;
-			    if ( new_room->exits[reverse_exit[q]] == current_room )
-			      new_room->exit_stops_mapping[reverse_exit[q]] = i;
-			    
-			    if ( i )
-			      clientf( C_R " (" C_G "s set" C_R ")" C_0 );
-			    else
-			      clientf( C_R " (" C_G "s unset" C_R ")" C_0 );
-			    
-			    switch_exit_stops_mapping = 0;
-			 }
-		       
-		       /* Show this somewhere else on the map, instead? */
-		       if ( use_direction_instead )
-			 {
-			    if ( use_direction_instead == -1 )
-			      use_direction_instead = 0;
-			    
-			    current_room->use_exit_instead[q] = use_direction_instead;
-			    if ( new_room->exits[reverse_exit[q]] == current_room )
-			      new_room->use_exit_instead[reverse_exit[q]] = reverse_exit[use_direction_instead];
-			    if ( use_direction_instead )
-			      clientf( C_R " (" C_G "u set" C_R ")" C_0 );
-			    else
-			      clientf( C_R " (" C_G "u unset" C_R ")" C_0 );
-			    
-			    use_direction_instead = 0;
-			 }
-		       
-		       current_room = new_room;
-		       current_area = new_room->area;
-		    }
-	       }
-	     
-	     if ( mode == CREATING )
-	       {
-		  if ( !current_room->name || strcmp( line, current_room->name ) )
-		    {
-		       if ( !created )
-			 clientf( C_R " (" C_G "updated" C_R ")" C_0 );
-		       
-		       if ( current_room->name )
-			 free( current_room->name );
-		       current_room->name = strdup( line );
-		    }
-	       }
-	     else if ( mode == FOLLOWING )
-	       {
-		  if ( strcmp( line, current_room->name ) &&
-		       !( similar && !room_cmp( current_room->name, line ) ) )
-		    {
-		       /* Didn't enter where we expected to? */
-		       clientf( C_R " (" C_G "lost" C_R ")" C_0 );
-		       current_room = NULL;
-		       mode = GET_UNLOST;
-		    }
-	       }
-	  }
-	
-	if ( mode == GET_UNLOST )
-	  {
-	     ROOM_DATA *r, *found = NULL;
-	     int more = 0;
-	     
-	     for ( r = world; r; r = r->next_in_world )
-	       {
-		  if ( !strcmp( line, r->name ) )
-		    {
-		       if ( !found )
-			 found = r;
-		       else
-			 {
-			    more = 1;
-			    break;
-			 }
-		    }
-	       }
-	     
-	     if ( found )
-	       {
-		  current_room = found;
-		  current_area = found->area;
-		  mode = FOLLOWING;
-		  
-		  get_unlost_exits = more;
-	       }
-	  }
-	
-	if ( mode == CREATING )
-	  {
-	     clientff( C_R " (" C_G "%d" C_R ")" C_0, current_room->vnum );
-	  }
-	else if ( mode == FOLLOWING )
-	  {
-	     if ( !disable_areaname )
-	       clientff( C_R " (" C_g "%s" C_R "%s)" C_0,
-			 current_room->area->name, get_unlost_exits ? "?" : "" );
-	  }
-	
-	/* We're ready to move. */
-	if ( mode == FOLLOWING && auto_walk == 1 )
-	  auto_walk = 2;
-	
-	parsing_room = 2;
-	
-	return;
+	i = parse_title( line );
+	if ( i >= 0 )
+	  parsing_room = i;
      }
    
    /* Stage two, look for start of exits list. */
@@ -1243,13 +1280,13 @@ void parse_room( LINE *l )
 	     w = word;
 	     /* Extract a word. */
 	     beginning = i;
-	     while( l->line[i] != ',' && l->line[i] != ' ' && l->line[i] != '.' )
+	     while( l->line[i] && ( l->line[i] != ',' && l->line[i] != ' ' && l->line[i] != '.' ) )
 	       *w++ = l->line[i++];
 	     *w = 0;
 	     end = i;
 	     
 	     /* Skip spaces and weird stuff. */
-	     while( l->line[i] && ( l->line[i] == ',' || l->line[i] == ' ' ) )
+	     while( l->line[i] == ',' || l->line[i] == ' ' )
 	       i++;
 	     
 	     for ( j = 1; dir_name[j]; j++ )
@@ -1837,10 +1874,9 @@ void show_map_new( ROOM_DATA *room )
    get_timer( );
 //   debugf( "--map new--" );
    
+   /* Clear it up. */
    for ( r = room->area->rooms; r; r = r->next_in_area )
      r->mapped = 0;
-   
-   /* Clear it up. */
    for ( x = 0; x < MAP_X; x++ )
      for ( y = 0; y < MAP_Y; y++ )
        memset( &map_new[x][y], 0, sizeof( MAP_ELEMENT ) );
@@ -1863,6 +1899,9 @@ void show_map_new( ROOM_DATA *room )
 //   debugf( "2: %d", get_timer( ) );
    
    
+   /* Build it up. */
+   
+   
    /* Are we able to get a SECURE mode on MXP? */
    if ( !disable_mxp_map && !skip_newline_on_map && mxp_tag( TAG_LOCK_SECURE ) )
      use_mxp = 1;
@@ -1871,8 +1910,6 @@ void show_map_new( ROOM_DATA *room )
    
    map_buf[0] = 0;
    p = map_buf;
-   
-   /* Build it up. */
    
    sprintf( vnum_buf, "v%d", room->vnum );
    
@@ -2107,8 +2144,47 @@ void show_map_new( ROOM_DATA *room )
 }
 
 
+
+/* This will get the room that would be shown on the map somewhere. */
+ROOM_DATA *get_room_at( int dir, int length )
+{
+   const int xi[] = { 2, 0, 1, 1, 1, 0, -1, -1, -1, 2, 2, 2, 2, 2 };
+   const int yi[] = { 2, -1, -1, 0, 1, 1, 1, 0, -1, 2, 2, 2, 2, 2 };
+   ROOM_DATA *r;
+   int x, y;
+   
+   if ( !current_room )
+     return NULL;
+   
+   /* Clear it up. */
+   for ( r = current_room->area->rooms; r; r = r->next_in_area )
+     r->mapped = 0;
+   for ( x = 0; x < MAP_X; x++ )
+     for ( y = 0; y < MAP_Y; y++ )
+       memset( &map_new[x][y], 0, sizeof( MAP_ELEMENT ) );
+   
+   /* Convert the angle/length to a relative position. */
+   x = xi[dir], y = yi[dir];
+   if ( x == 2 || y == 2 )
+     return NULL;
+   x *= length, y *= length;
+   
+   /* Convert them from relative to absolute. */
+   x = ( MAP_X / 2 ) + x;
+   y = ( MAP_Y / 2 ) + y;
+   
+   if ( x < 0 || y < 0 || x >= MAP_X || y >= MAP_Y )
+     return NULL;
+   
+   fill_map_new( current_room, MAP_X / 2, MAP_Y / 2 );
+   
+   return map_new[x][y].room;
+}
+
+
+
 /* One big ugly thing. */
-/* Somebody find a cure to this stupidity! It's way too ugly! */
+/* It was way too ugly, so it was replaced. */
 void show_map( ROOM_DATA *room )
 {
    ROOM_DATA *troom;
@@ -2415,6 +2491,7 @@ int save_settings( char *file )
    fprintf( fl, "Disable-AreaName %s\r\n", disable_areaname ? "yes" : "no" );
    fprintf( fl, "Disable-MXPTitle %s\r\n", disable_mxp_title ? "yes" : "no" );
    fprintf( fl, "Disable-MXPMap %s\r\n", disable_mxp_map ? "yes" : "no" );
+   fprintf( fl, "Disable-AutoLink %s\r\n", disable_autolink ? "yes" : "no" );
    
    /* Save all landmarks. */
    
@@ -2548,6 +2625,16 @@ int load_settings( char *file )
 	       disable_mxp_map = 1;
 	     else if ( !strcmp( value, "no" ) )
 	       disable_mxp_map = 0;
+	     else
+	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
+	  }
+	
+	else if ( !strcmp( option, "Disable-AutoLink" ) )
+	  {
+	     if ( !strcmp( value, "yes" ) )
+	       disable_autolink = 1;
+	     else if ( !strcmp( value, "no" ) )
+	       disable_autolink = 0;
 	     else
 	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
 	  }
@@ -4942,14 +5029,14 @@ void i_mapper_process_server_line( LINE *l )
    
    DEBUG( "i_mapper_process_server_line" );
    
-   if ( ( auto_walk && ( !cmp( "You cannot move that fast, slow down!", l->line ) ||
+   if ( ( /*auto_walk &&*/ ( !cmp( "You cannot move that fast, slow down!", l->line ) ||
 			 !cmp( "Now now, don't be so hasty!", l->line ) ) ) ||
 	( auto_bump && ( !cmp( "There is no exit in that direction.", l->line ) ) ) )
      {
 	l->gag_entirely = 1;
 	l->gag_ending = 1;
-	clientf( "." );
-//	gag_next_prompt = 1;
+//	clientf( "." );
+	gag_next_prompt = 1;
      }
    
    /* Gag/replace the alertness message, with something easier to read. */
@@ -5144,6 +5231,49 @@ void i_mapper_process_server_prompt( LINE *l )
 	       }
 	     
 	     prefixf( C_R "[Match probability: %d%%]\r\n" C_0, 100 / count );
+	  }
+     }
+   
+   if ( check_for_duplicates )
+     {
+	check_for_duplicates = 0;
+	
+	if ( current_room && mode == CREATING )
+	  {
+	     ROOM_DATA *r;
+	     int count = 0, far_count = 0, i;
+	     
+	     for ( r = world; r; r = r->next_in_world )
+	       if ( !strcmp( current_room->name, r->name ) && r != current_room )
+		 {
+		    int good = 1;
+		    
+		    for ( i = 1; dir_name[i]; i++ )
+		      {
+			 int e1 = r->exits[i] ? 1 : r->detected_exits[i];
+			 int e2 = current_room->exits[i] ? 1 : current_room->detected_exits[i];
+			 
+			 if ( e1 != e2 )
+			   {
+			      good = 0;
+			      break;
+			   }
+		      }
+		    
+		    if ( good )
+		      {
+			 if ( r->area == current_room->area )
+			   count++;
+			 else
+			   far_count++;
+		      }
+		 }
+	     
+	     if ( count || far_count )
+	       {
+		  prefixf( C_R "[Warning: Identical rooms found... %d in this area, %d in other areas.]\r\n" C_0,
+			   count, far_count );
+	       }
 	  }
      }
    
@@ -5725,6 +5855,9 @@ void do_map_config( char *arg )
 	  { "map_mxp", &disable_mxp_map,
 	       "MXP tags will no longer be used on a map.",
 	       "MXP tags will now be used on a map." },
+	  { "autolink", &disable_autolink, 
+	       "Auto-linking disabled.",
+	       "Auto-linking enabled." },
 	
 	  { NULL, NULL, NULL, NULL }
      };
@@ -5776,7 +5909,8 @@ void do_map_config( char *arg )
 	    " map config locate    - Append vnums to various locating abilities.\r\n"
 	    " map config showarea  - Show the current area after a room title.\r\n"
 	    " map config title_mxp - Mark the room title with MXP tags.\r\n"
-	    " map config map_mxp   - Use MXP tags on map generation.\r\n" );
+	    " map config map_mxp   - Use MXP tags on map generation.\r\n"
+	    " map config autolink  - Link rooms automatically when mapping.\r\n" );
 }
 
 
@@ -6372,7 +6506,8 @@ void do_room_help( char *arg )
 	    " room list    - List all rooms in the current area.\r\n"
 	    " room underw  - Set the room as Underwater.\r\n"
 	    " room mark    - Set or clear a landmark on a vnum, or current room.\r\n"
-	    " room types   - List all known room types.\r\n" );
+	    " room types   - List all known room types.\r\n"
+	    " room merge   - Combine two identical rooms into one.\r\n" );
 }
 
 
@@ -6747,6 +6882,198 @@ void do_room_types( char *arg )
 	       type->cost_in, type->cost_out,
 	       type->must_swim ? C_B "yes" C_0 : C_R " no" C_0,
 	       type->underwater ? C_B "yes" C_0 : C_R " no" C_0 );
+}
+
+
+
+void do_room_merge( char *arg )
+{
+   ROOM_DATA *r;
+   char buf[4096];
+   int found;
+   int i;
+   
+   if ( !current_room )
+     {
+	clientfr( "No current room set." );
+	return;
+     }
+   
+   if ( !arg[0] )
+     {
+	/* Show this room... Just for comparison purposes. */
+	int first = 1;
+	
+	clientfr( "This room:" );
+	
+	buf[0] = 0;
+	for ( i = 1; dir_name[i]; i++ )
+	  {
+	     if ( current_room->exits[i] || current_room->detected_exits[i] )
+	       {
+		  if ( first )
+		    {
+		       strcat( buf, C_D "(" );
+		       first = 0;
+		    }
+		  else
+		    strcat( buf, C_D "," );
+		  
+		  if ( current_room->exits[i] )
+		    strcat( buf, C_B );
+		  else
+		    strcat( buf, C_R );
+		  
+		  strcat( buf, dir_small_name[i] );
+	       }
+	  }
+	if ( !first )
+	  strcat( buf, C_D ")" C_0 );
+	else
+	  strcat( buf, C_D "(" C_r "no exits" C_D ")" C_0 );
+	
+	clientff( "  %s -- %s " C_D "(" C_G "%d" C_D ")\r\n" C_0,
+			     buf, current_room->name, current_room->vnum );
+	
+	
+	/* List all rooms that can be merged into this one. */
+	
+	clientfr( "Other rooms:" );
+	found = 0;
+	
+	for ( r = world; r; r = r->next_in_world )
+	  if ( !strcmp( current_room->name, r->name ) && r != current_room )
+	    {
+	       int good = 1;
+	       
+	       for ( i = 1; dir_name[i]; i++ )
+		 {
+		    int e1 = r->exits[i] ? 1 : r->detected_exits[i];
+		    int e2 = current_room->exits[i] ? 1 : current_room->detected_exits[i];
+		    
+		    if ( e1 != e2 )
+		      {
+			 good = 0;
+			 break;
+		      }
+		 }
+	       
+	       /* Print it away. */
+	       if ( good )
+		 {
+		    int first = 1;
+		    
+		    found = 1;
+		    
+		    buf[0] = 0;
+		    for ( i = 1; dir_name[i]; i++ )
+		      {
+			 if ( r->exits[i] || r->detected_exits[i] )
+			   {
+			      if ( first )
+				{
+				   strcat( buf, C_D "(" );
+				   first = 0;
+				}
+			      else
+				strcat( buf, C_D "," );
+			      
+			      if ( r->exits[i] )
+				strcat( buf, C_B );
+			      else
+				strcat( buf, C_R );
+			      
+			      strcat( buf, dir_small_name[i] );
+			   }
+		      }
+		    if ( !first )
+		      strcat( buf, C_D ")" C_0 );
+		    else
+		      strcat( buf, C_D "(" C_r "no exits" C_D ")" C_0 );
+		    
+		    clientff( "  %s -- %s " C_D "(" C_G "%d" C_D ")\r\n" C_0,
+			     buf, r->name, r->vnum );
+		 }
+	    }
+	
+	if ( !found )
+	  clientf( "  No identical matches found.\r\n" );
+     }
+   else
+     {
+	int vnum;
+	
+	if ( mode != CREATING )
+	  {
+	     clientfr( "Turn mapping on, first." );
+	     return;
+	  }
+	
+	vnum = atoi( arg );
+	if ( !vnum || !( r = get_room( vnum ) ) )
+	  {
+	     clientfr( "Merge with which vnum?" );
+	     return;
+	  }
+	
+	if ( r == current_room )
+	  {
+	     clientfr( "You silly thing... What's the point in merging with the same room?" );
+	     return;
+	  }
+	
+	if ( strcmp( r->name, current_room->name ) )
+	  {
+	     clientfr( "That room doesn't even have the same name!" );
+	     return;
+	  }
+	
+	/* Check for exits. */
+	for ( i = 1; dir_name[i]; i++ )
+	  {
+	     if ( r->exits[i] && current_room->exits[i] &&
+		  r->exits[i] != current_room->exits[i] )
+	       {
+		  clientff( C_R "[Problem with the %s exits; they lead to different places.]\r\n", dir_name[i] );
+		  return;
+	       }
+	     
+	     if ( ( r->exits[i] || r->detected_exits[i] ) !=
+		  ( current_room->exits[i] || current_room->detected_exits[i] ) )
+	       {
+		  clientff( C_R "[Problem with the %s exits; one room has it, the other doesn't.]\r\n", dir_name[i] );
+		  return;
+	       }
+	  }
+	
+	/* Start merging. */
+	for ( i = 1; dir_name[i]; i++ )
+	  {  
+	     if ( !r->exits[i] )
+	       {
+		  r->exits[i] = current_room->exits[i];
+		  if ( current_room->exits[i] )
+		    r->reverse_exits[i] = current_room->reverse_exits[i];
+		  if ( current_room->exits[i] )
+		    r->more_reverse_exits[i] |= current_room->more_reverse_exits[i];
+		  r->detected_exits[i] |= current_room->detected_exits[i];
+		  r->locked_exits[i] |= current_room->locked_exits[i];
+		  if ( !r->exit_length[i] )
+		    r->exit_length[i] = current_room->exit_length[i];
+		  if ( !r->use_exit_instead[i] )
+		    r->use_exit_instead[i] = current_room->use_exit_instead[i];
+		  r->exit_stops_mapping[i] = current_room->exit_stops_mapping[i];
+	       }
+	  }
+	r->landmark |= current_room->landmark;
+	r->underwater |= current_room->underwater;
+	
+	clientff( C_R "[Rooms " C_G "%d" C_R " and " C_G "%d" C_R " merged into " C_G "%d" C_R ".]\r\n" C_0,
+		  r->vnum, current_room->vnum, r->vnum );
+	destroy_room( current_room );
+	current_room = r;
+	current_area = r->area;
+     }
 }
 
 
@@ -7502,6 +7829,7 @@ FUNC_DATA cmd_table[] =
      { "underwater",	do_room_underw, CMD_ROOM },
      { "mark",		do_room_mark,	CMD_ROOM },
      { "types",		do_room_types,	CMD_ROOM },
+     { "merge",		do_room_merge,	CMD_ROOM },
    
    /* Exit commands. */
      { "help",		do_exit_help,	CMD_EXIT },

@@ -1,10 +1,17 @@
 IMTS-unstable
 =============
+
 (MudBot:)
-- Instead of a raw line, it will send a complicated structure containing
-  a lot more useful stuff to the modules. This allows a module to easily
-  detect raw data instead of printable character, allows to prefix, suffix,
-  replace, and insert text in the line/prompt, and to gag only parts of it.
+- Completely rewritten the way lines/prompts are parsed and sent to the
+  modules for processing.
+(Imperian:)
+- Rat/spider worth parsing is working again, also added caiman, serpents
+  and locusts.
+(IMapper:)
+- Autolinking added, and enabled by default.
+- Floating MXP map window added.
+- Duplicate room detection while mapping, added.
+- Merging of two identic rooms (duplicate) into one, added.
 (IOffense:)
 - Script block/statement parser added, that supports, in order of creation...
 - C-like comments and spacing.
@@ -12,14 +19,17 @@ IMTS-unstable
 - Functions and alias functions.
 - Argument passing to functions, and return values from functions or
   statements.
-- Variable assignment using a statement's return value, the assignment
-  itself being a statement that can be assigned to yet another variable.
+- Variable assignment using a statement's return value, the assignment itself
+  being a statement that can be assigned to yet another variable, etc.
 - Function call stack, allowing unlimited recursive calls.
+- Comparison and concatenating of variables/strings.
+- Negation, and's, and or's.
 
 
 
 IMTS-5
 ======
+
 (MudBot:)
 - Descriptor handling updated, to allow multiple listening ports.
 - Various small changes, for compatibility with the Nexus client.
@@ -105,12 +115,12 @@ IMTS-3
 (MudBot:)
 - MudBot no longer treats data received from the server as C strings, anywhere.
 - GetString limit set, to prevent any buffer overflows. Not that they ever
-existed though...
+  existed though...
 - Replaced all occurrences of "\n\r" with "\r\n", in hope of making it more
-compatible with Zmud.
+  compatible with Zmud.
 (IMapper:)
 - Lines beginning with '<', '(', or any weird characters won't be considered
-room names.
+  room names.
 - Who list changed.
 - Survey will create an area or switch to an existing one, instead of updating
   the current area's name.
