@@ -3,6 +3,7 @@
 *.exe
 *.def
 *.bin
+*.exp
 config.*
 user.txt
 bot
