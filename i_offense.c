@@ -125,6 +125,7 @@ struct script_data
    char *description;
    
    FUNCTION *functions;
+   TRIGGER *triggers;
    
    SCRIPT *next;
 };
@@ -192,10 +193,22 @@ struct alias_data
 
 struct trigger_data
 {
+   char *name;
+   
+   short prompt;
+   short regex;
+   short continuous;
+   
+   /* Each and every line, once. */
+   short everything;
+   /* Normal pattern. */
+   char *message;
+   /* Regex. */
    pcre *pattern;
    pcre_extra *extra;
    
-   char *action;
+   char *body;
+   int size;
    
    TRIGGER *next;
 };
@@ -224,6 +237,8 @@ char wholist_targets[32][256];
 char searchback_buffer[SB_FULL_SIZE];
 int sb_size;
 
+CALL *prepare_block_as_call( char *name, char *body );
+void call_function( CALL *call, char *returns, int max );
 void execute_block( );
 void execute_single_command( char *returns, int max, int priority );
 
@@ -499,20 +514,47 @@ int check_pattern( TRIGGER *trigger, char *string )
    int ovector[30];
    int rc;
    
-   rc = pcre_exec( trigger->pattern, trigger->extra, string, strlen( string ), 0, 0, ovector, 30 );
+   if ( trigger->everything )
+     return 1;
    
-   if ( rc < 0 )
-     return 0;
+   if ( trigger->regex )
+     {
+	rc = pcre_exec( trigger->pattern, trigger->extra, string, strlen( string ), 0, 0, ovector, 30 );
+	
+	if ( rc < 0 )
+	  return 0;
+	
+	return 1;
+     }
    
-   return 1;
+   return !cmp( trigger->message, string );
 }
 
+
+
+void check_triggers( LINE *l, int prompt )
+{
+   SCRIPT *script;
+   TRIGGER *trigger;
+   
+   for ( script = scripts; script; script = script->next )
+     for ( trigger = script->triggers; trigger; trigger = trigger->next )
+       {
+	  if ( trigger->prompt == prompt &&
+	       check_pattern( trigger, l->line ) )
+	    {
+	       CALL *call;
+	       
+	       call = prepare_block_as_call( trigger->name ? trigger->name : "trigger", trigger->body );
+	       call_function( call, NULL, 0 );
+	    }
+       }
+}
 
 
 void offensive_process_server_line( LINE *l )
 {
    void offensive_process_server_line_suffix( char *colorless_line, char *colorful_line, char *raw_line );
-   TRIGGER *trigger;
    
    DEBUG( "offensive_process_server_line" );
    
@@ -533,11 +575,7 @@ void offensive_process_server_line( LINE *l )
    caiman_targetting( l->line );
    
    /* Check for triggers. */
-   for ( trigger = triggers; trigger; trigger = trigger->next )
-     {
-	if ( check_pattern( trigger, l->line ) )
-	  execute_block( trigger->action );
-     }
+   check_triggers( l, 0 );
    
    /* Add the line in our search-back buffer. */
    if ( l->len )
@@ -1009,6 +1047,8 @@ void offensive_process_server_prompt( LINE *l )
    
    if ( parsing_whohere_list )
      parsing_whohere_list = 0;
+   
+   check_triggers( l, 1 );
 }
 
 
@@ -1192,8 +1232,8 @@ void remove_trigger( TRIGGER *trigger )
    
    if ( trigger->pattern )
      free( trigger->pattern );
-   if ( trigger->action )
-     free( trigger->action );
+   if ( trigger->body )
+     free( trigger->body );
    free( trigger );
 }
 
@@ -1225,7 +1265,7 @@ void do_trigger( char *args )
    trigger = new_trigger( );
    trigger->pattern = pattern;
    trigger->extra = pcre_study( pattern, 0, &error );
-   trigger->action = strdup( args );
+   trigger->body = strdup( args );
    
    if ( error )
      clientff( C_R "[Pattern study error: %s]\r\n" C_0, error );
@@ -1274,6 +1314,7 @@ void destroy_script( SCRIPT *script )
 {
    SCRIPT *s;
    FUNCTION *f, *f_next;
+   TRIGGER *t, *t_next;
    int i;
    
    if ( script == scripts )
@@ -1310,6 +1351,22 @@ void destroy_script( SCRIPT *script )
 	  }
 	
 	free( f );
+     }
+   
+   for ( t = script->triggers; t; t = t->next )
+     {
+	t_next = t->next;
+	
+	if ( t->name )
+	  free( t->name );
+	if ( t->message )
+	  free( t->message );
+	if ( t->pattern )
+	  free( t->pattern );
+	if ( t->extra )
+	  free( t->extra );
+	
+	free( t );
      }
    
    free( script );
@@ -1498,6 +1555,7 @@ void abort_script( int syntax, char *error, ... )
    char error_buf[1024];
    
    va_list args;
+   error_buf[0] = 0;
    if ( error )
      {
 	va_start( args, error );
@@ -1537,9 +1595,74 @@ void abort_script( int syntax, char *error, ... )
 }
 
 
-void script_warning( char *warning )
+void script_warning( char *warning, ... )
 {
-   clientff( C_0 "(" C_W "iScript" C_0 "): " C_R "Warning: %s\r\n", warning );
+   char buf[1024];
+   
+   va_list args;
+   
+   buf[0] = 0;
+   
+   if ( warning )
+     {
+	va_start( args, warning );
+	vsnprintf( buf, 1024, warning, args );
+	va_end( args );
+     }
+   
+   clientff( C_0 "(" C_W "iScript" C_0 "): " C_R "Warning: %s\r\n" C_0, buf );
+}
+
+
+
+void get_text( char *dest, int max )
+{
+   skip_whitespace( );
+   
+   if ( **pos != '\"' )
+     {
+	abort_script( 1, "Expected a string." );
+	return;
+     }
+   
+   (*pos)++;
+   
+   while ( --max && **pos && **pos != '\"' )
+     {
+	if ( **pos == '\\' )
+	  {
+	     (*pos)++;
+	     switch( **pos )
+	       {
+		case 'n':
+		  *(dest++) = '\n'; break;
+		case 'r':
+		  *(dest++) = '\r'; break;
+		case '\\':
+		  *(dest++) = '\\'; break;
+		case 'e':
+		  *(dest++) = '\33'; break;
+		case '\"':
+		  *(dest++) = '\"'; break;
+		default:
+		  *(dest++) = **pos;
+	       }
+	     (*pos)++;
+	  }
+	else
+	  *(dest++) = *((*pos)++);
+     }
+   
+   *dest = 0;
+   
+   if ( **pos != '\"' )
+     {
+	abort_script( 1, "Expected end of string." );
+	return;
+     }
+   
+   (*pos)++;
+   skip_whitespace( );
 }
 
 
@@ -1661,6 +1784,21 @@ void copy_variable( char *name, char *dest, int max )
    while ( --max && *src )
      *(dest++) = *(src++);
    *dest = 0;
+}
+
+
+
+CALL *prepare_block_as_call( char *name, char *body )
+{
+   CALL *call;
+   
+   call = calloc( 1, sizeof( CALL ) );
+   
+   call->name = name;
+   call->position = body;
+   // Add parent script.
+   
+   return call;
 }
 
 
@@ -2016,7 +2154,7 @@ void execute_single_command( char *returns, int max, int priority )
    FUNCTION *function;
    SCRIPT *script;
    char ident[4096];
-   char buf[4096], *b = buf;
+   char buf[4096];
    int b_max = 4096, i;
    
    buf[0] = 0;
@@ -2049,19 +2187,10 @@ void execute_single_command( char *returns, int max, int priority )
    /* Constant string. */
    if ( **pos == '\"' )
      {
-	(*pos)++;
+	get_text( buf, b_max );
 	
-	while ( --b_max && **pos && **pos != '\"' )
-	  *(b++) = *((*pos)++);
-	*b = 0;
-	
-	if ( **pos != '\"' )
-	  {
-	     abort_script( 1, "Expected end of string." );
-	     return;
-	  }
-	(*pos)++;
-	skip_whitespace( );
+	if ( !*pos )
+	  return;
 	
 	handle_results( buf, returns, max, priority );
 	return;
@@ -2086,40 +2215,6 @@ void execute_single_command( char *returns, int max, int priority )
    
    if ( !ident[0] )
      return;
-   
-   /* Maybe it's a variable. Locals, then globals. */
-   for ( variable = call_stack->locals; variable; variable = variable->next )
-     if ( !strcmp( ident, variable->name ) )
-       break;
-   if ( !variable )
-     for ( variable = variables; variable; variable = variable->next )
-       if ( !strcmp( ident, variable->name ) )
-	 break;
-   
-   if ( variable )
-     {
-	/* Assignment. */
-	if ( **pos == '=' && *((*pos)+1) != '=' )
-	  {
-	     char var_buf[4096];
-	     
-	     (*pos)++;
-	     
-	     // Normal, Assignment, or highest from priority and assignment?
-	     execute_single_command( var_buf, 4096, PRIORITY_ASSIGN );
-	     if ( !*pos )
-	       return;
-	     
-	     set_variable( ident, var_buf );
-	     
-	     handle_results( var_buf, returns, max, priority );
-	     return;
-	  }
-	
-	copy_variable( ident, buf, b_max );
-	handle_results( buf, returns, max, priority );
-	return;
-     }
    
    /* Maybe it's a function. */
    for ( script = scripts; script; script = script->next )
@@ -2242,25 +2337,43 @@ void execute_single_command( char *returns, int max, int priority )
 	return;
      }
    
-   /* Assignment of a new variable? This our last chance... */
+   /* Assignment. */
    if ( **pos == '=' && *((*pos)+1) != '=' )
      {
 	char var_buf[4096];
 	
 	(*pos)++;
 	
+	// Normal, Assignment, or highest from priority and assignment?
 	execute_single_command( var_buf, 4096, PRIORITY_ASSIGN );
-	
 	if ( !*pos )
 	  return;
-	     
+	
 	set_variable( ident, var_buf );
 	
 	handle_results( var_buf, returns, max, priority );
 	return;
      }
    
-   abort_script( 0, "Unknown identifier '%s'.", ident );
+   /* Maybe it's a variable. Locals, then globals. */
+   for ( variable = call_stack->locals; variable; variable = variable->next )
+     if ( !strcmp( ident, variable->name ) )
+       break;
+   if ( !variable )
+     for ( variable = variables; variable; variable = variable->next )
+       if ( !strcmp( ident, variable->name ) )
+	 break;
+   
+   if ( variable )
+     {
+	handle_results( variable->value, returns, max, priority );
+     }
+   else
+     {
+//	script_warning( "Unknown identifier '%s'.", ident );
+	handle_results( "", returns, max, priority );
+     }
+   
    return;
 }
 
@@ -2446,14 +2559,296 @@ void execute_block( )
 
 
 
+int load_script_function( SCRIPT *script, int alias )
+{
+   FUNCTION *function, *f;
+   char buf[4096];
+   int expect_ending, expect_argument, brackets, within_string;
+   int i, size;
+   
+   function = calloc( 1, sizeof( FUNCTION ) );
+   
+   /* Link it. */
+   if ( !script->functions )
+     script->functions = function;
+   else
+     {
+	for ( f = script->functions; f->next; f = f->next );
+	f->next = function;
+     }
+   
+   if ( !alias )
+     {
+	/* Format: function <name> [ [(] [arg1 [[,] arg2]... ] [)] ] { ... } */
+	get_identifier( buf, 4096 );
+	
+	if ( !buf[0] )
+	  {
+	     abort_script( 0, "Function name not provided." );
+	     return 1;
+	  }
+	
+	function->name = strdup( buf );
+	
+	if ( **pos == '(' )
+	  {
+	     expect_ending = 1;
+	     (*pos)++;
+	     skip_whitespace( );
+	  }
+	else
+	  expect_ending = 0;
+	
+	function->args = calloc( 1, sizeof( char * ) );
+	i = 0;
+	
+	/* Find all arguments. */
+	while ( 1 )
+	  {
+	     if ( i && **pos == ',' )
+	       {
+		  expect_argument = 1;
+		  (*pos)++;
+	       }
+	     else
+	       expect_argument = 0;
+	     
+	     get_identifier( buf, 4096 );
+	     
+	     if ( !buf[0] )
+	       break;
+	     
+	     if ( expect_argument )
+	       expect_argument = 0;
+	     function->args = realloc( function->args, sizeof( char * ) * (i + 1) );
+	     function->args[i] = strdup( buf );
+	     i++;
+	  }
+	
+	function->args[i] = NULL;
+	
+	if ( expect_argument )
+	  {
+	     abort_script( 0, "Expected a function argument." );
+	     return 1;
+	  }
+	
+	if ( expect_ending )
+	  {
+	     if ( **pos != ')' )
+	       {
+		  abort_script( 0, "Mismatched '(', expected ')' on argument list." );
+		  return 1;
+	       }
+	     (*pos)++;
+	     skip_whitespace( );
+	  }
+     }
+   else
+     {
+	/* Format: alias <name> { ... } */
+	get_identifier( buf, 4096 );
+	
+	if ( !buf[0] )
+	  {
+	     abort_script( 0, "Alias name not provided." );
+	     return 1;
+	  }
+	
+	function->name = strdup( buf );
+	function->alias = 1;
+     }
+   
+   /* Common code for 'function' and 'alias'. */
+   
+   if ( **pos != '{' )
+     {
+	abort_script( 1, "No body provided to function '%s', expected '{'.", function->name );
+	return 1;
+     }
+   
+   /* Find the matching '}'. */
+   size = 1, brackets = 1, within_string = 0;
+   while ( brackets )
+     {
+	switch ( *((*pos)+size) )
+	  {
+	   case '\"':
+	     within_string = !within_string; break;
+	   case '{':
+	     if ( !within_string ) brackets++; break;
+	   case '}':
+	     if ( !within_string ) brackets--; break;
+	   case 0:
+	     abort_script( 0, "Mismatched '{', unexpected End of Buffer." );
+	     return 1;
+	  }
+	size++;
+     }
+   
+   function->body = malloc( size + 1 );
+   memcpy( function->body, *pos, size );
+   function->body[size] = 0;
+   function->size = size;
+   *pos += size;
+   
+   return 0;
+}
+
+
+
+int load_script_trigger( SCRIPT *script )
+{
+   TRIGGER *trigger, *t;
+   char buf[4096];
+   int brackets, within_string, size;
+   
+   /* Format: trigger ['<name>'] [options] <*|"pattern"> { ... } */
+   
+   trigger = calloc( 1, sizeof( TRIGGER ) );
+   
+   /* Link it. */
+   if ( !script->triggers )
+     script->triggers = trigger;
+   else
+     {
+	for ( t = script->triggers; t->next; t = t->next );
+	t->next = trigger;
+     }
+   
+   /* Name, if there's one. */
+   if ( **pos == '\'' )
+     {
+	(*pos)++;
+	
+	get_identifier( buf, 4096 );
+	
+	if ( **pos != '\'' )
+	  {
+	     abort_script( 1, "Invalid trigger name." );
+	     return 1;
+	  }
+	
+	(*pos)++;
+	
+	if ( buf[0] )
+	  trigger->name = strdup( buf );
+     }
+   
+   /* Options, if there are any. */
+   while ( 1 )
+     {
+	get_identifier( buf, 4096 );
+	
+	if ( !buf[0] )
+	  break;
+	
+	if ( !strcmp( buf, "prompt" ) )
+	  trigger->prompt = 1;
+	else if ( !strcmp( buf, "regex" ) )
+	  trigger->regex = 1;
+	else if ( !strcmp( buf, "continuous" ) )
+	  trigger->continuous = 1;
+	else
+	  {
+	     if ( trigger->name )
+	       abort_script( 1, "Unknown option in trigger '%s'.", trigger->name );
+	     else
+	       abort_script( 1, "Unknown option in a trigger definition." );
+	     return 1;
+	  }
+     }
+   
+   /* Pattern. */
+   
+   if ( **pos == '*' )
+     {
+	trigger->everything = 1;
+	(*pos)++;
+	skip_whitespace( );
+     }
+   else
+     {
+	get_text( buf, 4096 );
+	
+	if ( !*pos )
+	  return 1;
+	
+	if ( !buf[0] )
+	  {
+	     abort_script( 0, "Empty pattern." );
+	     return 1;
+	  }
+	
+	if ( trigger->regex )
+	  {
+	     const char *error;
+	     int e_offset;
+	     
+	     trigger->pattern = pcre_compile( buf, 0, &error, &e_offset, NULL );
+	     
+	     if ( error )
+	       {
+		  trigger->pattern = NULL;
+		  abort_script( 0, "Pattern error, offset %d: %s.", e_offset, error );
+		  return 1;
+	       }
+	     
+	     trigger->extra = pcre_study( trigger->pattern, 0, &error );
+	     
+	     if ( error )
+	       script_warning( "Pattern study error: %s.", error );
+	  }
+	else
+	  trigger->message = strdup( buf );
+     }
+   
+   if ( **pos != '{' )
+     {
+	if ( trigger->name )
+	  abort_script( 1, "No body provided to trigger '%s', expected '{'.", trigger->name );
+	else
+	  abort_script( 1, "No body provided to a trigger, expected '{'." );
+	return 1;
+     }
+   
+   /* Find the matching '}'. */
+   size = 1, brackets = 1, within_string = 0;
+   while ( brackets )
+     {
+	switch ( *((*pos)+size) )
+	  {
+	   case '\"':
+	     within_string = !within_string; break;
+	   case '{':
+	     if ( !within_string ) brackets++; break;
+	   case '}':
+	     if ( !within_string ) brackets--; break;
+	   case 0:
+	     abort_script( 0, "Mismatched '{', unexpected End of Buffer." );
+	     return 1;
+	  }
+	size++;
+     }
+   
+   trigger->body = malloc( size + 1 );
+   memcpy( trigger->body, *pos, size );
+   trigger->body[size] = 0;
+   trigger->size = size;
+   *pos += size;
+   
+   return 0;
+}
+
+
+
 SCRIPT *load_script( const char *flname )
 {
    SCRIPT *script;
-   FUNCTION *function, *f;
    FILE *fl;
    char buf[4096], *body = NULL;
-   int bytes, size, i, brackets, within_string;
-   int aborted = 0, expect_ending, expect_argument;
+   int bytes, size;
+   int aborted = 0;
    char **old_pos, *position;
    
    fl = fopen( flname, "r" );
@@ -2532,134 +2927,29 @@ SCRIPT *load_script( const char *flname )
 	
 	if ( !strcmp( buf, "function" ) )
 	  {
-	     /* Format: function <name> [ [(] [arg1 [[,] arg2]... ] [)] ] { ... } */
-	     get_identifier( buf, 4096 );
-	     
-	     if ( !buf[0] )
+	     if ( load_script_function( script, 0 ) )
 	       {
-		  abort_script( 0, "Function name not provided." );
 		  aborted = 1;
 		  break;
-	       }
-	     
-	     function = calloc( 1, sizeof( FUNCTION ) );
-	     function->name = strdup( buf );
-	     
-	     if ( **pos == '(' )
-	       {
-		  expect_ending = 1;
-		  (*pos)++;
-		  skip_whitespace( );
-	       }
-	     else
-	       expect_ending = 0;
-	     
-	     function->args = calloc( 1, sizeof( char * ) );
-	     i = 0;
-	     
-	     /* Find all arguments. */
-	     while ( 1 )
-	       {
-		  if ( i && **pos == ',' )
-		    {
-		       expect_argument = 1;
-		       (*pos)++;
-		    }
-		  else
-		    expect_argument = 0;
-		  
-		  get_identifier( buf, 4096 );
-		  
-		  if ( !buf[0] )
-		    break;
-		  
-		  if ( expect_argument )
-		    expect_argument = 0;
-		  function->args = realloc( function->args, sizeof( char * ) * (i + 1) );
-		  function->args[i] = strdup( buf );
-		  i++;
-	       }
-	     
-	     function->args[i] = NULL;
-	     
-	     if ( expect_argument )
-	       {
-		  abort_script( 0, "Expected a function argument." );
-		  aborted = 1;
-		  break;
-	       }
-	     
-	     if ( expect_ending )
-	       {
-		  if ( **pos != ')' )
-		    {
-		       abort_script( 0, "Mismatched '(', expected ')' on argument list." );
-		       aborted = 1;
-		       break;
-		    }
-		  (*pos)++;
-		  skip_whitespace( );
 	       }
 	  }
+	
 	else if ( !strcmp( buf, "alias" ) )
 	  {
-	     /* Format: alias <name> { ... } */
-	     get_identifier( buf, 4096 );
-	     
-	     if ( !buf[0] )
+	     if ( load_script_function( script, 1 ) )
 	       {
-		  abort_script( 0, "Alias name not provided." );
 		  aborted = 1;
 		  break;
 	       }
-	     
-	     function = calloc( 1, sizeof( FUNCTION ) );
-	     function->name = strdup( buf );
-	     function->alias = 1;
 	  }
 	
-	if ( **pos != '{' )
+	else if ( !strcmp( buf, "trigger" ) )
 	  {
-	     abort_script( 0, "No body provided to function '%s', expected '{'.", function->name );
-	     aborted = 1;
-	     break;
-	  }
-	
-	/* Find the matching '}'. */
-	size = 1, brackets = 1, within_string = 0;
-	while ( brackets )
-	  {
-	     switch ( *((*pos)+size) )
+	     if ( load_script_trigger( script ) )
 	       {
-		case '\"':
-		  within_string = !within_string; break;
-		case '{':
-		  if ( !within_string ) brackets++; break;
-		case '}':
-		  if ( !within_string ) brackets--; break;
-		case 0:
-		  abort_script( 0, "Mismatched '{', unexpected End of Buffer." );
 		  aborted = 1;
 		  break;
 	       }
-	     size++;
-	  }
-	if ( aborted )
-	  break;
-	
-	function->body = malloc( size + 1 );
-	memcpy( function->body, *pos, size );
-	function->body[size] = 0;
-	function->size = size;
-	*pos += size;
-	
-	/* Link it. */
-	if ( !script->functions )
-	  script->functions = function;
-	else
-	  {
-	     for ( f = script->functions; f->next; f = f->next );
-	     f->next = function;
 	  }
      }
    

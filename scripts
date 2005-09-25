@@ -3,8 +3,30 @@
 //#script "Initial iScript"
 
 /* ToDo: disable, enable, local, unset, groups!, load
-   Triggers: pattern, everyline, prompt
  */
+
+
+// trigger 'name' prompt regex continue "pattern" {...}
+// trigger * {...}
+
+//trigger 't_name' regex "west" { show_at_prompt = "West here!"; }
+
+trigger 'prompt_info' prompt *
+{
+   if ( show_at_prompt )
+     {
+	C_B = "\e[1;34m";
+	C_0 = "\e[0;37m";
+	
+	echo "";
+	echo( C_0 + "Lookie: " + C_B + show_at_prompt + C_0 );
+	show_at_prompt = "";
+	show_prompt;
+	return;
+     }
+}
+
+   
 
 function init ( localvar )
 {
