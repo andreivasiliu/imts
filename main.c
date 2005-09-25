@@ -3569,7 +3569,7 @@ void print_line( LINE *line, int prompt )
      }
    else if ( prompt == 0 )
      {
-	if ( !line->gag_ending )
+	if ( !line->gag_ending || line->replace )
 	  current_line++;
 	if ( line->len && current_line == 1 && !sent_something )
 	  add_newline = 1;
@@ -3786,8 +3786,6 @@ void process_new_buffer( char *raw_buf, int bytes )
 	     
 	     if ( show_prompt_again )
 	       {
-		  debugf( "Here." );
-		  
 		  show_prompt_again = 0;
 		  
 		  sent_something = 1;

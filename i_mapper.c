@@ -5029,13 +5029,12 @@ void i_mapper_process_server_line( LINE *l )
    
    DEBUG( "i_mapper_process_server_line" );
    
-   if ( ( /*auto_walk &&*/ ( !cmp( "You cannot move that fast, slow down!", l->line ) ||
+   if ( ( auto_walk && ( !cmp( "You cannot move that fast, slow down!", l->line ) ||
 			 !cmp( "Now now, don't be so hasty!", l->line ) ) ) ||
 	( auto_bump && ( !cmp( "There is no exit in that direction.", l->line ) ) ) )
      {
 	l->gag_entirely = 1;
 	l->gag_ending = 1;
-//	clientf( "." );
 	gag_next_prompt = 1;
      }
    
