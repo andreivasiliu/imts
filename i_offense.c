@@ -2216,6 +2216,8 @@ void execute_single_command( char *returns, int max, int priority )
    if ( !ident[0] )
      return;
    
+   function = NULL;
+   
    /* Maybe it's a function. */
    for ( script = scripts; script; script = script->next )
      {
@@ -2847,7 +2849,7 @@ SCRIPT *load_script( const char *flname )
    SCRIPT *script;
    FILE *fl;
    char buf[4096], *body = NULL;
-   int bytes, size;
+   int bytes, size = 0;
    int aborted = 0;
    char **old_pos, *position;
    
@@ -2881,7 +2883,6 @@ SCRIPT *load_script( const char *flname )
    if ( !body )
      {
 	script_warning( "Empty script file." );
-	free( script );
 	return NULL;
      }
    
@@ -4013,6 +4014,7 @@ int offensive_process_client_aliases( char *line )
 	     return 1;
 	  }
 	
+	f = NULL;
 	for ( script = scripts; script; script = script->next )
 	  for ( f = script->functions; f; f = f->next )
 	    if ( !strcmp( name, f->name ) )
