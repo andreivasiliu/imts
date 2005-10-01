@@ -43250,6 +43250,7 @@ E: northeast 6229
 E: southeast 6230
 E: southwest 6197
 E: northwest 6223
+E: in 8610
 
 ROOM v6223
 Name: Approaching a small island.
@@ -43583,6 +43584,11 @@ Name: Abandoned animal den.
 Type: Natural underground
 E: out 6283
 UE: out north
+
+ROOM v8610
+Name: Within a fiery crater.
+E: out 6224
+SPE: -1 0 "touch pillar" "edge of a strange lake."
 
 
 
@@ -55854,6 +55860,33 @@ ROOM v8605
 Name: A natural cavern abode.
 Type: Natural underground
 E: out 8600
+
+
+
+AREA
+Name: Northern Plains.
+
+ROOM v8611
+Name: Before a lake of fire.
+E: north 8612
+SPE: -1 0 "agree shadow" "the platform of ice."
+
+ROOM v8612
+Name: Within a lake of fire.
+E: south 8611
+
+ROOM v8613
+Name: Upon a float of ice in the midst of a lake of fire.
+E: out 8611
+
+ROOM v8614
+Name: Upon a float of ice in the midst of a lake of fire.
+E: out 8615
+
+ROOM v8615
+Name: Before the Wrath Spire.
+E: south 8612
+E: in 8614
 
 
 
