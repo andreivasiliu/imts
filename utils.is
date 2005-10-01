@@ -1,0 +1,146 @@
+/* Various utility scripts, go in here. */
+
+script "Utility iScript";
+
+
+/* Pets, and everything about pets. */
+
+// From INFO HERE.
+trigger regex "^\"[a-zA-Z]+(\\d+)\" +a fluffy jambaali$" { pet_nr = arg "1"; }
+
+// From PETLIST.
+trigger "Your Pets in the Land" { pet_list = "yes"; }
+trigger prompt *
+{
+   if ( pet_list )
+     {
+	pet_list = "";
+	pet_nr = "";
+     }
+}
+trigger regex "^(\\d+)  [^*]+$"
+{
+   if ( pet_list )
+     {
+	pet_list = "";
+	pet_nr = arg "1";
+     }
+}
+
+alias pet
+{
+   cmd = arg "1";
+
+   if ( !pet_nr )
+     {
+	echo "Umm... I don't know of any pets yet, type PETLIST.";
+	show_prompt;
+	return;
+     }
+   
+   if ( cmd == "show" )
+     {
+	echo "Current pet: " + pet_nr;
+     }
+   else if ( cmd == "train" )
+     {
+	send "train " + pet_nr + " " + "$2 $3 $4";
+	return;
+     }
+   else if ( cmd == "skills" )
+     {
+	send "petskills " + pet_nr;
+	return;
+     }
+   else if ( cmd == "con" )
+     {
+	send "petskills " + pet_nr;
+	return;
+     }
+   else if ( cmd == "help" || !cmd )
+     {
+	echo "Possible commands:";
+	echo "  show, train, skills, con, help, <order>";
+     }
+   else
+     {
+	send "order " + pet_nr + " $1 $2 $3 $4 $5 $6";
+	echo "- order " + pet_nr + " $1 $2 $3 $4 $5 $6";
+	return;
+     }
+   
+   show_prompt;
+}
+
+
+
+
+/* Key Ring. */
+
+function get_key( name )
+{
+   if ( ( name == "bedroom" ) or ( name == "2" ) )
+     return "key104250";
+
+   if ( ( name == "house" ) or ( name == "1" ) )
+     return "key102502";
+   
+   return;
+}
+
+
+function opposite_of( dir )
+{ 
+   if ( ( dir == "n" ) or ( dir == "north" ) )
+     return "s";
+   if ( ( dir == "ne" ) or ( dir == "northeast" ) )
+     return "sw";
+   if ( ( dir == "e" ) or ( dir == "east" ) )
+     return "w";
+   if ( ( dir == "se" ) or ( dir == "southeast" ) )
+     return "nw";
+   if ( ( dir == "s" ) or ( dir == "south" ) )
+     return "n";
+   if ( ( dir == "sw" ) or ( dir == "southwest" ) )
+     return "ne";
+   if ( ( dir == "w" ) or ( dir == "west" ) )
+     return "e";
+   if ( ( dir == "nw" ) or ( dir == "northwest" ) )
+     return "se";
+   if ( ( dir == "u" ) or ( dir == "up" ) )
+     return "d";
+   if ( ( dir == "d" ) or ( dir == "down" ) )
+     return "u";
+   if ( ( dir == "in" ) )
+     return "out";
+   if ( ( dir == "out" ) )
+     return "in";
+   
+   return;
+}
+
+
+alias key
+{
+   /* $1 holds the key name, $2 holds the direction. */
+   
+   keyname = get_key( arg "1" );
+   dir = arg "2";
+   opp = opposite_of( dir );
+   
+   if ( !keyname || !opp )
+     {
+	echo "Huh?";
+	show_prompt;
+	return;
+     }
+   
+   send "get $keyname from pouch";
+   send "unlock door $dir";
+   send "open door $dir";
+   send dir;
+   send "close door $opp";
+   send "lock door $opp";
+   send "put $keyname in pouch";
+}
+
