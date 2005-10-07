@@ -32,6 +32,7 @@ typedef struct room_type_data ROOM_TYPE;
 typedef struct function_data FUNC_DATA;
 typedef struct color_data COLOR_DATA;
 typedef struct map_element MAP_ELEMENT;
+typedef struct element_data ELEMENT;
 
 /* Special exit structure. */
 struct exit_data
@@ -84,6 +85,8 @@ struct room_data
    short use_exit_instead[13];
    short exit_stops_mapping[13];
    /* End. */
+   
+   ELEMENT *tags;
    
    EXIT_DATA *special_exits;
    AREA_DATA *area;
@@ -200,4 +203,21 @@ struct color_data
    char *title_code;
    int length;
 };
+
+
+/* A link in a chain. This can be anything. */
+
+struct element_data
+{
+   ELEMENT *next;
+   ELEMENT *prev;
+   ELEMENT **first;
+   
+   /* One pointer value. */
+   void *p;
+   
+   /* And one integer value. */
+   int value;
+};
+
 

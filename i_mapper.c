@@ -166,6 +166,7 @@ int disable_areaname;
 int disable_mxp_title;
 int disable_mxp_map;
 int disable_autolink;
+int disable_sewer_grates;
 
 
 char *dash_command;
@@ -485,6 +486,32 @@ void check_pointed_by( ROOM_DATA *room )
 
 
 
+void link_element( ELEMENT *elem, ELEMENT **first )
+{
+   elem->next = *first;
+   if ( elem->next )
+     elem->next->prev = elem;
+   elem->prev = NULL;
+   
+   *first = elem;
+   elem->first = first;
+}
+
+
+
+void unlink_element( ELEMENT *elem )
+{
+   if ( elem->prev )
+     elem->prev->next = elem->next;
+   else
+     *(elem->first) = elem->next;
+   
+   if ( elem->next )
+     elem->next->prev = elem->prev;
+}
+
+
+
 void free_room( ROOM_DATA *room )
 {
    EXIT_DATA *e, *e_next;
@@ -507,8 +534,12 @@ void free_room( ROOM_DATA *room )
 	free_exit( e );
      }
    
+   while ( room->tags )
+     unlink_element( room->tags );
+   
    free( room );
 }
+
 
 
 void destroy_room( ROOM_DATA *room )
@@ -2464,6 +2495,7 @@ ROOM_TYPE *add_room_type( char *name, char *color, int c_in, int c_out, int m_sw
 int save_settings( char *file )
 {
    ROOM_DATA *r;
+   ELEMENT *tag;
    FILE *fl;
    int i;
    
@@ -2492,15 +2524,23 @@ int save_settings( char *file )
    fprintf( fl, "Disable-MXPTitle %s\r\n", disable_mxp_title ? "yes" : "no" );
    fprintf( fl, "Disable-MXPMap %s\r\n", disable_mxp_map ? "yes" : "no" );
    fprintf( fl, "Disable-AutoLink %s\r\n", disable_autolink ? "yes" : "no" );
+   fprintf( fl, "Disable-SewerGrates %s\r\n", disable_sewer_grates ? "yes" : "no" );
    
-   /* Save all landmarks. */
+   /* Save all room tags. */
    
-   fprintf( fl, "\r\n# Landmarks.\r\n\r\n" );
+   fprintf( fl, "\r\n# Room Tags.\r\n\r\n" );
    for ( r = world; r; r = r->next_in_world )
      {
-	if ( r->landmark )
-	  fprintf( fl, "# %s (%s)\r\nLand-Mark %d\r\n",
-		   r->name, r->area->name, r->vnum );
+	if ( r->tags )
+	  {
+	     /* Save them in reverse. */
+	     
+	     fprintf( fl, "# %s (%s)\r\n",
+		      r->name, r->area->name );
+	     for ( tag = r->tags; tag->next; tag = tag->next );
+	     for ( ; tag; tag = tag->prev )
+	       fprintf( fl, "Tag %d \"%s\"\r\n", r->vnum, (char *) tag->p );
+	  }
      }
    
    fclose( fl );
@@ -2543,7 +2583,7 @@ int load_settings( char *file )
 	
 	p = get_string( line, option, 256 );
 	
-	get_string( p, value, 1024 );
+	p = get_string( p, value, 1024 );
 	
 	if ( !strcmp( option, "Title-Color" ) ||
 	     !strcmp( option, "Title-Colour" ) )
@@ -2639,9 +2679,20 @@ int load_settings( char *file )
 	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
 	  }
 	
+	else if ( !strcmp( option, "Disable-SewerGrates" ) )
+	  {
+	     if ( !strcmp( value, "yes" ) )
+	       disable_sewer_grates = 1;
+	     else if ( !strcmp( value, "no" ) )
+	       disable_sewer_grates = 0;
+	     else
+	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
+	  }
+	
 	else if ( !strcmp( option, "Land-Mark" ) )
 	  {
 	     ROOM_DATA *room;
+	     ELEMENT *tag;
 	     int vnum = atoi( value );
 	     
 	     if ( !vnum )
@@ -2652,7 +2703,55 @@ int load_settings( char *file )
 		  if ( !room )
 		    debugf( "Warning! Unable to landmark room %d, it doesn't exist!", vnum );
 		  else
-		    room->landmark = 1;
+		    {
+		       /* Make sure it doesn't exist, first. */
+		       for ( tag = room->tags; tag; tag = tag->next )
+			 if ( !strcmp( "mark", (char *) tag->p ) )
+			   break;
+		       
+		       if ( !tag )
+			 {
+			    /* Link it. */
+			    tag = calloc( 1, sizeof( ELEMENT ) );
+			    tag->p = strdup( "mark" );
+			    link_element( tag, &room->tags );
+			 }
+		    }
+	       }
+	  }
+	
+	else if ( !strcmp( option, "Tag" ) )
+	  {
+	     ROOM_DATA *room;
+	     ELEMENT *tag;
+	     char buf[256];
+	     int vnum;
+	     
+	     vnum = atoi( value );
+	     get_string( p, buf, 256 );
+	     
+	     if ( !vnum || !buf[0] )
+	       debugf( "Parse error in file '%s', in a Tag line.", file );
+	     else
+	       {
+		  room = get_room( vnum );
+		  if ( !room )
+		    debugf( "Warning! Unable to tag room %d, it doesn't exist!", vnum );
+		  else
+		    {
+		       /* Make sure it doesn't exist, first. */
+		       for ( tag = room->tags; tag; tag = tag->next )
+			 if ( !strcmp( buf, (char *) tag->p ) )
+			   break;
+		       
+		       if ( !tag )
+			 {
+			    /* Link it. */
+			    tag = calloc( 1, sizeof( ELEMENT ) );
+			    tag->p = strdup( buf );
+			    link_element( tag, &room->tags );
+			 }
+		    }
 	       }
 	  }
 	
@@ -3464,13 +3563,26 @@ int load_map( char *file )
 	/* Deprecated. Here only for backwards compatibility. */
 	else if ( !strncmp( line, "Marked", 6 ) )
 	  {
+	     ELEMENT *tag;
+	     
 	     if ( section != 2 )
 	       {
 		  debugf( "Wrong section of a Marked statement." );
 		  return 1;
 	       }
 	     
-	     room->landmark = 1;
+	     /* Make sure it doesn't exist, first. */
+	     for ( tag = room->tags; tag; tag = tag->next )
+	       if ( !strcmp( "tag", (char *) tag->p ) )
+		 break;
+	     
+	     if ( !tag )
+	       {
+		  /* Link it. */
+		  tag = calloc( 1, sizeof( ELEMENT ) );
+		  tag->p = strdup( buf );
+		  link_element( tag, &room->tags );
+	       }
 	  }
 	
 	else if ( !strncmp( line, "T: ", 3 ) )
@@ -3677,12 +3789,8 @@ void path_finder( )
 	     for ( i = 1; dir_name[i]; i++ )
 	       {
 		  /* Normal exits. */
-		  if ( room->exits[i] && !room->exits[i]->area->disabled &&
-		       room->exits[i]->exits[reverse_exit[i]] == room )
-		    add_openlist( room, room->exits[i], reverse_exit[i] );
-		  /* Unidirectional exits leading here. */
-		  else if ( room->reverse_exits[i] && !room->exits[i] &&
-			    room->reverse_exits[i]->exits[i] == room )
+		   if ( room->reverse_exits[i] &&
+			room->reverse_exits[i]->exits[i] == room )
 		    {
 		       if ( !room->more_reverse_exits[i] )
 			 add_openlist( room, room->reverse_exits[i], i );
@@ -3696,16 +3804,7 @@ void path_finder( )
 		    }
 	       }
 	     
-	     /*	for ( i = 1; dir_name[i]; i++ )
-	      {
-	      if ( room->reverse_exits[i] && !room->exits[i] &&
-	      room->reverse_exits[i]->exits[i] == room )
-	      {
-	      add_openlist( room, room->reverse_exits[i], i );
-	      }
-	      }*/
-	     
-	     /* Special exits, version 2. (ugly remix) */
+	     /* Special exits. */
 	     if ( room->pointed_by )
 	       {
 		  for ( r = world; r; r = r->next_in_world )
@@ -3714,7 +3813,8 @@ void path_finder( )
 		       
 		       for ( spexit = r->special_exits; spexit; spexit = spexit->next )
 			 {
-			    if ( spexit->to == room )
+			    if ( spexit->to == room &&
+				 ( !disable_sewer_grates || !spexit->command || strcmp( spexit->command, "enter grate" ) ) )
 			      {
 				 found = 1;
 				 break;
@@ -5562,16 +5662,18 @@ void do_map_load( char *arg )
 void do_map_path( char *arg )
 {
    ROOM_DATA *room;
+   ELEMENT *tag;
    char buf[256];
    
    /* Force an update of the floating map. */
    last_room = NULL;
    
-   if ( !isdigit( *(arg) ) && *(arg) != 'n' )
+   if ( !arg[0] )
      {
 	init_openlist( NULL );
 	path_finder( );
 	clientfr( "Map directions cleared." );
+	clientfr( "Usage: map path [near] <vnum/tag> [[near] <vnum2/tag2>]..." );
 	
 	return;
      }
@@ -5590,16 +5692,16 @@ void do_map_path( char *arg )
 	     neari = 1;
 	  }
 	
-	room = get_room( atoi( buf ) );
-	
-	if ( !room )
+	/* Vnum. */
+	if ( isdigit( buf[0] ) )
 	  {
-	     clientff( C_R "[No room with the vnum '%s' was found.]\r\n" C_0, buf );
-	     init_openlist( NULL );
-	     return;
-	  }
-	else
-	  {
+	     if ( !( room = get_room( atoi( buf ) ) ) )
+	       {
+		  clientff( C_R "[No room with the vnum '%s' was found.]\r\n" C_0, buf );
+		  init_openlist( NULL );
+		  return;
+	       }
+	     
 	     if ( !neari )
 	       init_openlist( room );
 	     else
@@ -5607,6 +5709,34 @@ void do_map_path( char *arg )
 		  for ( neari = 1; dir_name[neari]; neari++ )
 		    if ( room->exits[neari] )
 		      init_openlist( room->exits[neari] );
+	       }
+	     
+	  }
+	/* Tag. */
+	else
+	  {
+	     int found = 0;
+	     
+	     for ( room = world; room; room = room->next_in_world )
+	       for ( tag = room->tags; tag; tag = tag->next )
+		 if ( !strcmp( buf, (char *) tag->p ) )
+		   {
+		      if ( !neari )
+			init_openlist( room );
+		      else
+			{
+			   for ( neari = 1; dir_name[neari]; neari++ )
+			     if ( room->exits[neari] )
+			       init_openlist( room->exits[neari] );
+			}
+		      found = 1;
+		   }
+	     
+	     if ( !found )
+	       {
+		  clientff( C_R "[No room with the tag '%s' was found.]\r\n" C_0, buf );
+		  init_openlist( NULL );
+		  return;
 	       }
 	  }
      }
@@ -5857,6 +5987,9 @@ void do_map_config( char *arg )
 	  { "autolink", &disable_autolink, 
 	       "Auto-linking disabled.",
 	       "Auto-linking enabled." },
+	  { "sewer_grates", &disable_sewer_grates, 
+	       "Pathfinding through sewer grates disabled.",
+	       "Pathfinding through sewer grates enabled." },
 	
 	  { NULL, NULL, NULL, NULL }
      };
@@ -5900,16 +6033,17 @@ void do_map_config( char *arg )
      }
    
    clientfr( "Commands:" );
-   clientf( " map config save      - Save all settings.\r\n"
-	    " map config load      - Reload the previously saved settings.\r\n"
-	    " map config swim      - Toggle swimming.\r\n"
-	    " map config wholist   - Parse and replace the 'who' list.\r\n"
-	    " map config alertness - Parse and replace alertness messages.\r\n"
-	    " map config locate    - Append vnums to various locating abilities.\r\n"
-	    " map config showarea  - Show the current area after a room title.\r\n"
-	    " map config title_mxp - Mark the room title with MXP tags.\r\n"
-	    " map config map_mxp   - Use MXP tags on map generation.\r\n"
-	    " map config autolink  - Link rooms automatically when mapping.\r\n" );
+   clientf( " map config save         - Save all settings.\r\n"
+	    " map config load         - Reload the previously saved settings.\r\n"
+	    " map config swim         - Toggle swimming.\r\n"
+	    " map config wholist      - Parse and replace the 'who' list.\r\n"
+	    " map config alertness    - Parse and replace alertness messages.\r\n"
+	    " map config locate       - Append vnums to various locating abilities.\r\n"
+	    " map config showarea     - Show the current area after a room title.\r\n"
+	    " map config title_mxp    - Mark the room title with MXP tags.\r\n"
+	    " map config map_mxp      - Use MXP tags on map generation.\r\n"
+	    " map config autolink     - Link rooms automatically when mapping.\r\n"
+	    " map config sewer_grates - Toggle pathfinding through sewer grates.\r\n" );
 }
 
 
@@ -6691,6 +6825,19 @@ void do_room_look( char *arg )
    sprintf( buf, "Type: %s.  Underwater: %s.  Pointed by: %s.", room->room_type->name,
 	    room->underwater ? "Yes" : "No", room->pointed_by ? "Yes" : "No" );
    clientfr( buf );
+   if ( room->tags )
+     {
+	ELEMENT *tag;
+	
+	sprintf( buf, "Tags:" );
+	for ( tag = room->tags; tag; tag = tag->next )
+	  {
+	     strcat( buf, " " );
+	     strcat( buf, (char *) tag->p );
+	  }
+	strcat( buf, "." );
+	clientfr( buf );
+     }
    
    for ( i = 1; dir_name[i]; i++ )
      {
@@ -6702,20 +6849,34 @@ void do_room_look( char *arg )
 	     else
 	       lngth[0] = 0;
 	     
-	     sprintf( buf, "  %s: (%d) %s%s\r\n", dir_name[i],
+	     clientff( "  %s: (%d) %s%s\r\n", dir_name[i],
 		      room->exits[i]->vnum,
 		      room->exits[i]->name, lngth );
-	     clientf( buf );
 	  }
 	else if ( room->detected_exits[i] )
 	  {
 	     if ( room->locked_exits[i] )
-	       sprintf( buf, "  %s: locked exit.\r\n", dir_name[i] );
+	       clientff( "  %s: locked exit.\r\n", dir_name[i] );
 	     else
-	       sprintf( buf, "  %s: unlinked exit.\r\n", dir_name[i] );
-	     clientf( buf );
+	       clientff( "  %s: unlinked exit.\r\n", dir_name[i] );
 	  }
      }
+   
+   /* Debugging.
+   sprintf( buf, "PF-Cost: %d. PF-Direction: %s.", room->pf_cost,
+	    room->pf_direction ? dir_name[room->pf_direction] : "none" );
+   clientfr( buf );
+   sprintf( buf, "PF-Parent: %s", room->pf_parent ? room->pf_parent->name : "none" );
+   clientfr( buf );
+   
+   for ( i = 1; dir_name[i]; i++ )
+     {
+	if ( room->reverse_exits[i] )
+	  clientff( "  %s: %s\r\n", dir_name[i], room->reverse_exits[i]->name );
+	if ( room->more_reverse_exits[i] )
+	  clientff( "  %s: " C_D "(more)\r\n" C_0, dir_name[i] );
+     }
+    */
 }
 
 
@@ -6823,46 +6984,6 @@ void do_room_underw( char *arg )
      clientfr( "Current room set as an underwater place." );
    else
      clientfr( "Current room set as normal, with a nice sky (or roof) above." );
-}
-
-
-
-void do_room_mark( char *arg )
-{
-   ROOM_DATA *room;
-   char buf[256];
-   
-   if ( arg[0] && isdigit( arg[0] ) )
-     {
-	if ( !( room = get_room( atoi( arg ) ) ) )
-	  {
-	     clientfr( "No room with that vnum found." );
-	     return;
-	  }
-     }
-   else
-     {
-	if ( current_room )
-	  room = current_room;
-	else
-	  {
-	     clientfr( "No current room set." );
-	     return;
-	  }
-     }
-   
-   room->landmark = room->landmark ? 0 : 1;
-   
-   sprintf( buf, "Landmark on '%s' (%d) ", room->name, room->vnum );
-   
-   if ( room->landmark )
-     strcat( buf, "set." );
-   else
-     strcat( buf, "cleared." );
-   
-   clientfr( buf );
-   
-   clientfr( "Using 'map config save' will make it permanent." );
 }
 
 
@@ -7064,8 +7185,25 @@ void do_room_merge( char *arg )
 		  r->exit_stops_mapping[i] = current_room->exit_stops_mapping[i];
 	       }
 	  }
-	r->landmark |= current_room->landmark;
 	r->underwater |= current_room->underwater;
+	
+	/* Add all missing tags. */
+	while ( current_room->tags )
+	  {
+	     ELEMENT *tag;
+	     
+	     /* Look if it already exists. */
+	     for ( tag = r->tags; tag; tag = tag->next )
+	       if ( !strcmp( (char *) current_room->tags->p, (char *) tag->p ) )
+		 break;
+	     if ( !tag )
+	       {
+		  tag = calloc( 1, sizeof( ELEMENT ) );
+		  tag->p = current_room->tags->p;
+		  link_element( tag, &r->tags );
+		  unlink_element( current_room->tags );
+	       }
+	  }
 	
 	clientff( C_R "[Rooms " C_G "%d" C_R " and " C_G "%d" C_R " merged into " C_G "%d" C_R ".]\r\n" C_0,
 		  r->vnum, current_room->vnum, r->vnum );
@@ -7073,6 +7211,92 @@ void do_room_merge( char *arg )
 	current_room = r;
 	current_area = r->area;
      }
+}
+
+
+
+
+void do_room_tag( char *arg )
+{
+   ROOM_DATA *room;
+   ELEMENT *tag;
+   char buf[256];
+   int vnum;
+   
+   arg = get_string( arg, buf, 256 );
+   
+   if ( ( vnum = atoi( buf ) ) )
+     {
+	room = get_room( vnum );
+	if ( !room )
+	  {
+	     clientfr( "No room with that vnum found." );
+	     return;
+	  }
+	
+	arg = get_string( arg, buf, 256 );
+     }
+   else if ( !( room = current_room ) )
+     {
+	clientfr( "No current room set." );
+	return;
+     }
+   
+   if ( !buf[0] )
+     {
+	clientfr( "Usage: room tag [vnum] <tagname>" );
+	return;
+     }
+   
+   /* Look if it already exists. */
+   for ( tag = room->tags; tag; tag = tag->next )
+     if ( !strcmp( buf, (char *) tag->p ) )
+       break;
+   
+   if ( tag )
+     {
+	/* Unlink it. */
+	free( tag->p );
+	unlink_element( tag );
+     }
+   else
+     {
+	/* Link it. */
+	tag = calloc( 1, sizeof( ELEMENT ) );
+	tag->p = strdup( buf );
+	link_element( tag, &room->tags );
+     }
+   
+   clientfr( room->name );
+   clientff( C_R "[Tags in v" C_G "%d" C_R ": ", room->vnum );
+   if ( room->tags )
+     {
+	clientf( (char *) room->tags->p );
+	for ( tag = room->tags->next; tag; tag = tag->next )
+	  clientff( ", %s", (char *) tag->p );
+     }
+   else
+     clientf( C_D "(none)" C_R );
+   clientf( ".]\r\n" C_0 );
+}
+
+
+
+void do_room_mark( char *arg )
+{
+   char buf[256];
+   char buf2[256];
+   
+   get_string( arg, buf, 256 );
+   
+   if ( isdigit( buf[0] ) )
+     sprintf( buf2, "%s mark", buf );
+   else
+     sprintf( buf2, "mark" );
+   
+   do_room_tag( buf2 );
+   
+   clientfr( "Using 'map config save' will make it permanent." );
 }
 
 
@@ -7647,11 +7871,18 @@ void do_landmarks( char *arg )
 {
    AREA_DATA *area;
    ROOM_DATA *room;
+   ELEMENT *tag;
    char buf[256];
+   char name[256];
    int first;
    int found = 0;
    
-   clientfr( "Landmarks throughout the world:" );
+   get_string( arg, name, 256 );
+   
+   if ( !name[0] )
+     clientfr( "Landmarks throughout the world:" );
+   else
+     clientfr( "Tagged rooms:" );
    
    for ( area = areas; area; area = area->next )
      {
@@ -7659,7 +7890,11 @@ void do_landmarks( char *arg )
 	
 	for ( room = area->rooms; room; room = room->next_in_area )
 	  {
-	     if ( !room->landmark )
+	     for ( tag = room->tags; tag; tag = tag->next )
+	       if ( !strcmp( (char *) tag->p, name[0] ? name : "mark" ) )
+		 break;
+	     
+	     if ( !tag )
 	       continue;
 	     
 	     if ( !found )
@@ -7682,7 +7917,12 @@ void do_landmarks( char *arg )
      }
    
    if ( !found )
-     clientf( "None defined, use the 'room mark' command to add some." );
+     {
+	if ( !name[0] )
+	  clientf( "None defined, use the 'room mark' command to add some." );
+	else
+	  clientf( "None found, check your spelling or add some with 'room tag'." );
+     }
    
    clientf( "\r\n" );
 }
@@ -7701,8 +7941,11 @@ void do_go( char *arg )
      dash_command = "dash ";
    else if ( !strcmp( arg, "sprint" ) )
      dash_command = "sprint ";
-   else
-     dash_command = NULL;
+   else if ( arg[0] )
+     {
+	clientfr( "Usage: go [dash/sprint]" );
+	return;
+     }
    
    go_next( );
    clientf( "\r\n" );
@@ -7826,9 +8069,10 @@ FUNC_DATA cmd_table[] =
      { "destroy",	do_room_destroy,CMD_ROOM },
      { "list",		do_room_list,	CMD_ROOM },
      { "underwater",	do_room_underw, CMD_ROOM },
+     { "merge",		do_room_merge,	CMD_ROOM },
+     { "tag",		do_room_tag,	CMD_ROOM },
      { "mark",		do_room_mark,	CMD_ROOM },
      { "types",		do_room_types,	CMD_ROOM },
-     { "merge",		do_room_merge,	CMD_ROOM },
    
    /* Exit commands. */
      { "help",		do_exit_help,	CMD_EXIT },
