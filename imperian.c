@@ -1422,8 +1422,8 @@ void balance_reset( TIMER *self )
 	     failed_herbs_commands++;
 	     clientfr( C_D "Herbs balance reset." C_R );
 	  }
-	show_prompt( );
 	waiting_for_herbs_command = 0;
+	show_prompt( );
      }
    else if ( self->data[0] == 3 )
      {
@@ -1439,8 +1439,8 @@ void balance_reset( TIMER *self )
 	     failed_salve_commands++;
 	     clientfr( C_D "Salve balance reset." C_R );
 	  }
-	show_prompt( );
 	waiting_for_salve_command = 0;
+	show_prompt( );
      }
    else if ( self->data[0] == 4 )
      {
@@ -1457,8 +1457,8 @@ void balance_reset( TIMER *self )
 	     pipes_lit = 0;
 	     clientfr( C_D "Pipe balance reset." C_R );
 	  }
-	show_prompt( );
 	waiting_for_smoke_command = 0;
+	show_prompt( );
      }
    else if ( self->data[0] == 5 )
      {
@@ -1473,8 +1473,8 @@ void balance_reset( TIMER *self )
 	     failed_healing_commands++;
 	     clientfr( C_D "Healing balance reset." C_R );
 	  }
-	show_prompt( );
 	waiting_for_healing_command = 0;
+	show_prompt( );
      }
    else if ( self->data[0] == 6 )
      {
@@ -1491,8 +1491,8 @@ void balance_reset( TIMER *self )
 	     failed_toadstool_commands++;
 	     clientfr( C_D "Toadstool balance reset." C_R );
 	  }
-	show_prompt( );
 	waiting_for_toadstool_command = 0;
+	show_prompt( );
      }
    else if ( self->data[0] == 7 )
      {
@@ -3318,11 +3318,11 @@ void reset_special_aff( TIMER *self )
    if ( afflictions[self->data[0]].tried &&
 	afflictions[self->data[0]].afflicted )
      {
+	afflictions[self->data[0]].tried = 0;
+	afflictions[self->data[0]].afflicted = 1;
 	clientff( "\r\n" C_R "[" C_D "Resetting affliction '" C_R "%s'" C_D "." C_R "]" C_0 "\r\n",
 		  afflictions[self->data[0]].name );
 	show_prompt( );
-	afflictions[self->data[0]].tried = 0;
-	afflictions[self->data[0]].afflicted = 1;
      }
 }
 
@@ -3649,9 +3649,8 @@ void cure_afflictions( void )
 
 
 
-void list_afflictions( void )
+void list_afflictions( )
 {
-   char buf[256];
    int i;
    int nr = 0;
    int cure, can_cure;
@@ -3663,7 +3662,7 @@ void list_afflictions( void )
 	if ( afflictions[i].afflicted )
 	  {
 	     if ( !nr )
-	       clientf( C_R "[Afflictions:]\r\n" C_0 );
+	       prefix( C_R "[Afflictions:]\r\n" C_0 );
 	     nr++;
 	     
 	     if ( afflictions[i].salve_cure )
@@ -3697,16 +3696,15 @@ void list_afflictions( void )
 	     else
 	       cure = 0, can_cure = 1;
 	     
-	     sprintf( buf, C_R "[" C_D "Afflicted by: [%s%s" C_D "]  Cure: ["
+	     prefixf( C_R "[" C_D "Afflicted by: [%s%s" C_D "]  Cure: ["
 		      "%s%s" C_D "] (" C_W "`%d" C_D ")" C_R "]\r\n" C_0,
 		      i == AFF_SOMETHING ? C_Y : C_R, afflictions[i].name,
 		      afflictions[i].tried ? C_R : ( !can_cure ? C_B : C_R ),
 		      cures[cure].name, nr );
-	     clientf( buf );
 	  }
      }
    if ( !nr )
-     clientf( C_R "[No more known afflictions on you.]\r\n" C_0 );
+     prefix( C_R "[No more known afflictions on you.]\r\n" C_0 );
 }
 
 
@@ -4045,9 +4043,9 @@ void reset_defence( TIMER *self )
 {
    clientff( "\r\n" C_R "[" C_D "Resetting defence '" C_G "%s'" C_D "." C_R "]" C_0 "\r\n",
 	     defences[self->data[0]].name );
-   show_prompt( );
    defences[self->data[0]].on = 0;
    defences[self->data[0]].tried = 0;
+   show_prompt( );
 }
 
 

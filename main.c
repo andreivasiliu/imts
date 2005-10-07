@@ -2330,12 +2330,18 @@ void shrink_buffer( char **buffer, char **pointer, char **max )
 
 void prefix( char *string )
 {
-   add_buffer( string, &prefix_buffer, &prefix_p, &prefix_max );
+   if ( current_new_line )
+     add_buffer( string, &prefix_buffer, &prefix_p, &prefix_max );
+   else
+     clientf( string );
 }
 
 void suffix( char *string )
 {
-   add_buffer( string, &suffix_buffer, &suffix_p, &suffix_max );
+   if ( current_new_line )
+     add_buffer( string, &suffix_buffer, &suffix_p, &suffix_max );
+   else
+     clientf( string );
 }
 
 void replace( char *string )

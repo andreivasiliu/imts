@@ -8,10 +8,17 @@ IMTS-unstable
 - Rat/spider worth parsing is working again, also added caiman, serpents
   and locusts.
 (IMapper:)
-- Autolinking added, and enabled by default.
+- Autolinking added, and enabled by default. Added an option to disable it.
 - Floating MXP map window added.
 - Duplicate room detection while mapping, added.
 - Merging of two identic rooms (duplicate) into one, added.
+- Most Pathfinder bugs are now gone. This will mostly affect the wings room
+  and Caanae sewer entrances.
+- Added an option to disable pathfinding through sewers.
+- Added room tags, and replaced the landmarks system with it.
+- The 'landmarks' command can be used to list all rooms with a tag.
+- 'map path' works with tags instead of vnums too. If more rooms have a
+  given tag, 'go' will go to the nearest.
 (IOffense:)
 - Script block/statement parser added, that supports, in order of creation...
 - C-like comments and spacing.
