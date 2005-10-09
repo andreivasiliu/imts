@@ -216,6 +216,8 @@ int AFF_ADDICTION;
 int AFF_RECKLESSNESS;
 int AFF_MASOCHISM;
 int AFF_SOMETHING;
+int AFF_LEFTLEG_PARALYSIS;
+int AFF_RIGHTLEG_PARALYSIS;
 
 /* Here we register our functions. */
 
@@ -1231,6 +1233,10 @@ void afflictions_table_update( char *str )
      AFF_MASOCHISM = i;
    else if ( !strcmp( afflictions[i].name, "something" ) )
      AFF_SOMETHING = i;
+   else if ( !strcmp( afflictions[i].name, "left-leg-paralysis" ) )
+     AFF_LEFTLEG_PARALYSIS = i;
+   else if ( !strcmp( afflictions[i].name, "right-leg-paralysis" ) )
+     AFF_RIGHTLEG_PARALYSIS = i;
 }
 
 
@@ -3584,6 +3590,7 @@ void cure_afflictions( void )
 	  
 	  if ( cure_with_focus && !balance_focus &&
 	       afflictions[aff].focus &&
+	       !afflictions[AFF_IMPATIENCE].afflicted &&
 	       waiting_for_herbs_command != aff &&
 	       waiting_for_salve_command != aff &&
 	       waiting_for_smoke_command != aff &&
@@ -3591,7 +3598,7 @@ void cure_afflictions( void )
 	       waiting_for_tree_command != aff )
 	    {
 	       clientf( C_G "(" C_W "focus" C_G ") " C_0 );
-	       send_to_server_d( "focus\r\n" );
+	       send_to_server( "focus\r\n" );
 	       waiting_for_focus_command = aff;
 	       prompt_newline = 1;
 	       balance_focus = 1;
@@ -4827,7 +4834,10 @@ void imperian_process_server_prompt_action( char *line )
 	/* Stand up and fight! */
    if ( !writhing && 
 	partdamage[PART_LEFTLEG] == PART_HEALED &&
-	partdamage[PART_RIGHTLEG] == PART_HEALED )
+	partdamage[PART_RIGHTLEG] == PART_HEALED &&
+	!afflictions[AFF_PARALYSIS].afflicted &&
+	!afflictions[AFF_LEFTLEG_PARALYSIS].afflicted &&
+	!afflictions[AFF_RIGHTLEG_PARALYSIS].afflicted )
      {
 	int unable_to_stand = 0;
 	
