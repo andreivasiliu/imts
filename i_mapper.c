@@ -7201,8 +7201,11 @@ void do_room_merge( char *arg )
 		  tag = calloc( 1, sizeof( ELEMENT ) );
 		  tag->p = current_room->tags->p;
 		  link_element( tag, &r->tags );
-		  unlink_element( current_room->tags );
 	       }
+	     else
+	       free( current_room->tags->p );
+	     
+	     unlink_element( current_room->tags );
 	  }
 	
 	clientff( C_R "[Rooms " C_G "%d" C_R " and " C_G "%d" C_R " merged into " C_G "%d" C_R ".]\r\n" C_0,
