@@ -88,8 +88,6 @@ void clientfr( char *string );
 void clientff( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
 void send_to_server( char *string );
 void show_prompt( );
-int gag_line( int gag );
-int gag_prompt( int gag );
 void mxp( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
 int mxp_tag( int tag );
 
@@ -183,8 +181,6 @@ char send_buffer[65536];
 int buffer_output;
 int buffer_send_to_server;
 int safe_mode;
-int gag_line_value;
-int gag_prompt_value;
 int last_timer;
 int sent_something;
 int current_line;
@@ -371,8 +367,6 @@ void *get_function( char *name )
 	  { "clientff", clientff },
 	  { "send_to_server", send_to_server },
 	  { "show_prompt", show_prompt },
-	  { "gag_line", gag_line },
-	  { "gag_prompt", gag_prompt },
 	  { "mxp", mxp },
 	  { "mxp_tag", mxp_tag },
 	/* Utility */
@@ -1269,25 +1263,6 @@ void strip_colors( char *string, char *dest )
 
 
 
-int gag_line( int gag )
-{
-   if ( gag != -1 )
-     current_new_line->gag_entirely = gag;
-   
-   return current_new_line->gag_entirely;
-}
-
-
-int gag_prompt( int gag )
-{
-   if ( gag != -1 )
-     gag_prompt_value = gag;
-   
-   return gag_prompt_value;
-}
-
-
-
 void module_mxp_enabled( )
 {
    MODULE *module;
@@ -1311,109 +1286,12 @@ void restart_mccp( TIMER *self )
 
 
 
-void module_process_server_line( char *rawline, char *colorless, char *stripped )
+void module_process_server_line( LINE *line )
 {
-   MODULE *module;
    char mccp_stop[] = { IAC, DONT, TELOPT_COMPRESS2, 0 };
+   MODULE *module;
    
    DEBUG( "module_process_server_line" );
-   
-   /* Our own triggers, to start/stop MCCP when needed. */
-   if ( compressed &&
-	( !cmp( "you are out of the land.", rawline ) ) )
-     {
-	add_timer( "restart_mccp", 20, restart_mccp, 0, 0, 0 );
-	send_to_server( mccp_stop );
-     }
-   if ( !compressed && !disable_mccp &&
-	( !cmp( "You cease your praying.", rawline ) ) )
-     {
-	del_timer( "restart_mccp" );
-	restart_mccp( NULL );
-     }
-#if defined( FOR_WINDOWS )
-   if ( compressed &&
-	( !cmp( "You enter the editor.", rawline ) ||
-	  !cmp( "You begin writing.", rawline ) ) )
-     {
-	char mccp_start[] = { IAC, DO, TELOPT_COMPRESS2, 0 };
-	
-	/* Only briefly, ATCP over MCCP is very buggy. */
-	verbose_mccp = 0;
-	debugf( "Temporarely stopping MCCP." );
-	send_to_server( mccp_stop );
-	send_to_server( mccp_start );
-     }
-#endif
-	
-   for ( module = modules; module; module = module->next )
-     {
-	if ( module->process_server_line_prefix )
-	  (module->process_server_line_prefix)( colorless, stripped, rawline );
-     }
-   
-   /* Must also gag the new line, don't set to 0 here. */
-   if ( !gag_line_value )
-     {
-	/* Add an extra \n, so the line won't come right after the prompt. */
-	if ( colorless[0] && current_line == 1 && !sent_something )
-	  clientf( "\r\n" );
-	
-	clientf( rawline );
-     }
-   
-   for ( module = modules; module; module = module->next )
-     {
-	if ( module->process_server_line_suffix )
-	  (module->process_server_line_suffix)( colorless, stripped, rawline );
-     }
-   
-   /*
-    * Print the newline after the processing, so process_server_line
-    * can append anything it wants.
-    */
-   if ( !gag_line_value )
-     clientf( "\r\n" );
-   else
-     gag_line_value = 0;
-}
-
-
-void module_process_server_prompt_informative( char *rawline, char *colorless )
-{
-   MODULE *module;
-   
-   DEBUG( "module_process_server_prompt_informative" );
-   
-   for ( module = modules; module; module = module->next )
-     {
-	if ( module->process_server_prompt_informative )
-	  (module->process_server_prompt_informative)( colorless, rawline );
-     }
-}
-
-
-void module_process_server_prompt_action( char *line )
-{
-   MODULE *module;
-   
-   DEBUG( "module_process_server_prompt_action" );
-   
-   for ( module = modules; module; module = module->next )
-     {
-	if ( module->process_server_prompt_action )
-	  (module->process_server_prompt_action)( line );
-     }
-}
-
-
-
-void module_process_new_server_line( LINE *line )
-{
-   char mccp_stop[] = { IAC, DONT, TELOPT_COMPRESS2, 0 };
-   MODULE *module;
-   
-   DEBUG( "module_process_new_server_line" );
    
    current_new_line = line;
    clientf_modifies_suffix = 1;
@@ -1456,11 +1334,11 @@ void module_process_new_server_line( LINE *line )
 }
 
 
-void module_process_new_server_prompt( LINE *line )
+void module_process_server_prompt( LINE *line )
 {
    MODULE *module;
    
-   DEBUG( "module_process_new_server_prompt" );
+   DEBUG( "module_process_server_prompt" );
    
    current_new_line = line;
    clientf_modifies_suffix = 1;
@@ -2573,27 +2451,37 @@ void update_timers( TIMER *except )
 
 void check_timers( )
 {
-   TIMER *t, *t_next;
+   TIMER *t;
    
    update_timers( NULL );
    
    /* Check the timers. */
-   for ( t = timers; t; t = t_next )
+   while ( 1 )
      {
-	t_next = t->next;
+	/* A While loop is much safer than t_next = t->next. */
 	
-	if ( t->delay <= 0 )
+	for ( t = timers; t; t = t->next )
 	  {
-	     TIMER temp;
-	     
-	     /* Remove first, execute later. Why? Because it may be added again. */
-	     temp = *t;
-	     temp.next = NULL;
-	     remove_timer( t );
-	     
-	     if ( temp.callback )
-	       (*temp.callback)( &temp );
+	     if ( t->delay <= 0 )
+	       {
+		  TIMER temp;
+		  
+		  /* Remove first, execute later. Why? Because it may be added again. */
+		  temp = *t;
+		  temp.next = NULL;
+		  remove_timer( t );
+		  
+		  if ( temp.callback )
+		    (*temp.callback)( &temp );
+		  
+		  break;
+	       }
 	  }
+	     
+	if ( t )
+	  continue;
+	else
+	  break;
      }
 }
 
@@ -3294,16 +3182,9 @@ void process_client_line( char *buf )
 	       {
 		  clientfb( "Impossible in safe mode." );
 	       }
-	     /*else if ( !strcmp( buf+6, "prompt" ) )
-	       {
-	      * Not really possible, since last_prompt contains the user built one.
-		  clientfb( "Processing the last prompt again." );
-		  module_process_server_prompt_informative( last_prompt );
-		  module_process_server_prompt_action( last_prompt );
-	       }*/
 	     else
 	       {
-		  void process_new_buffer( char *buf, int bytes );
+		  void process_buffer( char *buf, int bytes );
 		  char buf2[4096], *b = buf2;
 		  char *p = buf + 6;
 		  
@@ -3322,9 +3203,7 @@ void process_client_line( char *buf )
 		  *b = 0;
 		  
 		  clientfb( "Processing line.." );
-		  process_new_buffer( buf2, strlen( buf2 ) );
-		  /* It's safe to assume it's all stripped and colorless. */
-//		  module_process_server_line( buf+6, buf+6, buf+6 );
+		  process_buffer( buf2, strlen( buf2 ) );
 	       }
 	  }
 	else if ( !strcmp( buf, "`echo" ) )
@@ -3575,7 +3454,7 @@ void print_line( LINE *line, int prompt )
      }
    else if ( prompt == 0 )
      {
-	if ( !line->gag_ending || line->replace )
+	if ( !line->gag_ending || line->replace || line->suffix )
 	  current_line++;
 	if ( line->len && current_line == 1 && !sent_something )
 	  add_newline = 1;
@@ -3688,7 +3567,7 @@ void clean_line( LINE *line )
 
 
 
-void process_new_buffer( char *raw_buf, int bytes )
+void process_buffer( char *raw_buf, int bytes )
 {
    char buf[INPUT_BUF];
 //   char *ending;
@@ -3697,7 +3576,7 @@ void process_new_buffer( char *raw_buf, int bytes )
    struct timeval tvold, tvnew, tvold2, tvnew2;
    static time_t t1, t2, t3, t4;
    
-   DEBUG( "process_new_buffer" );
+   DEBUG( "process_buffer" );
    
    processing = 1;
    
@@ -3778,9 +3657,9 @@ void process_new_buffer( char *raw_buf, int bytes )
 	     
 	     /* Let the modules do some processing on it, then print it. */
 	     if ( prompt )
-	       module_process_new_server_prompt( &line );
+	       module_process_server_prompt( &line );
 	     else
-	       module_process_new_server_line( &line );
+	       module_process_server_line( &line );
 	     
 	     print_line( &line, prompt );
 	     
@@ -3800,7 +3679,7 @@ void process_new_buffer( char *raw_buf, int bytes )
 		  line.prefix = prefix_buffer;
 		  line.suffix = suffix_buffer;
 		  line.replace = replace_buffer;
-		  module_process_new_server_prompt( &line );
+		  module_process_server_prompt( &line );
 		  print_line( &line, 1 );
 		  clean_line( &line );
 	       }
@@ -3861,215 +3740,6 @@ void process_new_buffer( char *raw_buf, int bytes )
 
 
 
-void process_buffer( char *raw_buf, int bytes )
-{
-   process_new_buffer( raw_buf, bytes );
-   
-#if 0
-   static char last_line[INPUT_BUF];
-   static char last_colorless_line[INPUT_BUF];
-   static char last_printable_line[INPUT_BUF];
-   static int last_pos = 0;
-   static int last_c_pos = 0;
-   static int last_p_pos = 0;
-   static int in_iac;
-   int ignore = 0;
-   int i;
-   char buf[INPUT_BUF];
-   struct timeval tvold, tvnew;
-   
-   bytes_uncompressed += bytes;
-   
-   log_bytes( "s->m", raw_buf, bytes );
-   
-   server_telnet( raw_buf, buf, &bytes );
-   
-   if ( show_processing_time )
-     gettimeofday( &tvold, NULL );
-   
-   buffer_output = 1;
-   
-   for ( i = 0; i < bytes; i++ )
-     {
-	if ( last_pos > INPUT_BUF - 16 )
-	  {
-	     /* Print without processing, for now. */
-	     last_line[last_pos] = buf[i];
-	     last_line[++last_pos] = 0;
-	     
-	     clientf( last_line );
-	     
-	     last_line[0] = 0;
-	     last_pos = 0;
-	     
-	     last_colorless_line[0] = 0;
-	     last_c_pos = 0;
-	     
-	     last_printable_line[0] = 0;
-	     last_p_pos = 0;
-	  }
-	if ( buf[i] == '\n' && !in_iac )
-	  {
-	     current_line++;
-	     
-	     if ( !safe_mode )
-	       module_process_server_line( last_line, last_colorless_line, last_printable_line );
-	     else
-	       {
-		  clientf( last_line );
-		  clientf( "\r\n" );
-	       }
-	     
-	     sent_something = 0;
-	     
-	     /* Clear the line. */
-	     last_line[0] = 0;
-	     last_pos = 0;
-	     
-	     last_colorless_line[0] = 0;
-	     last_c_pos = 0;
-	     
-	     last_printable_line[0] = 0;
-	     last_p_pos = 0;
-	  }
-	else if ( buf[i] == '\r' && !in_iac )
-	  {
-	     /* Just skip it. */
-	  }
-	else if ( ( buf[i] == (char) GA || buf[i] == (char) EOR ) && !in_iac )
-	  {
-	     char *custom_prompt;
-	     
-	     /* Telnet GoAhead or EndOfRecord received. (Prompt) */
-	     last_line[last_pos] = buf[i];
-	     last_line[++last_pos] = 0;
-	     
-	     /* End gagging, we don't want to gag -everything-. */
-	     if ( gag_line_value )
-	       gag_line_value = 0;
-	     
-	     /* It won't print that echo_off, so I'll force it. */
-	     if ( strstr( last_line, "password" ) )
-	       {
-		  char telnet_echo_off[ ] = 
-		    { IAC, WILL, TELOPT_ECHO, '\0' };
-		  clientf( telnet_echo_off );
-	       }
-	     
-	     /* Might print some info right before a prompt is displayed. */
-	     if ( !safe_mode )
-	       module_process_server_prompt_informative( last_line, last_colorless_line );
-	     
-	     custom_prompt = module_build_custom_prompt( );
-	     
-	     if ( !custom_prompt )
-	       custom_prompt = last_line;
-	     
-	     if ( !gag_prompt_value )
-	       {
-		  /* Add an extra \n, so the prompt won't come right after the last prompt. */
-		  if ( current_line == 0 && !sent_something )
-		    clientf( "\r\n" );
-		  
-		  clientf( custom_prompt );
-	       }
-	     
-	     sent_something = 0;
-	     
-	     /* Might send commands, displaying them after the prompt. */
-	     if ( !safe_mode )
-	       module_process_server_prompt_action( last_line );
-	     
-	     /* The modules no longer need it. */
-	     if ( gag_prompt_value )
-	       gag_prompt_value = 0;
-	     
-	     current_line = 0;
-	     
-	     /* For use with show_prompt. */
-	     strcpy( last_prompt, custom_prompt );
-	     
-	     last_line[0] = 0;
-	     last_pos = 0;
-	     
-	     last_colorless_line[0] = 0;
-	     last_c_pos = 0;
-	     
-	     last_printable_line[0] = 0;
-	     last_p_pos = 0;
-	  }
-	else if ( buf[i] == (char) SB )
-	  {
-	     in_iac = 1;
-	     last_line[last_pos] = buf[i];
-	     last_line[++last_pos] = 0;
-	  }
-	else if ( buf[i] == (char) SE )
-	  {
-	     in_iac = 0;
-	     last_line[last_pos] = buf[i];
-	     last_line[++last_pos] = 0;
-	     
-	     clientf( last_line );
-	     
-	     last_pos = 0;
-	     last_line[last_pos] = 0;
-	     
-	     last_colorless_line[0] = 0;
-	     last_c_pos = 0;
-	     
-	     last_printable_line[0] = 0;
-	     last_p_pos = 0;
-	  }
-	else
-	  {
-	     /* Anything usually gets dumped here. */
-	     last_line[last_pos] = buf[i];
-	     last_line[++last_pos] = 0;
-	     
-	     /* Strip colors. */
-	     if ( buf[i] == '\33' )
-	       ignore = 1;
-	     else if ( ignore && buf[i] == 'm' )
-	       ignore = 0;
-	     else if ( !ignore && buf[i] >= 32 && buf[i] <= 126 )
-	       {
-		  last_colorless_line[last_c_pos] = buf[i];
-		  last_colorless_line[++last_c_pos] = 0;
-	       }
-	     
-	     /* isprint( buf[i] ) */
-	     if ( buf[i] >= 32 && buf[i] <= 126 )
-	       {
-		  last_printable_line[last_p_pos] = buf[i];
-		  last_printable_line[++last_p_pos] = 0;
-	       }
-	  }
-     }
-   buffer_output = 0;
-   
-   clientf( buffer_data );
-   buffer_data[0] = 0;
-   
-   if ( show_processing_time )
-     gettimeofday( &tvnew, NULL );
-   
-   if ( show_processing_time )
-     {
-	int usec, sec;
-	
-	usec = tvnew.tv_usec - tvold.tv_usec;
-	sec = tvnew.tv_sec - tvold.tv_sec;
-	
-	clientff( "(%d)", usec + ( sec * 1000000 ) );
-     }
-   
-#endif
-}
-
-
-
-
 void show_prompt( )
 {
    void process_buffer( char *raw_buf, int bytes );
@@ -4088,7 +3758,7 @@ void show_prompt( )
 	line.prefix = prefix_buffer;
 	line.suffix = suffix_buffer;
 	line.replace = replace_buffer;
-	module_process_new_server_prompt( &line );
+	module_process_server_prompt( &line );
 	print_line( &line, 1 );
 	clean_line( &line );
 	empty_buffer( );

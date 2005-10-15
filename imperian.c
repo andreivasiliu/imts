@@ -168,10 +168,6 @@ int serpent_value;
 int caiman_value;
 int locust_value;
 
-/* Kick/punch counter, for each limb. */
-//int hit_counter[7][12];
-//int last_hit, last_hit_location;
-
 /* Some prompt and player data. */
 int p_hp, p_mana, p_end, p_will, p_kai;
 int p_balance, p_equilibrium, p_prone, p_flying;
@@ -307,7 +303,7 @@ void reset_outr( TIMER *self )
    if ( outr_once )
      {
 	outr_once = 0;
-   
+	
 	clientff( "\r\n" C_R "[" C_W "Option 'outrift once' set back to 0." C_R "]"
 		  C_0 "\r\n" );
 	show_prompt( );
@@ -373,7 +369,6 @@ void load_options( char *section )
 	       continue;
 	     
 	     get_string( buf+1, current_section, 1024 );
-//	     debugf( "Section: [%s]", current_section );
 	     continue;
 	  }
 	
@@ -494,7 +489,6 @@ void load_options( char *section )
 	       }
 	  }
 	
-//	debugf( "Loading: N:[%s] V:[%d]", name, value );
      }
    
    fclose( fl );
@@ -2457,11 +2451,6 @@ int parse_special( LINE *l )
 	  {
 	     pipes_lit = 1;
 	  }
-	else if ( !cmp( "You carefully light your treasured pipe until it is smoking nicely.", line ) )
-	  {
-//	     if ( pipes_lit < 3 )
-//	       pipes_lit++;
-	  }
 	else if ( !cmp( "You have regained ^ arm balance.", line ) )
 	  {
 	     if ( sitting == 2 )
@@ -3837,32 +3826,27 @@ void show_stats_on_term( void )
 
 void show_part_damage( void )
 {
-   char buf[256];
-   
    DEBUG( "show_part_damage" );
    
-   clientf( C_R "[Limb damage:]\r\n" C_0 );
+   prefix( C_R "[Limb damage:]\r\n" C_0 );
    
-   sprintf( buf, C_R "[" C_B "Left Arm: %s%d" C_B
+   prefixf( C_R "[" C_B "Left Arm: %s%d" C_B
 	    "  Right Arm: %s%d" C_B "  Head:  %s%d" C_R "]\r\n" C_0,
 	    partdamage[PART_LEFTARM] ? C_R : C_G, partdamage[PART_LEFTARM],
 	    partdamage[PART_RIGHTARM] ? C_R : C_G, partdamage[PART_RIGHTARM],
 	    partdamage[PART_HEAD] ? C_R : C_G, partdamage[PART_HEAD] );
-   clientf( buf );
    
-   sprintf( buf, C_R "[" C_B "Left Leg: %s%d" C_B
+   prefixf( C_R "[" C_B "Left Leg: %s%d" C_B
 	    "  Right Leg: %s%d" C_B "  Torso: %s%d" C_R "]\r\n" C_0,
 	    partdamage[PART_LEFTLEG] ? C_R : C_G, partdamage[PART_LEFTLEG],
 	    partdamage[PART_RIGHTLEG] ? C_R : C_G, partdamage[PART_RIGHTLEG],
 	    partdamage[PART_TORSO] ? C_R : C_G, partdamage[PART_TORSO] );
-   clientf( buf );
 }
 
 
 
 void show_our_prompt( )
 {
-   char buf[256];
    int afflictionsnr = 0, damagedparts = 0;
    int i;
    
@@ -3885,11 +3869,10 @@ void show_our_prompt( )
 	    afflictionsnr ? C_R : C_B, afflictionsnr,
 	    damagedparts  ? C_R : C_B, damagedparts );*/
    
-   sprintf( buf, C_0 "L:" C_G "%d" C_0 " A:%s%d" C_0 " P:%s%d " C_0,
+   prefixf( C_0 "L:" C_G "%d" C_0 " A:%s%d" C_0 " P:%s%d " C_0,
 	    trigger_level,
 	    afflictionsnr ? C_R : C_B, afflictionsnr,
 	    damagedparts  ? C_R : C_B, damagedparts );
-   clientf( buf );
 }
 
 
@@ -4500,8 +4483,6 @@ void imperian_process_server_prompt_informative( char *line, char *rawline )
 	       }
 	  }
 	
-//	sscanf( line, "H:%d M:%d E:%d W:%d", &p_hp, &p_mana, &p_end, &p_will );
-	
 	p_equilibrium = 0, p_balance = 0, p_prone = 0, p_flying = 0,
 	  p_blind = 0, p_deaf = 0, p_stunned = 0;
 	for ( p = line; *p != '<'; p++ );
@@ -4990,7 +4971,6 @@ int imperian_process_client_command( char *cmd )
 	     
 	     if ( nr == nr2 )
 	       {
-//		  clientf( C_R "[" );
 		  if ( afflictions[i].salve_cure )
 		    execute_affliction_action( i, BAL_SALVE );
 		  else if ( afflictions[i].smoke_cure )
@@ -5301,13 +5281,12 @@ int imperian_process_client_command( char *cmd )
 		      " `sm  - Mark afflictions as 'tried'. Good for illusions, bad otherwise.\r\n"
 		      " `ss  - Keep standing, never allow to be sitting.\r\n"
 		      " `sp  - Keep all pipes lit.\r\n"
-		      " `sk  - Count kicks and punches, on each limb.\r\n"
 		      " `sa  - Show the list of afflictions each time.\r\n"
 		      " `so  - Outrift a herb only once. Useful in the Arena.\r\n"
+		      " `sk  - Use kipup to stand, when possible.\r\n"
 		      " `sat - Use the tree tattoo to cure afflictions.\r\n"
 		      " `saf - Use focus to cure afflictions.\r\n"
-		      " `sap - Use purge blood to cure afflictions.\r\n"
-		      " `sak - Use kipup to stand, when possible.\r\n" C_0 );
+		      " `sap - Use purge blood to cure afflictions.\r\n" C_0 );
 	  }
 	else if ( *(cmd+2) == 'a' )
 	  {
@@ -5334,14 +5313,6 @@ int imperian_process_client_command( char *cmd )
 		    clientf( C_R "[Purge blood will now be used to cure afflictions.]\r\n" C_0 );
 		  else
 		    clientf( C_R "[Purge blood will no longer be used to cure afflictions.]\r\n" C_0 );
-	       }
-	     else if ( *(cmd+3) == 'k' )
-	       {
-		  can_kipup = can_kipup ? 0 : 1;
-		  if ( can_kipup )
-		    clientf( C_R "[Kipup will now be used instead of stand, when possible.]\r\n" C_0 );
-		  else
-		    clientf( C_R "[Kipup will no longer be used.]\r\n" C_0 );
 	       }
 	     else
 	       {
@@ -5399,6 +5370,14 @@ int imperian_process_client_command( char *cmd )
 	       clientf( C_R "[Will now try to keep all pipes lit.]\r\n" C_0 );
 	     else
 	       clientf( C_R "[It was hard to remember all those pipes anyways.]\r\n" C_0 );
+	  }
+	else if ( *(cmd+2) == 'k' )
+	  {
+	     can_kipup = can_kipup ? 0 : 1;
+	     if ( can_kipup )
+	       clientf( C_R "[Kipup will now be used instead of stand, when possible.]\r\n" C_0 );
+	     else
+	       clientf( C_R "[Kipup will no longer be used.]\r\n" C_0 );
 	  }
 	else if ( *(cmd+2) == 'd' )
 	  {
@@ -6049,8 +6028,6 @@ char *imperian_build_custom_prompt( )
 	else if ( *c == '?' )
 	  {
 	     c++;
-//int p_balance, p_equilibrium, p_prone, p_flying;
-//int p_blind, p_deaf, p_stunned;
 	     
 	     switch( *c )
 	       {
