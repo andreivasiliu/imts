@@ -786,23 +786,9 @@ int must_swim( ROOM_DATA *src, ROOM_DATA *dest )
 }
 
 
-int room_cmp( char *room, char *smallr )
+int room_cmp( const char *room, const char *smallr )
 {
-   char buf[256];
-   
    if ( !strcmp( room, smallr ) )
-     return 0;
-   
-   strcpy( buf, smallr );
-   strcat( buf, " (path)" );
-   
-   if ( !strcmp( room, buf ) )
-     return 0;
-   
-   strcpy( buf, smallr );
-   strcat( buf, " (road)" );
-   
-   if ( !strcmp( room, buf ) )
      return 0;
    
    return 1;
@@ -838,7 +824,7 @@ void set_reverse( ROOM_DATA *source, int dir, ROOM_DATA *destination )
 
 
 /* This is a title. Do something with it. */
-int parse_title( char *line )
+int parse_title( const char *line )
 {
    ROOM_DATA *new_room;
    int created = 0;
@@ -1156,6 +1142,8 @@ void parse_room( LINE *l )
 {
    char *line = l->line;
    static int exit_offset;
+   char *eol;
+   int end_offset;
    int i;
    
    DEBUG( "parse_room" );
@@ -1201,15 +1189,27 @@ void parse_room( LINE *l )
    if ( !l->len || !parsing_room )
      return;
    
+   /* Stage one, room name. */
    if ( parsing_room == 1 )
      {
 	/* Check if it actually looks like a room. */
 	if ( ( ( l->line[0] < 'A' || l->line[0] > 'Z' ) &&
 	       ( l->line[0] < 'a' || l->line[0] > 'a' ) ) ||
-	     ( l->line[l->len - 1] != '.' && l->line[l->len - 1] != ')' ) )
+	     ( l->line[l->len - 1] != '.' ) )
 	  {
 	     parsing_room = 0;
 	     return;
+	  }
+	
+	line += title_offset;
+	
+	end_offset = 0;
+	
+	/* Remove the road from: "Title. (road)." */
+	if ( l->len > 9 && l->line[l->len-2] == ')' &&
+	     ( eol = strstr( l->line, ". (" ) ) )
+	  {
+	     end_offset = ( eol - l->line ) + 1;
 	  }
 	
 //	if ( mxp_tag( TAG_TEMP_SECURE ) )
@@ -1218,16 +1218,21 @@ void parse_room( LINE *l )
 //	     insert( title_offset, "<RmTitle>" );
 //	     insert( l->len, "</RmTitle>" );
 	  }
-     }
-   
-   /* Stage one, room name. */
-   if ( parsing_room == 1 )
-     {
-	line += title_offset;
 	
 //	debugf( "Room!" );
 	
-	i = parse_title( line );
+	if ( !end_offset )
+	  i = parse_title( line );
+	else
+	  {
+	     char buf[256];
+	     
+	     strcpy( buf, line );
+	     buf[end_offset] = 0;
+	     
+	     i = parse_title( buf );
+	  }
+	
 	if ( i >= 0 )
 	  parsing_room = i;
      }
@@ -4057,7 +4062,6 @@ void locate_room( char *name, int area, char *player )
 {
    ROOM_DATA *room, *found = NULL;
    char buf[256];
-   char buf2[256];
    int more = 0;
    
    DEBUG( "locate_room" );
@@ -4074,29 +4078,6 @@ void locate_room( char *name, int area, char *player )
 	       {
 		  more = 1;
 		  break;
-	       }
-	  }
-     }
-   
-   /* Search with "(path)" added after it. */
-   if ( !found )
-     {
-	strcpy( buf2, buf );
-	strcat( buf, " (road)" );
-	strcat( buf2, " (path)" );
-	
-	for ( room = world; room; room = room->next_in_world )
-	  {
-	     if ( !strcmp( buf, room->name ) ||
-		  !strcmp( buf2, room->name ) )
-	       {
-		  if ( !found )
-		    found = room;
-		  else
-		    {
-		       more = 1;
-		       break;
-		    }
 	       }
 	  }
      }
@@ -4481,10 +4462,12 @@ void parse_pursue( char *line )
 
 
 
-void parse_alertness( char *line )
+void parse_alertness( LINE *l )
 {
    static char buf[512];
    static int alertness_message;
+   char buf2[512];
+   char *line = l->line;
    
    DEBUG( "parse_alertness" );
    
@@ -4500,7 +4483,8 @@ void parse_alertness( char *line )
    if ( !alertness_message )
      return;
    
-   gag_line( 1 );
+   l->gag_entirely = 1;
+   l->gag_ending = 1;
    
    /* In case something goes wrong. */
    if ( alertness_message++ > 3 )
@@ -4544,7 +4528,7 @@ void parse_alertness( char *line )
 	
 	alertness_message = 0;
 	
-	clientff( C_R "[" C_W "%s" C_R " - ", player );
+	sprintf( buf2, C_R "[" C_W "%s" C_R " - ", player );
    
 	/* Find where that room is. */
 	
@@ -4552,7 +4536,7 @@ void parse_alertness( char *line )
 	  {	
 	     if ( !room_cmp( current_room->name, room_name ) )
 	       {
-		  clientf( C_W "here" );
+		  strcat( buf2, "here" );
 		  found = 1;
 	       }
 	     
@@ -4564,18 +4548,23 @@ void parse_alertness( char *line )
 		  if ( !room_cmp( current_room->exits[i]->name, room_name ) )
 		    {
 		       if ( found )
-			 clientf( C_R ", " );
+			 strcat( buf2, ", " );
 		       
-		       clientff( C_B "%s", dir_name[i] );
+		       strcat( buf2, C_B );
+		       strcat( buf2, dir_name[i] );
 		       found = 1;
 		    }
 	       }
 	  }
 	
 	if ( !found )
-	  clientff( C_R "%s", room_name );
+	  {
+	     strcat( buf2, C_R );
+	     strcat( buf2, room_name );
+	  }
 	
-	clientf( C_R "]\r\n" C_0 );
+	strcat( buf2, C_R "]\r\n" C_0 );
+	suffix( buf2 );
      }
 }
 
@@ -5139,7 +5128,7 @@ void i_mapper_process_server_line( LINE *l )
      }
    
    /* Gag/replace the alertness message, with something easier to read. */
-   parse_alertness( l->line );
+   parse_alertness( l );
    
    parse_who( l );
    

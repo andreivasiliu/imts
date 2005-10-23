@@ -67,7 +67,7 @@ AREA
 Name: Northern Celidon.
 
 ROOM v60
-Name: A muddy track of dirt. (path)
+Name: A muddy track of dirt.
 Type: Path
 E: northeast 61
 E: southeast 59
@@ -75,31 +75,31 @@ E: northwest 1069
 ES: northwest 1
 
 ROOM v61
-Name: A path skirting the Celidon. (path)
+Name: A path skirting the Celidon.
 Type: Path
 E: northeast 62
 E: southwest 60
 
 ROOM v62
-Name: Light path between plains and forest. (path)
+Name: Light path between plains and forest.
 Type: Path
 E: north 63
 E: southwest 61
 
 ROOM v63
-Name: Passing a small lake. (path)
+Name: Passing a small lake.
 Type: Path
 E: south 62
 E: northwest 64
 
 ROOM v64
-Name: Rounding a clear lake. (path)
+Name: Rounding a clear lake.
 Type: Path
 E: north 65
 E: southeast 63
 
 ROOM v65
-Name: West of a vast, grassy plain. (path)
+Name: West of a vast, grassy plain.
 Type: Path
 E: northeast 66
 E: south 64
@@ -107,27 +107,27 @@ E: southwest 1055
 ES: southwest 1
 
 ROOM v66
-Name: West of a vast, grassy plain. (path)
+Name: West of a vast, grassy plain.
 Type: Path
 E: north 67
 E: southeast 2401
 E: southwest 65
 
 ROOM v67
-Name: Path on the plains. (path)
+Name: Path on the plains.
 Type: Path
 E: south 66
 E: northwest 68
 
 ROOM v68
-Name: Path outside the Celidon. (path)
+Name: Path outside the Celidon.
 Type: Path
 E: east 2391
 E: southeast 67
 E: northwest 69
 
 ROOM v69
-Name: Path outside the Celidon. (path)
+Name: Path outside the Celidon.
 Type: Path
 E: southeast 68
 E: northwest 70
@@ -173,14 +173,14 @@ E: north 1108
 E: south 1074
 
 ROOM v1108
-Name: On the edge of a path. (road)
+Name: On the edge of a path.
 Type: Road
 E: northeast 8516
 E: east 1107
 E: south 1109
 
 ROOM v1107
-Name: A dead-end trail. (path)
+Name: A dead-end trail.
 Type: Path
 E: north 1106
 E: northeast 1066
@@ -638,7 +638,7 @@ E: south 1076
 E: southwest 1097
 
 ROOM v1076
-Name: On the bridge over a stream. (road)
+Name: On the bridge over a stream.
 Type: Road
 E: north 1075
 
@@ -730,7 +730,7 @@ E: south 1212
 E: west 1121
 
 ROOM v1123
-Name: Ancient bridge over river Waelin. (road)
+Name: Ancient bridge over river Waelin.
 Type: Road
 E: east 1121
 E: west 1478
@@ -938,13 +938,13 @@ AREA
 Name: Western Celidon.
 
 ROOM v446
-Name: Nearing the Western Celidon. (path)
+Name: Nearing the Western Celidon.
 Type: Path
 E: northeast 447
 E: west 445
 
 ROOM v447
-Name: Outskirts of the Western Celidon. (path)
+Name: Outskirts of the Western Celidon.
 Type: Path
 E: north 448
 E: northeast 915
@@ -1163,7 +1163,7 @@ E: northwest 1562
 ES: northwest 1
 
 ROOM v1478
-Name: On the covered bridge over the Waelin. (road)
+Name: On the covered bridge over the Waelin.
 Type: Road
 E: east 1123
 E: west 1476
@@ -1651,7 +1651,7 @@ E: north 1411
 E: southeast 1413
 
 ROOM v1411
-Name: Edge of the woods by a lake. (path)
+Name: Edge of the woods by a lake.
 Type: Path
 E: east 1423
 E: south 1412
@@ -1872,7 +1872,7 @@ Type: Natural underground
 E: west 893
 
 ROOM v899
-Name: Tunnel underneath the arena. (path)
+Name: Tunnel underneath the arena.
 Type: Path
 E: north 900
 E: up 898
@@ -1895,38 +1895,38 @@ E: south 911
 E: west 904
 
 ROOM v903
-Name: On a crumbling pillar. (road)
+Name: On a crumbling pillar.
 Type: Road
 E: east 902
 E: down 909
 
 ROOM v904
-Name: Near rotting beams. (road)
+Name: Near rotting beams.
 Type: Road
 E: east 843
 E: southwest 905
 
 ROOM v905
-Name: Next to a crumbling wall. (road)
+Name: Next to a crumbling wall.
 Type: Road
 E: northeast 904
 E: south 908
 E: southwest 906
 
 ROOM v906
-Name: Rubble-filled path around the arena. (road)
+Name: Rubble-filled path around the arena.
 Type: Road
 E: northeast 905
 E: south 907
 
 ROOM v907
-Name: Abrupt end at a chasm. (road)
+Name: Abrupt end at a chasm.
 Type: Road
 E: north 906
 E: down 891
 
 ROOM v908
-Name: Cracked cobblestone path. (road)
+Name: Cracked cobblestone path.
 Type: Road
 E: north 905
 E: northeast 909
@@ -1934,7 +1934,7 @@ E: southeast 3775
 E: down 894
 
 ROOM v909
-Name: At a large pillar. (road)
+Name: At a large pillar.
 Type: Road
 E: east 911
 E: southwest 908
@@ -1957,7 +1957,7 @@ AREA
 Name: North Eastern Arena.
 
 ROOM v842
-Name: Wall at a pillar. (path)
+Name: Wall at a pillar.
 Type: Path
 E: southeast 835
 E: west 843
@@ -1970,20 +1970,20 @@ E: north 835
 E: west 833
 
 ROOM v835
-Name: At a small break in the ruined wall. (path)
+Name: At a small break in the ruined wall.
 Type: Path
 E: southeast 836
 E: south 834
 E: northwest 842
 
 ROOM v901
-Name: On a crumbling pillar. (path)
+Name: On a crumbling pillar.
 Type: Path
 E: southwest 902
 E: down 842
 
 ROOM v902
-Name: Crossing a shaky causeway. (path)
+Name: Crossing a shaky causeway.
 Type: Path
 E: northeast 901
 E: west 903
@@ -2028,7 +2028,7 @@ AREA
 Name: Southeastern Arena.
 
 ROOM v841
-Name: South of a broken archway. (path)
+Name: South of a broken archway.
 Type: Path
 E: north 839
 E: northeast 838
@@ -2041,7 +2041,7 @@ E: north 833
 E: southeast 839
 
 ROOM v839
-Name: A rubble covered archway. (path)
+Name: A rubble covered archway.
 Type: Path
 E: east 838
 E: south 841
@@ -2049,20 +2049,20 @@ E: southwest 897
 E: northwest 840
 
 ROOM v838
-Name: Near a broken archway. (path)
+Name: Near a broken archway.
 Type: Path
 E: north 837
 E: southwest 841
 E: west 839
 
 ROOM v837
-Name: Next to an ivy-covered wall. (path)
+Name: Next to an ivy-covered wall.
 Type: Path
 E: north 836
 E: south 838
 
 ROOM v836
-Name: Path around the walls. (path)
+Name: Path around the walls.
 Type: Path
 E: south 837
 E: northwest 835
@@ -2075,13 +2075,13 @@ E: south 840
 E: down 3770
 
 ROOM v897
-Name: Inside the crumbled walls. (path)
+Name: Inside the crumbled walls.
 Type: Path
 E: northeast 839
 E: northwest 898
 
 ROOM v898
-Name: Overgrown pathway. (path)
+Name: Overgrown pathway.
 Type: Path
 E: southeast 897
 E: down 899
@@ -2199,7 +2199,7 @@ E: east 3083
 E: west 3085
 
 ROOM v3083
-Name: On a rope bridge. (path)
+Name: On a rope bridge.
 Type: Path
 E: south 3082
 E: west 3084
@@ -2750,7 +2750,7 @@ E: down 700
 UE: down east
 
 ROOM v700
-Name: Precarious path down the waterfall. (path)
+Name: Precarious path down the waterfall.
 Type: Path
 E: north 699
 E: up 701
@@ -6251,13 +6251,13 @@ AREA
 Name: Ravana Hills.
 
 ROOM v270
-Name: Outside the gates of Stavenn. (road)
+Name: Outside the gates of Stavenn.
 Type: Road
 E: northeast 267
 E: west 271
 
 ROOM v267
-Name: Near a large city. (road)
+Name: Near a large city.
 Type: Road
 E: northeast 266
 E: southeast 268
@@ -6266,7 +6266,7 @@ E: northwest 347
 ES: northwest 1
 
 ROOM v266
-Name: Twisting highway track in hills. (road)
+Name: Twisting highway track in hills.
 Type: Road
 E: northeast 265
 E: southeast 413
@@ -6274,7 +6274,7 @@ ES: southeast 1
 E: southwest 267
 
 ROOM v265
-Name: Winding highway. (road)
+Name: Winding highway.
 Type: Road
 E: north 257
 E: southwest 266
@@ -6315,19 +6315,19 @@ E: north 261
 E: south 259
 
 ROOM v259
-Name: Path leading to the Hall of Records. (road)
+Name: Path leading to the Hall of Records.
 Type: Road
 E: north 260
 E: down 258
 
 ROOM v258
-Name: A small path climbing a hill. (road)
+Name: A small path climbing a hill.
 Type: Road
 E: east 257
 E: up 259
 
 ROOM v257
-Name: Highway in the Shamutot. (road)
+Name: Highway in the Shamutot.
 Type: Road
 E: south 265
 E: west 258
@@ -6335,14 +6335,14 @@ E: down 256
 UE: down east
 
 ROOM v256
-Name: Highway climbing the Ravana hills. (road)
+Name: Highway climbing the Ravana hills.
 Type: Road
 E: northeast 255
 E: up 257
 UE: up west
 
 ROOM v255
-Name: Highway beneath the Shamutot. (road)
+Name: Highway beneath the Shamutot.
 Type: Road
 E: east 254
 E: southeast 1287
@@ -7180,7 +7180,7 @@ E: out 312
 UE: out west
 
 ROOM v316
-Name: A curving path. (path)
+Name: A curving path.
 Type: Path
 E: east 311
 DEL: in
@@ -7192,7 +7192,7 @@ E: north 8382
 E: down 314
 
 ROOM v314
-Name: A small paved path. (path)
+Name: A small paved path.
 Type: Path
 E: east 312
 E: up 315
@@ -7691,25 +7691,25 @@ AREA
 Name: Modin Valley.
 
 ROOM v254
-Name: Passing through the meadows. (road)
+Name: Passing through the meadows.
 Type: Road
 E: east 253
 E: west 255
 
 ROOM v247
-Name: A twisting highway in the valley. (road)
+Name: A twisting highway in the valley.
 Type: Road
 E: north 246
 E: west 249
 
 ROOM v246
-Name: A bend in the highway. (road)
+Name: A bend in the highway.
 Type: Road
 E: east 245
 E: south 247
 
 ROOM v245
-Name: The edges of the Modin valley. (road)
+Name: The edges of the Modin valley.
 Type: Road
 E: northeast 244
 E: west 246
@@ -8424,20 +8424,20 @@ E: east 228
 E: west 851
 
 ROOM v269
-Name: A desolate sandy track. (road)
+Name: A desolate sandy track.
 Type: Road
 E: north 268
 E: east 8156
 E: southeast 1385
 
 ROOM v268
-Name: A desolate sandy track. (road)
+Name: A desolate sandy track.
 Type: Road
 E: south 269
 E: northwest 267
 
 ROOM v253
-Name: West of a bridge. (road)
+Name: West of a bridge.
 Type: Road
 E: east 252
 E: south 1285
@@ -8446,14 +8446,14 @@ E: west 254
 E: northwest 1247
 
 ROOM v252
-Name: A bridge over the Ederith. (road)
+Name: A bridge over the Ederith.
 Type: Road
 E: east 251
 E: west 253
 E: down 866
 
 ROOM v251
-Name: East of a bridge. (road)
+Name: East of a bridge.
 Type: Road
 E: north 1241
 E: east 250
@@ -8462,14 +8462,14 @@ E: west 252
 E: northwest 1243
 
 ROOM v250
-Name: Highway nearing a wide river. (road)
+Name: Highway nearing a wide river.
 Type: Road
 E: east 249
 E: west 251
 E: northwest 1241
 
 ROOM v249
-Name: Highway amid meadows. (road)
+Name: Highway amid meadows.
 Type: Road
 E: east 247
 E: south 860
@@ -9322,7 +9322,7 @@ E: west 153
 DEL: down
 
 ROOM v5980
-Name: An elegant marble pathway lined with trees. (path)
+Name: An elegant marble pathway lined with trees.
 Type: Path
 E: southeast 173
 E: west 5981
@@ -9333,7 +9333,7 @@ Type: Urban
 E: east 5980
 
 ROOM v5982
-Name: Marble Circle Approaching Domus Kislev. (path)
+Name: Marble Circle Approaching Domus Kislev.
 Type: Path
 E: north 8386
 DEL: east
@@ -9476,14 +9476,14 @@ Type: Urban
 E: south 72
 
 ROOM v73
-Name: Dirt road north of a forest. (road)
+Name: Dirt road north of a forest.
 Type: Road
 E: north 719
 E: east 72
 E: southwest 935
 
 ROOM v72
-Name: Dirt road north of a forest. (road)
+Name: Dirt road north of a forest.
 Type: Road
 E: north 74
 E: east 70
@@ -9491,7 +9491,7 @@ E: southwest 940
 E: west 73
 
 ROOM v70
-Name: Dirt road nearing hills. (road)
+Name: Dirt road nearing hills.
 Type: Road
 E: northeast 75
 E: east 942
@@ -9505,32 +9505,32 @@ Type: Undefined
 SPE: 2270 12 "say I wish to return, please." "previous surroundings."
 
 ROOM v1759
-Name: Ancient roadway. (path)
+Name: Ancient roadway.
 Type: Path
 E: north 5826
 E: northeast 1760
 E: west 1758
 
 ROOM v1758
-Name: Ancient roadway. (path)
+Name: Ancient roadway.
 Type: Path
 E: east 1759
 E: west 1757
 
 ROOM v1757
-Name: Ancient roadway. (path)
+Name: Ancient roadway.
 Type: Path
 E: east 1758
 E: west 1756
 
 ROOM v1756
-Name: Ancient roadway. (path)
+Name: Ancient roadway.
 Type: Path
 E: east 1757
 E: southwest 1755
 
 ROOM v1755
-Name: Bend in the trail. (path)
+Name: Bend in the trail.
 Type: Path
 E: northeast 1756
 E: south 1685
@@ -9646,19 +9646,19 @@ E: southeast 79
 E: northwest 83
 
 ROOM v81
-Name: Northroad nearing the city gates. (road)
+Name: Northroad nearing the city gates.
 Type: Road
 E: north 99
 E: southwest 80
 
 ROOM v80
-Name: Nearing the northern city. (road)
+Name: Nearing the northern city.
 Type: Road
 E: northeast 81
 E: south 79
 
 ROOM v79
-Name: Passing between two hills. (road)
+Name: Passing between two hills.
 Type: Road
 E: north 80
 E: southwest 76
@@ -9676,14 +9676,14 @@ E: south 78
 E: west 75
 
 ROOM v76
-Name: Road within the Vardarian Highlands. (road)
+Name: Road within the Vardarian Highlands.
 Type: Road
 E: northeast 79
 E: south 75
 E: west 8252
 
 ROOM v75
-Name: Road within the Vardarian Highlands. (road)
+Name: Road within the Vardarian Highlands.
 Type: Road
 E: north 76
 E: east 77
@@ -10214,55 +10214,55 @@ Type: Mountains
 E: south 1666
 
 ROOM v1668
-Name: Path atop a small mountain. (path)
+Name: Path atop a small mountain.
 Type: Path
 E: northeast 1669
 E: down 1587
 
 ROOM v1669
-Name: Path atop a small mountain. (path)
+Name: Path atop a small mountain.
 Type: Path
 E: east 1670
 E: southwest 1668
 
 ROOM v1670
-Name: Path atop a small mountain. (path)
+Name: Path atop a small mountain.
 Type: Path
 E: east 1671
 E: west 1669
 
 ROOM v1671
-Name: Path atop a small mountain. (path)
+Name: Path atop a small mountain.
 Type: Path
 E: east 1672
 E: west 1670
 
 ROOM v1672
-Name: Path descending a small mountain. (path)
+Name: Path descending a small mountain.
 Type: Path
 E: northeast 1673
 E: west 1671
 
 ROOM v1673
-Name: Path descending a small mountain. (path)
+Name: Path descending a small mountain.
 Type: Path
 E: northeast 1674
 E: southwest 1672
 
 ROOM v1674
-Name: Winding mountain path. (path)
+Name: Winding mountain path.
 Type: Path
 E: northeast 1675
 E: southwest 1673
 
 ROOM v1675
-Name: Winding mountain path. (path)
+Name: Winding mountain path.
 Type: Path
 E: east 1676
 E: southwest 1674
 
 ROOM v1676
-Name: Base of a small mountain. (path)
+Name: Base of a small mountain.
 Type: Path
 E: northeast 1677
 E: west 1675
@@ -11256,13 +11256,13 @@ E: east 227
 E: west 850
 
 ROOM v3783
-Name: Outside the Panda Gate. (path)
+Name: Outside the Panda Gate.
 Type: Path
 E: northeast 3784
 SPE: 208 0 "push gate" "gate slams shut behind you."
 
 ROOM v3784
-Name: Climbing the Hills of Mila. (path)
+Name: Climbing the Hills of Mila.
 Type: Path
 E: southwest 3783
 E: up 3785
@@ -11403,13 +11403,13 @@ AREA
 Name: Heartlands.
 
 ROOM v497
-Name: Old dirt Track through grasslands. (path)
+Name: Old dirt Track through grasslands.
 Type: Path
 E: northeast 496
 E: southeast 498
 
 ROOM v496
-Name: Old dirt track through grasslands. (path)
+Name: Old dirt track through grasslands.
 Type: Path
 E: north 495
 E: east 974
@@ -11417,43 +11417,43 @@ ES: east 1
 E: southwest 497
 
 ROOM v495
-Name: Old dirt track through grasslands. (path)
+Name: Old dirt track through grasslands.
 Type: Path
 E: north 494
 E: south 496
 
 ROOM v494
-Name: Dirt track through a dusty plain. (path)
+Name: Dirt track through a dusty plain.
 Type: Path
 E: south 495
 E: northwest 493
 
 ROOM v493
-Name: Old road through a dusty plain. (path)
+Name: Old road through a dusty plain.
 Type: Path
 E: southeast 494
 E: west 492
 
 ROOM v492
-Name: Old road through dusty plain. (path)
+Name: Old road through dusty plain.
 Type: Path
 E: east 493
 E: northwest 491
 
 ROOM v491
-Name: Road through dusty plain. (path)
+Name: Road through dusty plain.
 Type: Path
 E: north 490
 E: southeast 492
 
 ROOM v490
-Name: Bend in road through dusty plains. (path)
+Name: Bend in road through dusty plains.
 Type: Path
 E: south 491
 E: northwest 485
 
 ROOM v485
-Name: Fork in road through dusty plains. (path)
+Name: Fork in road through dusty plains.
 Type: Path
 E: north 484
 E: east 977
@@ -11462,25 +11462,25 @@ E: southeast 490
 E: southwest 486
 
 ROOM v484
-Name: Road through dusty plains. (path)
+Name: Road through dusty plains.
 Type: Path
 E: north 483
 E: south 485
 
 ROOM v483
-Name: Road through dusty plains. (path)
+Name: Road through dusty plains.
 Type: Path
 E: south 484
 E: northwest 482
 
 ROOM v482
-Name: Road through dusty plains. (path)
+Name: Road through dusty plains.
 Type: Path
 E: north 481
 E: southeast 483
 
 ROOM v481
-Name: Road through dusty plains. (path)
+Name: Road through dusty plains.
 Type: Path
 E: north 480
 E: east 973
@@ -11488,19 +11488,19 @@ ES: east 1
 E: south 482
 
 ROOM v480
-Name: Old road nearing plains. (path)
+Name: Old road nearing plains.
 Type: Path
 E: northeast 479
 E: south 481
 
 ROOM v961
-Name: Eredyane's Reliquary. (path)
+Name: Eredyane's Reliquary.
 Type: Path
 E: out 435
 UE: out west
 
 ROOM v437
-Name: An ancient trailhead. (path)
+Name: An ancient trailhead.
 Type: Path
 E: northeast 1416
 E: south 436
@@ -11508,7 +11508,7 @@ EL: south 1
 E: southwest 439
 
 ROOM v436
-Name: A poorly maintained path near the Celidon. (path)
+Name: A poorly maintained path near the Celidon.
 Type: Path
 E: north 437
 EL: north 1
@@ -11517,7 +11517,7 @@ E: east 435
 E: west 438
 
 ROOM v435
-Name: An indistinct path. (path)
+Name: An indistinct path.
 Type: Path
 E: south 434
 E: west 436
@@ -11525,13 +11525,13 @@ E: in 961
 UE: in east
 
 ROOM v434
-Name: South of the Celidon forests. (path)
+Name: South of the Celidon forests.
 Type: Path
 E: north 435
 E: east 433
 
 ROOM v433
-Name: A dusty path in shallow foothills. (path)
+Name: A dusty path in shallow foothills.
 Type: Path
 E: southeast 432
 E: west 434
@@ -12572,20 +12572,20 @@ EL: east 1
 E: southwest 2522
 
 ROOM v487
-Name: Path west across the plains. (path)
+Name: Path west across the plains.
 Type: Path
 E: east 486
 E: southwest 488
 
 ROOM v488
-Name: Path nearing foothills. (path)
+Name: Path nearing foothills.
 Type: Path
 E: northeast 487
 E: west 489
 E: northwest 7786
 
 ROOM v489
-Name: Path ascending foothills. (path)
+Name: Path ascending foothills.
 Type: Path
 E: east 488
 
@@ -12721,7 +12721,7 @@ E: south 2521
 E: west 2575
 
 ROOM v486
-Name: Path west across the plains. (path)
+Name: Path west across the plains.
 Type: Path
 E: northeast 485
 E: west 487
@@ -12747,7 +12747,7 @@ AREA
 Name: Graytrem hills.
 
 ROOM v674
-Name: Southern old road nearing desert. (path)
+Name: Southern old road nearing desert.
 Type: Path
 E: east 673
 E: southwest 2150
@@ -12757,13 +12757,13 @@ ES: west 1
 E: northwest 505
 
 ROOM v505
-Name: Southern old road nearing desert. (path)
+Name: Southern old road nearing desert.
 Type: Path
 E: north 504
 E: southeast 674
 
 ROOM v504
-Name: Southern old road through hills. (path)
+Name: Southern old road through hills.
 Type: Path
 E: north 503
 E: northeast 2965
@@ -12773,13 +12773,13 @@ E: south 505
 E: west 1787
 
 ROOM v503
-Name: Southern old road through hills. (path)
+Name: Southern old road through hills.
 Type: Path
 E: south 504
 E: northwest 502
 
 ROOM v502
-Name: Southern old road through hills. (path)
+Name: Southern old road through hills.
 Type: Path
 E: north 501
 E: east 2963
@@ -12787,20 +12787,20 @@ ES: east 1
 E: southeast 503
 
 ROOM v501
-Name: Southern old road nearing hills. (path)
+Name: Southern old road nearing hills.
 Type: Path
 E: north 500
 E: south 502
 
 ROOM v500
-Name: Southern old road. (path)
+Name: Southern old road.
 Type: Path
 E: east 521
 E: south 501
 E: northwest 499
 
 ROOM v499
-Name: Winding track through grasslands. (path)
+Name: Winding track through grasslands.
 Type: Path
 E: north 498
 E: southeast 500
@@ -13057,26 +13057,26 @@ E: southwest 4481
 E: west 536
 
 ROOM v539
-Name: A small trail. (path)
+Name: A small trail.
 Type: Path
 E: north 982
 E: east 540
 E: southwest 538
 
 ROOM v980
-Name: Approaching a small village. (path)
+Name: Approaching a small village.
 Type: Path
 E: north 979
 E: southeast 981
 
 ROOM v979
-Name: A small trail. (path)
+Name: A small trail.
 Type: Path
 E: south 980
 E: northwest 540
 
 ROOM v982
-Name: Approaching a small village. (path)
+Name: Approaching a small village.
 Type: Path
 E: north 983
 E: south 539
@@ -13807,7 +13807,7 @@ E: west 514
 E: up 517
 
 ROOM v517
-Name: Winding path bordered by ancient trees. (path)
+Name: Winding path bordered by ancient trees.
 Type: Path
 E: northeast 518
 E: down 516
@@ -14110,37 +14110,37 @@ AREA
 Name: Village of Transk.
 
 ROOM v719
-Name: A cart path off the main road. (path)
+Name: A cart path off the main road.
 Type: Path
 E: north 720
 E: south 73
 
 ROOM v720
-Name: A worn cart path. (path)
+Name: A worn cart path.
 Type: Path
 E: northeast 721
 E: south 719
 
 ROOM v721
-Name: A turn in the path. (path)
+Name: A turn in the path.
 Type: Path
 E: southwest 720
 E: northwest 722
 
 ROOM v722
-Name: A worn path. (path)
+Name: A worn path.
 Type: Path
 E: north 723
 E: southeast 721
 
 ROOM v723
-Name: A lazy turn. (path)
+Name: A lazy turn.
 Type: Path
 E: northeast 724
 E: south 722
 
 ROOM v724
-Name: Cart path before a wooden gate. (path)
+Name: Cart path before a wooden gate.
 Type: Path
 E: northeast 725
 E: southwest 723
@@ -14374,7 +14374,7 @@ E: east 759
 E: west 757
 
 ROOM v759
-Name: Path up to a farmhouse door. (path)
+Name: Path up to a farmhouse door.
 Type: Path
 E: east 760
 E: west 758
@@ -15821,26 +15821,26 @@ E: out 1012
 UE: out southwest
 
 ROOM v540
-Name: A small trail. (path)
+Name: A small trail.
 Type: Path
 E: southeast 979
 E: west 539
 
 ROOM v981
-Name: Entering a gruesome gate. (path)
+Name: Entering a gruesome gate.
 Type: Path
 E: south 1008
 E: northwest 980
 
 ROOM v983
-Name: Entering a gruesome gate. (path)
+Name: Entering a gruesome gate.
 Type: Path
 E: north 991
 E: south 982
 E: west 984
 
 ROOM v984
-Name: A trail leading to a small fort. (path)
+Name: A trail leading to a small fort.
 Type: Path
 E: east 983
 E: west 985
@@ -16166,50 +16166,50 @@ AREA
 Name: Eastern Celidon.
 
 ROOM v52
-Name: Outside the Eastern gates. (path)
+Name: Outside the Eastern gates.
 Type: Path
 E: northeast 53
 E: west 32
 
 ROOM v53
-Name: An unmaintained road. (path)
+Name: An unmaintained road.
 Type: Path
 E: north 54
 E: southwest 52
 
 ROOM v54
-Name: An old road, northeast of Caanae. (path)
+Name: An old road, northeast of Caanae.
 Type: Path
 E: northeast 55
 E: south 53
 
 ROOM v55
-Name: Southeast of the Celidon forest. (path)
+Name: Southeast of the Celidon forest.
 Type: Path
 E: southwest 54
 E: west 1070
 E: northwest 56
 
 ROOM v56
-Name: A large rock in the path. (path)
+Name: A large rock in the path.
 Type: Path
 E: east 57
 E: southeast 55
 
 ROOM v57
-Name: A bend in the path. (path)
+Name: A bend in the path.
 Type: Path
 E: north 58
 E: west 56
 
 ROOM v58
-Name: East of the Celidon. (path)
+Name: East of the Celidon.
 Type: Path
 E: north 59
 E: south 57
 
 ROOM v59
-Name: A narrow road amidst sparse trees. (path)
+Name: A narrow road amidst sparse trees.
 Type: Path
 E: south 58
 E: northwest 60
@@ -16971,7 +16971,7 @@ Type: Hills
 E: out 238
 
 ROOM v244
-Name: Southeast of the Nolmine. (road)
+Name: Southeast of the Nolmine.
 Type: Road
 E: northeast 243
 E: southwest 245
@@ -16979,142 +16979,142 @@ E: northwest 1361
 ES: northwest 1
 
 ROOM v243
-Name: Skirting the Nolmine mountains. (road)
+Name: Skirting the Nolmine mountains.
 Type: Road
 E: north 242
 E: southwest 244
 
 ROOM v242
-Name: On the Southern Highway. (road)
+Name: On the Southern Highway.
 Type: Road
 E: north 241
 E: south 243
 
 ROOM v241
-Name: Passing the Nolmine mountains. (road)
+Name: Passing the Nolmine mountains.
 Type: Road
 E: south 242
 E: northwest 240
 
 ROOM v240
-Name: Southern Highway near Caanae. (road)
+Name: Southern Highway near Caanae.
 Type: Road
 E: southeast 241
 E: northwest 238
 
 ROOM v432
-Name: Steep hills north of mountains. (path)
+Name: Steep hills north of mountains.
 Type: Path
 E: southeast 430
 E: northwest 433
 
 ROOM v430
-Name: Climbing the outskirts of Nolmine. (path)
+Name: Climbing the outskirts of Nolmine.
 Type: Path
 E: northeast 429
 E: south 1383
 E: northwest 432
 
 ROOM v429
-Name: A sharp turn in the path. (path)
+Name: A sharp turn in the path.
 Type: Path
 E: south 428
 E: southwest 430
 
 ROOM v428
-Name: A narrow path rounding mountains. (path)
+Name: A narrow path rounding mountains.
 Type: Path
 E: north 429
 E: northeast 427
 
 ROOM v427
-Name: North of Nolmine Heights. (path)
+Name: North of Nolmine Heights.
 Type: Path
 E: east 426
 E: southwest 428
 
 ROOM v426
-Name: Dry grasslands near mountains. (path)
+Name: Dry grasslands near mountains.
 Type: Path
 E: east 425
 E: west 427
 
 ROOM v425
-Name: A narrow road, north of the Nolmine mountains. (path)
+Name: A narrow road, north of the Nolmine mountains.
 Type: Path
 E: north 1322
 E: northeast 424
 E: west 426
 
 ROOM v424
-Name: A crumbling, overgrown road. (path)
+Name: A crumbling, overgrown road.
 Type: Path
 E: southeast 423
 E: southwest 425
 
 ROOM v423
-Name: Skirting a shallow lake. (path)
+Name: Skirting a shallow lake.
 Type: Path
 E: northeast 422
 E: northwest 424
 
 ROOM v422
-Name: Dirt road near a swampy lake. (path)
+Name: Dirt road near a swampy lake.
 Type: Path
 E: east 421
 E: southwest 423
 
 ROOM v421
-Name: An ancient, broken road. (path)
+Name: An ancient, broken road.
 Type: Path
 E: northeast 420
 E: west 422
 
 ROOM v420
-Name: A ruined highway, west of Caanae. (path)
+Name: A ruined highway, west of Caanae.
 Type: Path
 E: east 229
 E: southwest 421
 
 ROOM v229
-Name: Approaching the Ruins of Caanae. (path)
+Name: Approaching the Ruins of Caanae.
 Type: Path
 E: northeast 27
 E: south 230
 E: west 420
 
 ROOM v230
-Name: Skirting the edge of Caanae ruins. (path)
+Name: Skirting the edge of Caanae ruins.
 Type: Path
 E: north 229
 E: south 231
 
 ROOM v231
-Name: West of the ancient ruins. (path)
+Name: West of the ancient ruins.
 Type: Path
 E: north 230
 E: southeast 232
 
 ROOM v232
-Name: Highway bordering ruins. (path)
+Name: Highway bordering ruins.
 Type: Path
 E: south 233
 E: northwest 231
 
 ROOM v233
-Name: A sharp turning highway. (path)
+Name: A sharp turning highway.
 Type: Path
 E: north 232
 E: east 234
 
 ROOM v234
-Name: West of the Ruins of Caanae. (path)
+Name: West of the Ruins of Caanae.
 Type: Path
 E: southeast 235
 E: west 233
 
 ROOM v235
-Name: A narrow road near a ruined wall. (road)
+Name: A narrow road near a ruined wall.
 Type: Road
 E: south 236
 E: northwest 234
@@ -17125,20 +17125,20 @@ Type: Garden
 E: north 237
 
 ROOM v236
-Name: South of Caanae ruins. (road)
+Name: South of Caanae ruins.
 Type: Road
 E: north 235
 E: east 237
 
 ROOM v237
-Name: A dusty highway. (road)
+Name: A dusty highway.
 Type: Road
 E: east 238
 E: south 239
 E: west 236
 
 ROOM v238
-Name: Start of the Southern Highway. (road)
+Name: Start of the Southern Highway.
 Type: Road
 E: northeast 48
 E: southeast 240
@@ -17156,7 +17156,7 @@ E: southeast 1378
 E: west 8040
 
 ROOM v8067
-Name: Within a wooden mine cart. (path)
+Name: Within a wooden mine cart.
 Type: Path
 SPE: 8043 0 "" "With a sigh of relief, you exit the cart."
 SPE: 8068 0 "" "was worth the ride."
@@ -17432,7 +17432,7 @@ E: in 5822
 UE: in southwest
 
 ROOM v1383
-Name: Path to the Nolmine. (path)
+Name: Path to the Nolmine.
 Type: Path
 E: north 430
 E: up 1382
@@ -22407,7 +22407,7 @@ E: north 1762
 E: south 1760
 
 ROOM v1760
-Name: Nearing the Gongen mountain range. (path)
+Name: Nearing the Gongen mountain range.
 Type: Path
 E: north 1761
 E: southwest 1759
@@ -23727,37 +23727,37 @@ AREA
 Name: Khandava Council.
 
 ROOM v7774
-Name: An isolated path off Sycamore Terrace. (path)
+Name: An isolated path off Sycamore Terrace.
 Type: Path
 DEL: east
 E: southwest 3557
 DEL: in
 
 ROOM v7773
-Name: A quiet curved path. (path)
+Name: A quiet curved path.
 Type: Path
 E: south 3557
 
 ROOM v7772
-Name: Bridge over bubbling brook. (path)
+Name: Bridge over bubbling brook.
 Type: Path
 DEL: north
 E: southeast 3557
 
 ROOM v7771
-Name: Path adorned with sycamores and wild roses. (path)
+Name: Path adorned with sycamores and wild roses.
 Type: Path
 DEL: south
 E: northwest 3555
 
 ROOM v7770
-Name: A path through a trickling stream. (path)
+Name: A path through a trickling stream.
 Type: Path
 DEL: east
 E: south 3555
 
 ROOM v7769
-Name: A pathway lined with yellow rosebushes. (path)
+Name: A pathway lined with yellow rosebushes.
 Type: Path
 E: north 3554
 E: up 8433
@@ -23768,7 +23768,7 @@ Type: Urban
 E: up 3496
 
 ROOM v5942
-Name: Along the small animal path. (path)
+Name: Along the small animal path.
 Type: Path
 E: southeast 3469
 
@@ -24430,19 +24430,19 @@ Type: Urban
 E: north 2203
 
 ROOM v2188
-Name: Forming path into Anhir village. (path)
+Name: Forming path into Anhir village.
 Type: Path
 E: north 2189
 E: south 2168
 
 ROOM v2189
-Name: Entering the gates of Anhir. (path)
+Name: Entering the gates of Anhir.
 Type: Path
 E: north 2190
 E: south 2188
 
 ROOM v2190
-Name: Outside the tent of the Anhir Guard. (path)
+Name: Outside the tent of the Anhir Guard.
 Type: Path
 E: north 2194
 E: south 2189
@@ -24466,7 +24466,7 @@ Type: Urban
 E: south 2192
 
 ROOM v2194
-Name: South of a busy market. (path)
+Name: South of a busy market.
 Type: Path
 E: north 2208
 E: east 2196
@@ -24486,14 +24486,14 @@ E: southeast 2197
 E: west 2194
 
 ROOM v2197
-Name: Hard-packed path through the yellow grasses. (path)
+Name: Hard-packed path through the yellow grasses.
 Type: Path
 E: east 2198
 EL: east 1
 E: northwest 2196
 
 ROOM v2198
-Name: In the midst of a farm. (path)
+Name: In the midst of a farm.
 Type: Path
 E: north 2200
 E: east 2199
@@ -24517,26 +24517,26 @@ Type: Urban
 E: out 2200
 
 ROOM v2202
-Name: Along Shanugis Way. (path)
+Name: Along Shanugis Way.
 Type: Path
 E: east 2203
 E: southwest 2196
 
 ROOM v2203
-Name: On Shanugis Way. (path)
+Name: On Shanugis Way.
 Type: Path
 E: east 2204
 E: south 5983
 E: west 2202
 
 ROOM v2204
-Name: Nearing the end of Shanugis Way. (path)
+Name: Nearing the end of Shanugis Way.
 Type: Path
 E: east 2205
 E: west 2203
 
 ROOM v2205
-Name: End of Shanugis Way. (path)
+Name: End of Shanugis Way.
 Type: Path
 E: northeast 2207
 E: east 2206
@@ -24901,7 +24901,7 @@ AREA
 Name: Nogba Wetlands.
 
 ROOM v466
-Name: Dirt road south of a bog. (road)
+Name: Dirt road south of a bog.
 Type: Road
 E: north 2272
 ES: north 1
@@ -24914,7 +24914,7 @@ E: down 471
 UE: down southeast
 
 ROOM v471
-Name: Outside the shattered walls of the coliseum. (path)
+Name: Outside the shattered walls of the coliseum.
 Type: Path
 E: north 470
 E: up 472
@@ -24922,46 +24922,46 @@ UE: up northwest
 DE: in
 
 ROOM v470
-Name: Nearing the ruined walls of an ancient coliseum. (path)
+Name: Nearing the ruined walls of an ancient coliseum.
 Type: Path
 E: north 469
 E: south 471
 
 ROOM v469
-Name: At the foot of a ridge. (path)
+Name: At the foot of a ridge.
 Type: Path
 E: south 470
 E: up 468
 UE: up northwest
 
 ROOM v468
-Name: Overlooking the ruined coliseum. (path)
+Name: Overlooking the ruined coliseum.
 Type: Path
 E: west 467
 E: down 469
 UE: down southeast
 
 ROOM v467
-Name: A path leading down the cliff. (path)
+Name: A path leading down the cliff.
 Type: Path
 E: east 468
 E: up 465
 
 ROOM v465
-Name: A ridge overlooking a ruined coliseum. (road)
+Name: A ridge overlooking a ruined coliseum.
 Type: Road
 E: southeast 466
 E: southwest 464
 E: down 467
 
 ROOM v464
-Name: A dirt road. (road)
+Name: A dirt road.
 Type: Road
 E: northeast 465
 E: southwest 463
 
 ROOM v463
-Name: Dirt road north of an intersection. (road)
+Name: Dirt road north of an intersection.
 Type: Road
 E: northeast 464
 E: south 462
@@ -26406,14 +26406,14 @@ AREA
 Name: Sodiuar Lake.
 
 ROOM v943
-Name: Nearing a descent down to the lake. (road)
+Name: Nearing a descent down to the lake.
 Type: Road
 E: north 2278
 E: southeast 2277
 E: west 942
 
 ROOM v942
-Name: Nearing a large lake. (road)
+Name: Nearing a large lake.
 Type: Road
 E: east 943
 E: west 70
@@ -26528,32 +26528,32 @@ E: south 2290
 E: west 2286
 
 ROOM v2286
-Name: Nearing the beach. (path)
+Name: Nearing the beach.
 Type: Path
 E: east 2287
 E: west 2285
 
 ROOM v2285
-Name: Sandy path nearing the beach. (path)
+Name: Sandy path nearing the beach.
 Type: Path
 E: east 2286
 E: south 2284
 
 ROOM v2284
-Name: Sandy path nearing the beach. (path)
+Name: Sandy path nearing the beach.
 Type: Path
 E: north 2285
 E: west 2283
 
 ROOM v2283
-Name: Base of switchbacks. (path)
+Name: Base of switchbacks.
 Type: Path
 E: east 2284
 E: up 2282
 UE: up north
 
 ROOM v2282
-Name: Cliffside path. (path)
+Name: Cliffside path.
 Type: Path
 E: west 2318
 E: up 2281
@@ -26562,7 +26562,7 @@ E: down 2283
 UE: down south
 
 ROOM v2281
-Name: Path down the cliff. (path)
+Name: Path down the cliff.
 Type: Path
 E: up 2280
 UE: up north
@@ -26570,21 +26570,21 @@ E: down 2282
 UE: down south
 
 ROOM v2280
-Name: Path through the high grass. (path)
+Name: Path through the high grass.
 Type: Path
 E: west 2279
 E: down 2281
 UE: down south
 
 ROOM v2279
-Name: Descending cobblestone path. (path)
+Name: Descending cobblestone path.
 Type: Path
 E: east 2280
 E: up 2277
 UE: up north
 
 ROOM v2277
-Name: Cobblestone path through the grass. (path)
+Name: Cobblestone path through the grass.
 Type: Path
 E: northwest 943
 E: down 2279
@@ -27391,7 +27391,7 @@ E: north 3600
 E: down 3598
 
 ROOM v3598
-Name: At the base of a small mountain range. (road)
+Name: At the base of a small mountain range.
 Type: Road
 E: south 3268
 E: up 3599
@@ -27706,7 +27706,7 @@ E: east 3270
 E: west 3268
 
 ROOM v3268
-Name: Road approaching a small mountain range. (road)
+Name: Road approaching a small mountain range.
 Type: Road
 E: north 3598
 E: east 3269
@@ -27722,7 +27722,7 @@ E: southeast 3266
 E: south 3597
 
 ROOM v3266
-Name: Road through wide open plains. (road)
+Name: Road through wide open plains.
 Type: Road
 E: north 3268
 EL: north 1
@@ -27732,28 +27732,28 @@ E: west 3597
 E: northwest 3267
 
 ROOM v3265
-Name: Road through wide open plains. (road)
+Name: Road through wide open plains.
 Type: Road
 E: north 3266
 E: south 3264
 E: west 3596
 
 ROOM v3264
-Name: Road through wide open plains. (road)
+Name: Road through wide open plains.
 Type: Road
 E: north 3265
 E: south 3263
 E: northwest 3596
 
 ROOM v3263
-Name: Road through wide open plains. (road)
+Name: Road through wide open plains.
 Type: Road
 E: north 3264
 E: east 3568
 E: southwest 3262
 
 ROOM v3262
-Name: Road through wide open plains. (road)
+Name: Road through wide open plains.
 Type: Road
 E: northeast 3263
 E: southwest 3257
@@ -27786,7 +27786,7 @@ E: northeast 3257
 E: west 3259
 
 ROOM v3257
-Name: Following a road deep within the plains. (road)
+Name: Following a road deep within the plains.
 Type: Road
 E: northeast 3262
 E: southeast 3256
@@ -27874,7 +27874,7 @@ E: south 3252
 E: west 3245
 
 ROOM v3245
-Name: Road through tall grasses. (road)
+Name: Road through tall grasses.
 Type: Road
 E: north 3257
 EL: north 3
@@ -27883,7 +27883,7 @@ E: southeast 3252
 E: south 3244
 
 ROOM v3244
-Name: Following a winding road through tall grass. (road)
+Name: Following a winding road through tall grass.
 Type: Road
 E: north 3245
 E: east 3252
@@ -27898,7 +27898,7 @@ E: north 3242
 E: northeast 3244
 
 ROOM v3242
-Name: Narrow road through tall grass. (road)
+Name: Narrow road through tall grass.
 Type: Road
 E: north 3241
 EL: north 1
@@ -27914,7 +27914,7 @@ EL: south 1
 E: southwest 3240
 
 ROOM v3240
-Name: Road through wide open plains. (road)
+Name: Road through wide open plains.
 Type: Road
 E: northeast 3241
 E: southeast 3242
@@ -27936,20 +27936,20 @@ ES: south 1
 E: west 3237
 
 ROOM v3237
-Name: Wide open plains. (road)
+Name: Wide open plains.
 Type: Road
 E: northeast 3240
 E: east 3238
 E: south 3236
 
 ROOM v3236
-Name: Road through wide open plains. (road)
+Name: Road through wide open plains.
 Type: Road
 E: north 3237
 E: southeast 3158
 
 ROOM v2391
-Name: A road through open prairies of the Bardosi Plains. (road)
+Name: A road through open prairies of the Bardosi Plains.
 Type: Road
 E: east 3158
 E: south 2392
@@ -28027,7 +28027,7 @@ EL: north 1
 E: northwest 66
 
 ROOM v3158
-Name: Road through wide open plains. (road)
+Name: Road through wide open plains.
 Type: Road
 E: east 3567
 E: west 2391
@@ -28076,7 +28076,7 @@ AREA
 Name: Egeria Forest.
 
 ROOM v479
-Name: Passing the Egeria Forest. (path)
+Name: Passing the Egeria Forest.
 Type: Path
 E: north 478
 E: east 2424
@@ -28084,25 +28084,25 @@ ES: east 1
 E: southwest 480
 
 ROOM v478
-Name: Passing the Egeria Forest. (path)
+Name: Passing the Egeria Forest.
 Type: Path
 E: northeast 477
 E: south 479
 
 ROOM v477
-Name: Old road passing a deep canyon. (path)
+Name: Old road passing a deep canyon.
 Type: Path
 E: east 476
 E: southwest 478
 
 ROOM v476
-Name: Old road along the Egeria Forest. (path)
+Name: Old road along the Egeria Forest.
 Type: Path
 E: northeast 462
 E: west 477
 
 ROOM v462
-Name: Forked intersection. (road)
+Name: Forked intersection.
 Type: Road
 E: north 463
 E: southeast 461
@@ -28112,7 +28112,7 @@ E: southwest 476
 E: northwest 473
 
 ROOM v461
-Name: North of the Egeria forest. (path)
+Name: North of the Egeria forest.
 Type: Path
 E: northeast 460
 E: southwest 2402
@@ -28120,13 +28120,13 @@ ES: southwest 1
 E: northwest 462
 
 ROOM v460
-Name: A natural bridge between two forests. (path)
+Name: A natural bridge between two forests.
 Type: Path
 E: east 459
 E: southwest 461
 
 ROOM v459
-Name: A forked path. (path)
+Name: A forked path.
 Type: Path
 E: southeast 457
 E: west 460
@@ -28989,7 +28989,7 @@ Type: Garden
 E: south 457
 
 ROOM v457
-Name: Skirting the Sienna Forest. (path)
+Name: Skirting the Sienna Forest.
 Type: Path
 E: north 458
 E: northeast 456
@@ -28997,20 +28997,20 @@ E: south 2600
 E: northwest 459
 
 ROOM v456
-Name: Between the Sienna and Celidon Forest. (path)
+Name: Between the Sienna and Celidon Forest.
 Type: Path
 E: northeast 455
 E: southwest 457
 
 ROOM v455
-Name: South of the Celidon forest. (path)
+Name: South of the Celidon forest.
 Type: Path
 E: east 454
 EL: east 2
 E: southwest 456
 
 ROOM v454
-Name: Highway north of the Sienna. (path)
+Name: Highway north of the Sienna.
 Type: Path
 E: east 444
 E: south 2592
@@ -29019,14 +29019,14 @@ E: west 455
 EL: west 2
 
 ROOM v444
-Name: Nearing Lake Ildsam. (path)
+Name: Nearing Lake Ildsam.
 Type: Path
 E: northeast 445
 E: south 443
 E: west 454
 
 ROOM v445
-Name: Lakeside highway. (path)
+Name: Lakeside highway.
 Type: Path
 E: east 446
 E: south 442
@@ -29658,7 +29658,7 @@ E: east 2677
 E: south 1343
 
 ROOM v7864
-Name: An obscure path off the river's edge. (path)
+Name: An obscure path off the river's edge.
 Type: Path
 E: south 7865
 E: southwest 7876
@@ -29666,7 +29666,7 @@ E: west 7877
 E: northwest 1343
 
 ROOM v7865
-Name: A drizzling path along the swamp. (path)
+Name: A drizzling path along the swamp.
 Type: Path
 E: north 7864
 E: east 7866
@@ -29840,7 +29840,7 @@ E: south 7874
 E: west 7881
 
 ROOM v7876
-Name: Misty path. (path)
+Name: Misty path.
 Type: Path
 E: northeast 7864
 E: east 7865
@@ -29874,7 +29874,7 @@ ES: east 1
 E: southwest 7882
 
 ROOM v7881
-Name: A broken bridge. (path)
+Name: A broken bridge.
 Type: Path
 E: east 7875
 E: west 7883
@@ -31258,25 +31258,25 @@ E: in 3094
 UE: in east
 
 ROOM v3092
-Name: Approaching a large opening in the rock. (path)
+Name: Approaching a large opening in the rock.
 Type: Path
 E: east 3093
 E: southwest 3091
 
 ROOM v3091
-Name: On the path. (path)
+Name: On the path.
 Type: Path
 E: northeast 3092
 E: down 3090
 
 ROOM v3090
-Name: On the path. (path)
+Name: On the path.
 Type: Path
 E: up 3091
 E: down 3089
 
 ROOM v3089
-Name: At the beginning of a steep path. (path)
+Name: At the beginning of a steep path.
 Type: Path
 E: up 3090
 E: down 3017
@@ -33045,7 +33045,7 @@ E: west 3385
 E: down 3400
 
 ROOM v3385
-Name: Courtyard before the northern tower. (path)
+Name: Courtyard before the northern tower.
 Type: Path
 E: north 3386
 E: east 3392
@@ -33053,7 +33053,7 @@ E: south 3375
 E: southwest 3378
 
 ROOM v3377
-Name: Courtyard before the eastern tower. (path)
+Name: Courtyard before the eastern tower.
 Type: Path
 E: north 3392
 E: east 3393
@@ -33123,7 +33123,7 @@ E: southeast 3379
 E: southwest 3381
 
 ROOM v3378
-Name: Courtyard before the western tower. (path)
+Name: Courtyard before the western tower.
 Type: Path
 E: northeast 3385
 E: east 3375
@@ -34242,37 +34242,37 @@ E: southwest 3756
 E: northwest 3620
 
 ROOM v3756
-Name: Before a woody path. (path)
+Name: Before a woody path.
 Type: Path
 E: northeast 3755
 E: east 3757
 
 ROOM v3757
-Name: Along a rutted path. (path)
+Name: Along a rutted path.
 Type: Path
 E: southeast 3758
 E: west 3756
 
 ROOM v3758
-Name: Following a stream. (path)
+Name: Following a stream.
 Type: Path
 E: east 3759
 E: northwest 3757
 
 ROOM v3759
-Name: A sparkling pool. (path)
+Name: A sparkling pool.
 Type: Path
 E: southeast 3760
 E: west 3758
 
 ROOM v3760
-Name: A sturdy wooden gate. (path)
+Name: A sturdy wooden gate.
 Type: Path
 E: south 3761
 E: northwest 3759
 
 ROOM v3761
-Name: Approaching a rude camp. (path)
+Name: Approaching a rude camp.
 Type: Path
 E: north 3760
 E: south 3762
@@ -34749,18 +34749,18 @@ E: northeast 4233
 ES: northeast 1
 
 ROOM v4237
-Name: Rocky peninsula. (path)
+Name: Rocky peninsula.
 Type: Path
 E: east 4236
 
 ROOM v4236
-Name: Rocky peninsula. (path)
+Name: Rocky peninsula.
 Type: Path
 E: east 4235
 E: west 4237
 
 ROOM v4235
-Name: Rocky peninsula. (path)
+Name: Rocky peninsula.
 Type: Path
 E: southeast 4231
 E: west 4236
@@ -36331,7 +36331,7 @@ E: out 4281
 UE: out south
 
 ROOM v4281
-Name: Lost within a dense silver mist. (path)
+Name: Lost within a dense silver mist.
 Type: Path
 E: east 4281
 ES: east 1
@@ -36346,7 +36346,7 @@ E: in 4282
 UE: in north
 
 ROOM v4280
-Name: Lost within a dense silver mist. (path)
+Name: Lost within a dense silver mist.
 Type: Path
 E: north 4281
 E: northeast 4280
@@ -36702,7 +36702,7 @@ AREA
 Name: Lalwan Eryn.
 
 ROOM v4323
-Name: Flora-filled path between shrubberies. (path)
+Name: Flora-filled path between shrubberies.
 Type: Path
 E: north 4551
 E: south 4322
@@ -36799,7 +36799,7 @@ Type: Forest
 E: southwest 4547
 
 ROOM v4551
-Name: A crumbling fountain. (path)
+Name: A crumbling fountain.
 Type: Path
 E: north 4566
 E: east 4570
@@ -36903,14 +36903,14 @@ E: down 4560
 UE: down east
 
 ROOM v4566
-Name: Stone bridge crossing the river. (path)
+Name: Stone bridge crossing the river.
 Type: Path
 E: north 4567
 E: south 4551
 E: down 4572
 
 ROOM v4567
-Name: Before the stone mill. (path)
+Name: Before the stone mill.
 Type: Path
 E: south 4566
 E: in 4568
@@ -41010,7 +41010,7 @@ AREA
 Name: central battlegrounds.
 
 ROOM v5553
-Name: High atop an ancient bridge. (path)
+Name: High atop an ancient bridge.
 Type: Path
 E: east 5564
 E: west 5552
@@ -41045,7 +41045,7 @@ E: north 5561
 E: northeast 5562
 
 ROOM v5564
-Name: A worn, exposed stretch of bridge. (path)
+Name: A worn, exposed stretch of bridge.
 Type: Path
 E: east 5565
 E: west 5553
@@ -43051,7 +43051,6 @@ ROOM v6252
 Name: At the edge of a waterfall.
 Type: River
 E: northwest 6251
-SPE: 514 0 "" "You feel yourself falling momentarily before smacking into the water painfully."
 
 ROOM v6251
 Name: Swift moving water approaching a waterfall.
@@ -43946,7 +43945,7 @@ E: south 6322
 ES: south 1
 
 ROOM v7381
-Name: A descending ledge overlooking Lake Yhumara. (path)
+Name: A descending ledge overlooking Lake Yhumara.
 Type: Path
 E: southwest 7382
 E: up 6295
@@ -44306,7 +44305,7 @@ E: southwest 7045
 E: west 7047
 
 ROOM v7045
-Name: Nearing the farmhouse. (path)
+Name: Nearing the farmhouse.
 Type: Path
 E: northeast 7046
 E: southwest 6419
@@ -48908,7 +48907,7 @@ AREA
 Name: Fourth quarter of the Imperial Spire.
 
 ROOM v7221
-Name: Approaching the tower. (path)
+Name: Approaching the tower.
 Type: Path
 E: north 7220
 
@@ -48998,7 +48997,7 @@ E: east 7233
 E: up 7218
 
 ROOM v7229
-Name: A dirt path. (path)
+Name: A dirt path.
 Type: Path
 E: north 7234
 E: northeast 7230
@@ -49147,7 +49146,7 @@ E: southeast 7237
 E: southwest 7241
 
 ROOM v7239
-Name: Bridge over a waterfall. (path)
+Name: Bridge over a waterfall.
 Type: Path
 E: north 7238
 EL: north 1
@@ -49167,7 +49166,7 @@ EL: south 1
 E: west 7247
 
 ROOM v7236
-Name: A barren clearing. (path)
+Name: A barren clearing.
 Type: Path
 E: north 7248
 E: east 7235
@@ -49183,7 +49182,7 @@ E: southwest 7234
 E: west 7236
 
 ROOM v7234
-Name: Central combat area. (path)
+Name: Central combat area.
 Type: Path
 E: north 7236
 E: northeast 7235
@@ -49209,7 +49208,7 @@ E: northwest 7234
 EL: northwest 1
 
 ROOM v7231
-Name: A dust-covered area. (path)
+Name: A dust-covered area.
 Type: Path
 E: east 7228
 E: south 7230
@@ -49232,7 +49231,7 @@ UE: up east
 SPE: 7419 0 "" "swift-moving water drags you swiftly to the surface."
 
 ROOM v7356
-Name: A path southeast of the Geard Sylvalis. (path)
+Name: A path southeast of the Geard Sylvalis.
 Type: Path
 E: northeast 7328
 E: southeast 7301
@@ -49241,7 +49240,7 @@ E: southwest 7358
 E: northwest 7363
 
 ROOM v7355
-Name: Fork in the garden path. (path)
+Name: Fork in the garden path.
 Type: Path
 E: northeast 7333
 ES: northeast 1
@@ -49252,7 +49251,7 @@ E: northwest 7354
 ES: northwest 1
 
 ROOM v7354
-Name: Passing an outdoor theater. (path)
+Name: Passing an outdoor theater.
 Type: Path
 E: northeast 7335
 EL: northeast 1
@@ -49268,7 +49267,7 @@ E: northeast 7321
 E: southwest 7350
 
 ROOM v7350
-Name: A path through the artisans' district. (path)
+Name: A path through the artisans' district.
 Type: Path
 E: northeast 7353
 E: southeast 7354
@@ -49287,7 +49286,7 @@ E: west 7348
 EL: west 1
 
 ROOM v7348
-Name: A bend in the cobblestone path. (path)
+Name: A bend in the cobblestone path.
 Type: Path
 E: north 7278
 EL: north 1
@@ -49401,7 +49400,7 @@ EL: northwest 1
 E: in 7434
 
 ROOM v7333
-Name: Skirting the Geard Sylvalis. (path)
+Name: Skirting the Geard Sylvalis.
 Type: Path
 E: north 7323
 ES: north 1
@@ -49417,13 +49416,13 @@ E: northwest 7335
 ES: northwest 1
 
 ROOM v7332
-Name: Bridge betwixt a small lake and the garden. (path)
+Name: Bridge betwixt a small lake and the garden.
 Type: Path
 E: southeast 7327
 E: northwest 7331
 
 ROOM v7331
-Name: Beside the Mere Zangrilla. (path)
+Name: Beside the Mere Zangrilla.
 Type: Path
 E: southeast 7332
 E: south 7330
@@ -49455,7 +49454,7 @@ Type: Academia
 E: northwest 7328
 
 ROOM v7328
-Name: Skirting the garden. (path)
+Name: Skirting the garden.
 Type: Path
 E: north 7262
 EL: north 1
@@ -49465,7 +49464,7 @@ E: northwest 7263
 EL: northwest 1
 
 ROOM v7327
-Name: Beside the Mere Zangrilla. (path)
+Name: Beside the Mere Zangrilla.
 Type: Path
 E: south 7262
 EL: south 1
@@ -49497,7 +49496,7 @@ EL: northwest 1
 E: in 7438
 
 ROOM v7324
-Name: Junction north of the garden. (path)
+Name: Junction north of the garden.
 Type: Path
 E: north 7322
 ES: north 1
@@ -49517,7 +49516,7 @@ ES: south 1
 E: northwest 7316
 
 ROOM v7322
-Name: Eastern edge of the artisans' district. (path)
+Name: Eastern edge of the artisans' district.
 Type: Path
 E: north 7314
 EL: north 1
@@ -49578,7 +49577,7 @@ E: east 7314
 E: southwest 7316
 
 ROOM v7314
-Name: Between a small lake and a workshop. (path)
+Name: Between a small lake and a workshop.
 Type: Path
 E: north 7273
 E: south 7322
@@ -49620,7 +49619,7 @@ E: north 7310
 E: south 7308
 
 ROOM v7308
-Name: The Northern Gates of the Academia. (path)
+Name: The Northern Gates of the Academia.
 Type: Path
 E: north 7309
 E: south 7273
@@ -49656,7 +49655,7 @@ E: southwest 7268
 E: northwest 7305
 
 ROOM v7257
-Name: The gates of the Academia Sylvalis. (path)
+Name: The gates of the Academia Sylvalis.
 Type: Path
 E: west 7258
 E: out 7357
@@ -49686,14 +49685,14 @@ E: southeast 7281
 E: west 7261
 
 ROOM v7261
-Name: Approaching the herb garden. (path)
+Name: Approaching the herb garden.
 Type: Path
 E: east 7260
 E: west 7262
 ES: west 1
 
 ROOM v7262
-Name: East of the Geard Sylvalis. (path)
+Name: East of the Geard Sylvalis.
 Type: Path
 E: north 7327
 EL: north 1
@@ -49744,7 +49743,7 @@ E: south 7259
 E: southwest 7260
 
 ROOM v7266
-Name: Between a swamp and a workshop. (path)
+Name: Between a swamp and a workshop.
 Type: Path
 E: east 7267
 E: south 7265
@@ -49756,41 +49755,41 @@ Type: Academia
 E: west 7266
 
 ROOM v7268
-Name: Passing a fenced pasture. (path)
+Name: Passing a fenced pasture.
 Type: Path
 E: northeast 7304
 E: southeast 7266
 E: northwest 7269
 
 ROOM v7269
-Name: On the northeastern edge of a small lake. (path)
+Name: On the northeastern edge of a small lake.
 Type: Path
 E: northeast 7305
 E: southeast 7268
 E: northwest 7270
 
 ROOM v7270
-Name: Upon a quaint, cobblestone bridge. (path)
+Name: Upon a quaint, cobblestone bridge.
 Type: Path
 E: southeast 7269
 E: northwest 7271
 
 ROOM v7271
-Name: Outside a tailoring workshop. (path)
+Name: Outside a tailoring workshop.
 Type: Path
 E: north 7306
 E: southeast 7270
 E: west 7272
 
 ROOM v7272
-Name: A path along the northern edge of a lake. (path)
+Name: A path along the northern edge of a lake.
 Type: Path
 E: north 7307
 E: east 7271
 E: west 7273
 
 ROOM v7273
-Name: The northern corner of the artisans' district. (path)
+Name: The northern corner of the artisans' district.
 Type: Path
 E: north 7308
 E: east 7272
@@ -49798,7 +49797,7 @@ E: south 7314
 E: west 7274
 
 ROOM v7274
-Name: Near a painter's studio. (path)
+Name: Near a painter's studio.
 Type: Path
 E: east 7273
 E: south 7315
@@ -49806,7 +49805,7 @@ E: west 7275
 EL: west 1
 
 ROOM v7275
-Name: Passing through the artisans' district. (path)
+Name: Passing through the artisans' district.
 Type: Path
 E: north 7318
 E: east 7274
@@ -49816,7 +49815,7 @@ E: west 7276
 EL: west 1
 
 ROOM v7276
-Name: Between two studios. (path)
+Name: Between two studios.
 Type: Path
 E: north 7319
 E: east 7275
@@ -49825,7 +49824,7 @@ E: south 7320
 E: west 7277
 
 ROOM v7277
-Name: Passing through the artisans' district. (path)
+Name: Passing through the artisans' district.
 Type: Path
 E: east 7276
 E: south 7349
@@ -49834,7 +49833,7 @@ E: west 7278
 EL: west 1
 
 ROOM v7278
-Name: Outside a small cafe. (path)
+Name: Outside a small cafe.
 Type: Path
 E: north 7346
 E: east 7277
@@ -49868,7 +49867,7 @@ E: south 7282
 E: northwest 7260
 
 ROOM v7282
-Name: Outside of the glass shop. (path)
+Name: Outside of the glass shop.
 Type: Path
 E: north 7281
 E: east 7299
@@ -49876,7 +49875,7 @@ E: south 7283
 E: west 7300
 
 ROOM v7283
-Name: Between two workshops. (path)
+Name: Between two workshops.
 Type: Path
 E: north 7282
 E: east 7298
@@ -49884,14 +49883,14 @@ E: south 7284
 E: west 7326
 
 ROOM v7284
-Name: Upon a cobblestone path. (path)
+Name: Upon a cobblestone path.
 Type: Path
 E: north 7283
 E: east 7297
 E: south 7285
 
 ROOM v7285
-Name: A fork in the paths. (path)
+Name: A fork in the paths.
 Type: Path
 E: north 7284
 E: east 7296
@@ -49902,7 +49901,7 @@ EL: southwest 1
 E: northwest 7302
 
 ROOM v7286
-Name: Between two towers. (path)
+Name: Between two towers.
 Type: Path
 E: north 7285
 EL: north 1
@@ -49912,27 +49911,27 @@ E: west 7295
 EL: west 1
 
 ROOM v7287
-Name: Alongside the stargazers' tower. (path)
+Name: Alongside the stargazers' tower.
 Type: Path
 E: north 7286
 E: west 7288
 
 ROOM v7288
-Name: Before a large mural. (path)
+Name: Before a large mural.
 Type: Path
 E: east 7287
 E: west 7289
 E: northwest 7295
 
 ROOM v7289
-Name: Next to the mathematicians' tower. (path)
+Name: Next to the mathematicians' tower.
 Type: Path
 E: north 7295
 E: east 7288
 E: west 7290
 
 ROOM v7290
-Name: Between a mural and a forest. (path)
+Name: Between a mural and a forest.
 Type: Path
 E: northeast 7295
 E: east 7289
@@ -50014,7 +50013,7 @@ E: east 7282
 E: southwest 7301
 
 ROOM v7301
-Name: Skirting a forest. (path)
+Name: Skirting a forest.
 Type: Path
 E: northeast 7300
 E: southeast 7302
@@ -50023,7 +50022,7 @@ E: northwest 7356
 ES: northwest 1
 
 ROOM v7302
-Name: At the edge of the forest. (path)
+Name: At the edge of the forest.
 Type: Path
 E: southeast 7285
 E: west 7303
@@ -50046,7 +50045,7 @@ SPE: 16 0 "" "overgrown garden."
 SPE: 7257 0 "" "the open gates."
 
 ROOM v7358
-Name: Skirting the Geard Sylvalis. (path)
+Name: Skirting the Geard Sylvalis.
 Type: Path
 E: northeast 7356
 E: southeast 7359
@@ -50084,26 +50083,26 @@ E: southwest 7370
 E: west 7369
 
 ROOM v7364
-Name: Between a mural and a forest. (path)
+Name: Between a mural and a forest.
 Type: Path
 E: east 7290
 E: west 7365
 
 ROOM v7365
-Name: Between a mural and a forest. (path)
+Name: Between a mural and a forest.
 Type: Path
 E: east 7364
 E: west 7366
 
 ROOM v7366
-Name: Small bridge above a raging waterfall. (path)
+Name: Small bridge above a raging waterfall.
 Type: Path
 E: east 7365
 E: west 7367
 ES: west 1
 
 ROOM v7367
-Name: Between a mural and a forest. (path)
+Name: Between a mural and a forest.
 Type: Path
 E: east 7366
 ES: east 1
@@ -50172,7 +50171,7 @@ E: west 7377
 EL: west 1
 
 ROOM v7373
-Name: Skirting the garden. (path)
+Name: Skirting the garden.
 Type: Path
 E: northeast 7355
 E: east 7334
@@ -50198,7 +50197,7 @@ Type: Academia
 E: northeast 7350
 
 ROOM v7376
-Name: West of the Geard Sylvalis. (path)
+Name: West of the Geard Sylvalis.
 Type: Path
 E: north 7373
 EL: north 1
@@ -50210,7 +50209,7 @@ E: west 7439
 ES: west 1
 
 ROOM v7377
-Name: Skirting the garden. (path)
+Name: Skirting the garden.
 Type: Path
 E: north 7376
 EL: north 1
@@ -50222,7 +50221,7 @@ E: southeast 7378
 E: southwest 7397
 
 ROOM v7378
-Name: Fork in the garden path. (path)
+Name: Fork in the garden path.
 Type: Path
 E: northeast 7372
 E: southeast 7379
@@ -50231,7 +50230,7 @@ ES: southwest 1
 E: northwest 7377
 
 ROOM v7379
-Name: Skirting the garden. (path)
+Name: Skirting the garden.
 Type: Path
 E: north 7372
 EL: north 1
@@ -50244,7 +50243,7 @@ ES: southwest 1
 E: northwest 7378
 
 ROOM v7380
-Name: A bridge over the Ea Zangrilla. (path)
+Name: A bridge over the Ea Zangrilla.
 Type: Path
 E: east 7358
 EL: east 1
@@ -50346,7 +50345,7 @@ EL: south 2
 E: west 7401
 
 ROOM v7396
-Name: A path along a grassy expanse. (path)
+Name: A path along a grassy expanse.
 Type: Path
 E: northeast 7378
 ES: northeast 1
@@ -50381,7 +50380,7 @@ EL: northeast 2
 E: west 7398
 
 ROOM v7401
-Name: A path before a small, stone building. (path)
+Name: A path before a small, stone building.
 Type: Path
 E: northeast 7396
 E: east 7395
@@ -50394,7 +50393,7 @@ Type: Academia
 E: southeast 7401
 
 ROOM v7403
-Name: Passing the training yard. (path)
+Name: Passing the training yard.
 Type: Path
 E: northeast 7401
 E: southeast 7398
@@ -50405,7 +50404,7 @@ E: southwest 7405
 EL: southwest 1
 
 ROOM v7404
-Name: Approaching a glass mosaic. (path)
+Name: Approaching a glass mosaic.
 Type: Path
 E: north 7403
 EL: north 1
@@ -50428,7 +50427,7 @@ EL: southeast 1
 E: southwest 7412
 
 ROOM v7406
-Name: Before a vivid glass mosaic. (path)
+Name: Before a vivid glass mosaic.
 Type: Path
 E: north 7404
 EL: north 1
@@ -50438,7 +50437,7 @@ E: northwest 7405
 EL: northwest 1
 
 ROOM v7407
-Name: Before a large mural. (path)
+Name: Before a large mural.
 Type: Path
 E: northeast 7398
 E: east 7408
@@ -50446,7 +50445,7 @@ E: west 7406
 ES: west 1
 
 ROOM v7408
-Name: Next to the architects' tower. (path)
+Name: Next to the architects' tower.
 Type: Path
 E: north 7398
 E: east 7367
@@ -50629,7 +50628,7 @@ Type: Desert
 E: out 7325
 
 ROOM v7439
-Name: Approaching the library. (path)
+Name: Approaching the library.
 Type: Path
 E: east 7376
 ES: east 1
@@ -50956,7 +50955,7 @@ E: south 7544
 E: west 7542
 
 ROOM v7542
-Name: Before a group of dwellings. (path)
+Name: Before a group of dwellings.
 Type: Path
 E: east 7543
 E: west 7538
@@ -51059,13 +51058,13 @@ E: north 7528
 E: south 7530
 
 ROOM v7528
-Name: Nearing a settlement. (path)
+Name: Nearing a settlement.
 Type: Path
 E: north 7527
 E: south 7529
 
 ROOM v7527
-Name: A stone-covered hillside. (path)
+Name: A stone-covered hillside.
 Type: Path
 E: south 7528
 E: up 7496
@@ -51257,7 +51256,7 @@ E: east 7491
 E: up 7504
 
 ROOM v7496
-Name: A rocky slope. (path)
+Name: A rocky slope.
 Type: Path
 E: northwest 7495
 E: down 7527
@@ -51423,7 +51422,7 @@ E: east 7469
 E: west 7467
 
 ROOM v7467
-Name: A grassy path through the camp. (path)
+Name: A grassy path through the camp.
 Type: Path
 E: east 7468
 E: southwest 7462
@@ -51447,13 +51446,13 @@ E: southeast 7466
 E: west 7463
 
 ROOM v7463
-Name: A grassy trail. (path)
+Name: A grassy trail.
 Type: Path
 E: east 7464
 E: northwest 7462
 
 ROOM v7462
-Name: Approaching a small camp. (path)
+Name: Approaching a small camp.
 Type: Path
 E: northeast 7467
 E: southeast 7463
@@ -51609,13 +51608,13 @@ E: east 7601
 EL: east 1
 
 ROOM v7590
-Name: Beaten path into a desert canyon. (path)
+Name: Beaten path into a desert canyon.
 Type: Path
 E: southeast 7591
 E: west 689
 
 ROOM v7591
-Name: At the mouth of a large canyon. (path)
+Name: At the mouth of a large canyon.
 Type: Path
 E: northeast 7593
 E: east 7592
@@ -53229,19 +53228,19 @@ AREA
 Name: Trevka.
 
 ROOM v8157
-Name: Game trail through dense thicket. (path)
+Name: Game trail through dense thicket.
 Type: Path
 E: east 8158
 E: west 1267
 
 ROOM v8158
-Name: Approaching a farming village. (path)
+Name: Approaching a farming village.
 Type: Path
 E: southeast 8159
 E: west 8157
 
 ROOM v8159
-Name: Entrance to a farming village. (path)
+Name: Entrance to a farming village.
 Type: Path
 E: north 8160
 E: east 8161
@@ -53254,7 +53253,7 @@ Type: Village
 E: south 8159
 
 ROOM v8161
-Name: Path through a farming village. (path)
+Name: Path through a farming village.
 Type: Path
 E: east 8164
 E: south 8163
@@ -53271,7 +53270,7 @@ Type: Village
 E: north 8161
 
 ROOM v8164
-Name: West end of wide muddy area. (path)
+Name: West end of wide muddy area.
 Type: Path
 E: north 8165
 E: east 8167
@@ -53289,14 +53288,14 @@ Type: Village
 E: south 8165
 
 ROOM v8167
-Name: East end of wide muddy area. (path)
+Name: East end of wide muddy area.
 Type: Path
 E: east 8168
 E: south 8169
 E: west 8164
 
 ROOM v8168
-Name: Path through a farming village. (path)
+Name: Path through a farming village.
 Type: Path
 E: north 8173
 E: east 8175
@@ -53339,7 +53338,7 @@ Type: Village
 E: south 8173
 
 ROOM v8175
-Name: Path through a farming village. (path)
+Name: Path through a farming village.
 Type: Path
 E: north 8178
 E: east 8179
@@ -53363,7 +53362,7 @@ Type: Village
 E: south 8175
 
 ROOM v8179
-Name: Path leaving a farming village. (path)
+Name: Path leaving a farming village.
 Type: Path
 E: north 8180
 E: east 8181
@@ -53376,7 +53375,7 @@ Type: Village
 E: south 8179
 
 ROOM v8181
-Name: Footpath through oak woods. (path)
+Name: Footpath through oak woods.
 Type: Path
 E: northeast 8182
 E: west 8179
@@ -53650,7 +53649,7 @@ E: southwest 8236
 ES: southwest 1
 
 ROOM v8236
-Name: Just beyond a lattice gate. (path)
+Name: Just beyond a lattice gate.
 Type: Path
 E: northeast 8237
 ES: northeast 1
@@ -53853,20 +53852,20 @@ E: southeast 8207
 E: west 8228
 
 ROOM v8207
-Name: At a magnificent redwood archway. (path)
+Name: At a magnificent redwood archway.
 Type: Path
 E: northeast 8209
 E: south 8206
 E: northwest 8208
 
 ROOM v8206
-Name: Approaching an archway carved within a giant redwood. (path)
+Name: Approaching an archway carved within a giant redwood.
 Type: Path
 E: north 8207
 E: southwest 8205
 
 ROOM v8205
-Name: A fragrant redwood lined path. (path)
+Name: A fragrant redwood lined path.
 Type: Path
 E: northeast 8206
 E: southwest 2104
@@ -54869,7 +54868,7 @@ E: southeast 8399
 E: west 8397
 
 ROOM v8397
-Name: In sight of Cetara. (path)
+Name: In sight of Cetara.
 Type: Path
 E: east 8398
 E: south 8396
@@ -55453,7 +55452,7 @@ E: southwest 8520
 E: west 8546
 
 ROOM v8528
-Name: Crossing the swinging bridge. (path)
+Name: Crossing the swinging bridge.
 Type: Path
 E: east 8529
 E: west 8527
