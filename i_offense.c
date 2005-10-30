@@ -196,6 +196,7 @@ struct trigger_data
    char *name;
    
    short prompt;
+   short raw;
    short regex;
    short continuous;
    
@@ -448,39 +449,33 @@ void show_part_hits( )
 
 
 
-void caiman_targetting( char *line )
+void caiman_and_creeper_targetting( char *line )
 {
-   const int aggressive_caimans[ ] = 
-     { 12878, 15212, 18360, 19914, 25486, 27740, 31539, 34575, 0 };
-   static int caiman;
-   static int aggressive_caiman;
-   static int last_caiman;
-   static int color;
+   const int aggressive_mobs[ ] = 
+     {
+	/* Caiman: */ 12878, 15212, 18360, 19914, 25486, 27740, 31539, 34575,
+	/* Creepers: */ 39025, 14495, 48257, 49304, 40287, 25243, 52827, 39192, 51223, 3623, 52275, 0 };
+   static int mob;
+   static int aggressive_mob;
+   static int last_mob;
    char name[1024];
    int nr, i;
    
-   /* Stop the red colour from bleeding. */
-   if ( color )
+   if ( mob && !cmp( "Number of objects: *", line ) )
      {
-	prefix( C_0 );
-	color = 0;
-     }
-   
-   if ( caiman && !cmp( "Number of objects: *", line ) )
-     {
-	if ( aggressive_caiman )
-	  caiman = aggressive_caiman;
+	if ( aggressive_mob )
+	  mob = aggressive_mob;
 	
-	prefixf( "Target: %s%d%s\r\n" C_0, aggressive_caiman ? C_R : C_G,
-		  caiman, caiman == last_caiman ? C_W " *" : "" );
+	prefixf( "Target: %s%d%s\r\n" C_0, aggressive_mob ? C_R : C_G,
+		 mob, mob == last_mob ? C_W " *" : "" );
 	
-	sprintf( name, "%d", caiman );
+	sprintf( name, "%d", mob );
 	free( target );
 	target = strdup( name );
 	
-	last_caiman = caiman;
-	caiman = 0;
-	aggressive_caiman = 0;
+	last_mob = mob;
+	mob = 0;
+	aggressive_mob = 0;
 	
 	return;
      }
@@ -490,24 +485,21 @@ void caiman_targetting( char *line )
    
    line = get_string( line, name, 1024 );
    
-   if ( cmp( "caiman*", name ) || cmp( "a hungry caiman", line ) )
-     return;
-   
-   nr = atoi( name + 6 );
-   if ( !nr )
+   if ( ( cmp( "caiman*", name ) || cmp( "a hungry caiman", line ) || !( nr = atoi( name + 6 ) ) ) &&
+	( cmp( "creeper*", name ) || cmp( "a carrion creeper", line ) || !( nr = atoi( name + 7 ) ) ) )
      return;
    
    /* In case the last one is not dead yet. */
-   if ( !last_caiman || caiman != last_caiman )
-     caiman = nr;
+   if ( !last_mob || mob != last_mob )
+     mob = nr;
    
-   for ( i = 0; aggressive_caimans[i]; i++ )
-     if ( nr == aggressive_caimans[i] )
+   for ( i = 0; aggressive_mobs[i]; i++ )
+     if ( nr == aggressive_mobs[i] )
        {
-	  if ( caiman == nr )
-	    aggressive_caiman = nr;
+	  if ( mob == nr )
+	    aggressive_mob = nr;
 	  prefix( C_R );
-	  color = 1;
+	  suffix( C_0 );
        }
 }
 
@@ -527,6 +519,8 @@ void check_triggers( LINE *l, int prompt )
 {
    SCRIPT *script;
    TRIGGER *trigger;
+   char *line;
+   int len;
    int rc;
    
    for ( script = scripts; script; script = script->next )
@@ -535,6 +529,17 @@ void check_triggers( LINE *l, int prompt )
 	  if ( trigger->prompt != prompt )
 	    continue;
 	  
+	  if ( !trigger->raw )
+	    {
+	       line = l->line;
+	       len = l->len;
+	    }
+	  else
+	    {
+	       line = l->raw_line;
+	       len = l->raw_len;
+	    }
+	  
 	  if ( trigger->everything )
 	    {
 	       exec_trigger( trigger );
@@ -542,7 +547,7 @@ void check_triggers( LINE *l, int prompt )
 	  
 	  else if ( trigger->regex )
 	    {
-	       rc = pcre_exec( trigger->pattern, trigger->extra, l->line, l->len, 0, 0, regex_ovector, 30 );
+	       rc = pcre_exec( trigger->pattern, trigger->extra, line, len, 0, 0, regex_ovector, 30 );
 	       
 	       if ( rc < 0 )
 		 continue;
@@ -553,14 +558,14 @@ void check_triggers( LINE *l, int prompt )
 		 regex_callbacks = 10;
 	       else
 		 regex_callbacks = rc;
-	       regex_line = l->line;
+	       regex_line = line;
 	       
 	       exec_trigger( trigger );
 	       
 	       regex_callbacks = 0;
 	    }
 	  
-	  else if ( !cmp( trigger->message, l->line ) )
+	  else if ( !cmp( trigger->message, line ) )
 	    {
 	       exec_trigger( trigger );
 	    }
@@ -588,7 +593,7 @@ void offensive_process_server_line( LINE *l )
    if ( !cmp( "^ slowly pulls back *", l->line ) )
      prefix( C_W );
    
-   caiman_targetting( l->line );
+   caiman_and_creeper_targetting( l->line );
    
    /* Check for triggers. */
    check_triggers( l, 0 );
@@ -2957,6 +2962,8 @@ int load_script_trigger( SCRIPT *script )
 	
 	if ( !strcmp( buf, "prompt" ) )
 	  trigger->prompt = 1;
+	else if ( !strcmp( buf, "raw" ) )
+	  trigger->raw = 1;
 	else if ( !strcmp( buf, "regex" ) )
 	  trigger->regex = 1;
 	else if ( !strcmp( buf, "continuous" ) )
