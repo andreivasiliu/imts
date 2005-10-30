@@ -13880,6 +13880,7 @@ Type: Mountains
 E: northeast 2000
 E: south 2009
 E: west 2007
+E: in 8626
 
 ROOM v2007
 Name: Deep in the Areish mountains.
@@ -14058,6 +14059,97 @@ ROOM v7760
 Name: A ruin of wood and ash.
 Type: Mountains
 E: west 7759
+
+ROOM v8626
+Name: A cavern behind the waterfall.
+Type: Path
+E: north 8635
+E: south 8627
+ES: south 1
+E: west 8628
+ES: west 1
+E: out 2006
+
+ROOM v8627
+Name: A tranquil reflecting pool surrounded by calla lilies.
+Type: Forest
+E: north 8626
+ES: north 1
+E: northeast 8628
+E: west 8635
+ES: west 1
+E: northwest 8630
+
+ROOM v8628
+Name: Within view of a picturesque snow-capped summit.
+Type: Forest
+E: northeast 8638
+E: east 8626
+ES: east 1
+E: south 8629
+E: southwest 8627
+E: west 8632
+
+ROOM v8629
+Name: Before the Roseate Tower.
+Type: Forest
+E: north 8628
+E: southeast 8630
+ES: southeast 1
+E: in 8640
+
+ROOM v8630
+Name: Within a ring of daisies and bluebells.
+Type: Forest
+E: east 8632
+E: southeast 8627
+E: west 8638
+ES: west 1
+E: northwest 8629
+ES: northwest 1
+
+ROOM v8632
+Name: In a rain splashed glade.
+Type: Mountains
+E: east 8628
+E: west 8630
+
+ROOM v8635
+Name: A resplendent forest clearing.
+Type: Forest
+E: east 8627
+ES: east 1
+E: south 8626
+
+ROOM v8638
+Name: Within a bountiful orchard.
+Type: Forest
+E: east 8630
+ES: east 1
+E: southwest 8628
+
+ROOM v8640
+Name: An elegant circular room of rose-quartz.
+Type: Garden
+E: south 8641
+E: up 8644
+E: out 8629
+
+ROOM v8641
+Name: Within the Garden of the Child.
+Type: Forest
+E: north 8640
+E: up 8642
+
+ROOM v8642
+Name: Up an intricately twisted ladder.
+Type: Path
+E: up 8643
+E: down 8641
+
+ROOM v8644
+Name: Beneath an elysian dome of rapturous beauty.
+E: down 8640
 
 
 
@@ -19325,7 +19417,6 @@ DEL: north
 E: east 3338
 EL: east 2
 E: southeast 8512
-EL: southeast 1
 E: south 3336
 EL: south 2
 DEL: west
@@ -19350,6 +19441,7 @@ EL: east 1
 E: south 7736
 E: west 8514
 E: northwest 8512
+EL: northwest 1
 
 ROOM v3329
 Name: The Official Celidon Exchange.
@@ -19872,18 +19964,22 @@ ROOM v8511
 Name: A fountain in Zephyr Plaza.
 Type: Natural underground
 E: north 3338
+DEL: east
 E: south 8510
+E: west 8645
 
 ROOM v8512
 Name: A carp-filled pool.
 Type: Natural underground
+DEL: north
 E: southeast 3335
+EL: southeast 1
 E: northwest 3337
-EL: northwest 1
 
 ROOM v8514
 Name: A gathering place.
 Type: Natural underground
+DEL: north
 E: east 3335
 E: west 8515
 
@@ -19892,6 +19988,11 @@ Name: The Plaza gardens.
 Type: Natural underground
 E: east 8514
 E: west 3336
+
+ROOM v8645
+Name: A small hidden cave.
+Type: Natural underground
+E: east 8511
 
 
 
@@ -55886,6 +55987,16 @@ ROOM v8615
 Name: Before the Wrath Spire.
 E: south 8612
 E: in 8614
+
+
+
+AREA
+Name: Nowhere.
+
+ROOM v8643
+Name: Within the clouds under the arch of the rainbow.
+Type: Undefined
+E: down 8642
 
 
 
