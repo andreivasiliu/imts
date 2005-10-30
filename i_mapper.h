@@ -84,6 +84,7 @@ struct room_data
    short exit_length[13];
    short use_exit_instead[13];
    short exit_stops_mapping[13];
+   short exit_joins_areas[13];
    /* End. */
    
    ELEMENT *tags;
@@ -109,6 +110,8 @@ struct area_data
    char *name;
    
    int disabled;
+   
+   int needs_cleaning;
    
    ROOM_DATA *rooms;
    ROOM_DATA *last_room;

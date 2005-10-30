@@ -173,6 +173,7 @@ char *dash_command;
 
 int set_length_to;
 int switch_exit_stops_mapping;
+int switch_exit_joins_areas;
 int update_area_from_survey;
 int use_direction_instead;
 int unidirectional_exit;
@@ -1041,6 +1042,31 @@ int parse_title( const char *line )
 		       switch_exit_stops_mapping = 0;
 		    }
 		  
+		  /* Show rooms even from another area? */
+		  if ( switch_exit_joins_areas )
+		    {
+		       i = current_room->exit_joins_areas[q];
+		       
+		       i = !i;
+		       
+		       if ( i && ( current_room->area == new_room->area ) )
+			 clientf( C_R " (" C_G "j NOT set" C_R ")" C_0 );
+		       else
+			 {
+			    current_room->exit_joins_areas[q] = i;
+			    if ( new_room->exits[reverse_exit[q]] == current_room )
+			      new_room->exit_joins_areas[reverse_exit[q]] = i;
+			    
+			    if ( i )
+			      clientf( C_R " (" C_G "j set" C_R ")" C_0 );
+			    else
+			      clientf( C_R " (" C_G "j unset" C_R ")" C_0 );
+			 }
+		       
+		       switch_exit_joins_areas = 0;
+		    }
+		  
+		  
 		  /* Show this somewhere else on the map, instead? */
 		  if ( use_direction_instead )
 		    {
@@ -1667,6 +1693,8 @@ void fill_map( ROOM_DATA *room, AREA_DATA *area, int x, int y )
      return;
    
    room->mapped = 1;
+   /* We'll have to clean all these room->mapped too. */
+   room->area->needs_cleaning = 1;
    
    if ( map[x][y] )
      return;
@@ -1685,7 +1713,6 @@ void fill_map( ROOM_DATA *room, AREA_DATA *area, int x, int y )
 	  {
 	     int j;
 	     int real_x, real_y;
-	     
 	     
 	     for( j = 1; j <= room->exit_length[i]; j++ )
 	       {
@@ -1824,6 +1851,7 @@ void fill_map_new( ROOM_DATA *room, int x, int y )
      return;
    
    room->mapped = 1;
+   room->area->needs_cleaning = 1;
    map_new[x][y].room = room;
    map_new[x][y].color = room->room_type->color;
    
@@ -1832,7 +1860,7 @@ void fill_map_new( ROOM_DATA *room, int x, int y )
    for ( i = 1; dir_name[i]; i++ )
      {
 	if ( !room->exits[i] || room->exit_stops_mapping[i] ||
-	     room->exits[i]->area != room->area )
+	     ( ( room->exits[i]->area != room->area ) && !room->exit_joins_areas[i] ) )
 	  continue;
 	
 	/* Normal exit. */
@@ -1896,6 +1924,7 @@ void fill_map_new( ROOM_DATA *room, int x, int y )
 
 void show_map_new( ROOM_DATA *room )
 {
+   AREA_DATA *a;
    ROOM_DATA *r;
    char map_buf[65536], buf[64], *p, *s, *s2;
    char vnum_buf[1024];
@@ -1911,8 +1940,14 @@ void show_map_new( ROOM_DATA *room )
 //   debugf( "--map new--" );
    
    /* Clear it up. */
-   for ( r = room->area->rooms; r; r = r->next_in_area )
-     r->mapped = 0;
+   for ( a = areas; a; a = a->next )
+     if ( a->needs_cleaning )
+       {
+	  for ( r = a->rooms; r; r = r->next_in_area )
+	    r->mapped = 0;
+	  a->needs_cleaning = 0;
+       }
+   
    for ( x = 0; x < MAP_X; x++ )
      for ( y = 0; y < MAP_Y; y++ )
        memset( &map_new[x][y], 0, sizeof( MAP_ELEMENT ) );
@@ -2854,6 +2889,9 @@ void save_map( char *file )
 			    room->use_exit_instead[i] != i )
 			 fprintf( fl, "UE: %s %s\n", dir_name[i],
 				  dir_name[room->use_exit_instead[i]] );
+		       if ( room->exit_joins_areas[i] )
+			 fprintf( fl, "EJ: %s %d\n", dir_name[i],
+				  room->exit_joins_areas[i] );
 		    }
 		  else if ( room->detected_exits[i] )
 		    {
@@ -3115,7 +3153,7 @@ int load_binary_map( char *file )
 	       last_vnum = r->vnum;
 	     
 	     r->underwater = room.underwater;
-	     memcpy( r->vnum_exits, room.vnum_exits, sizeof(int)*13 + sizeof(short)*13*5 );
+	     memcpy( r->vnum_exits, room.vnum_exits, sizeof(int)*13 + sizeof(short)*13*6 );
 	     r->name = read_string( fl );
 	     
 	     if ( room.room_type )
@@ -3478,6 +3516,25 @@ int load_map( char *file )
 		    }
 	       }
 	  }
+	
+	else if ( !strncmp( line, "EJ: ", 4 ) )
+	  {
+	     /* EJ: northeast 1 */
+	     char buf[256];
+	     int s;
+	     
+	     sscanf( line, "EJ: %s %d", buf, &s );
+	     
+	     for ( i = 1; dir_name[i]; i++ )
+	       {
+		  if ( !strcmp( buf, dir_name[i] ) )
+		    {
+		       room->exit_joins_areas[i] = s;
+		       break;
+		    }
+	       }
+	  }
+	
 	else if ( !strncmp( line, "UE: ", 4 ) )
 	  {
 	     /* UE in east */
@@ -3964,7 +4021,8 @@ void i_mapper_module_init_data( )
    debugf( "%sIMap loaded. (%d microseconds)",
 	   binary ? "Binary " : "", get_timer( ) );
    
-   if ( !binary )
+   /* Only if one already exists, but is too old. */
+   if ( !binary && !stat( map_file_bin, &mapbin ) )
      {
 	debugf( "Generating binary map." );
 	save_binary_map( map_file_bin );
@@ -3977,7 +4035,7 @@ void i_mapper_module_init_data( )
 
 
 
-/* A case insensitive version of strstr. */
+/* Case insensitive versions of strstr and strcmp. */
 
 #define LOW_CASE( a ) ( (a) >= 'A' && (a) <= 'Z' ? (a) - 'A' + 'a' : (a) )
 
@@ -4006,6 +4064,22 @@ int case_strstr( char *haystack, char *needle )
      }
    
    return 0;
+}
+
+
+/* I don't trust strcasecmp to be too portable. */
+int case_strcmp( const char *s1, const char *s2 )
+{
+   while ( *s1 && *s2 )
+     {
+	if ( LOW_CASE( *s1 ) != LOW_CASE( *s2 ) )
+	  break;
+	
+	s1++;
+	s2++;
+     }
+   
+   return ( *s1 || *s2 ) ? 1 : 0;
 }
 
 
@@ -7299,14 +7373,15 @@ void do_room_mark( char *arg )
 void do_exit_help( char *arg )
 {
    clientfr( "Module: IMapper. Room exit commands:" );
-   clientf( " exit link    - Link room # to this one.\r\n"
-	    " exit stop    - Stop mapping from this exit.\r\n"
-	    " exit length  - Increase the exit length by #.\r\n"
-	    " exit map     - Map the next exit elsewhere.\r\n"
-	    " exit lock    - Set all unlinked exits in room as locked.\r\n"
-	    " exit unilink - Link, but do not create a reverse link.\r\n"
-	    " exit destroy - Destroy an exit, and its reverse.\r\n"
-	    " exit special - Create/list/modify special exits.\r\n" );
+   clientf( " exit link      - Link room # to this one. Both ways.\r\n"
+	    " exit stop      - Hide rooms beyond this exit.\r\n"
+	    " exit length    - Increase the exit length by #.\r\n"
+	    " exit map       - Map the next exit elsewhere.\r\n"
+	    " exit lock      - Set all unlinked exits in room as locked.\r\n"
+	    " exit unilink   - One-way exit. Does not create a reverse link.\r\n"
+	    " exit destroy   - Destroy an exit, and its reverse.\r\n"
+	    " exit joinareas - Show two areas on a single 'map'.\r\n"
+	    " exit special   - Create, destroy, modify or list special exits.\r\n" );
 }
 
 
@@ -7344,6 +7419,20 @@ void do_exit_stop( char *arg )
    
    clientfr( "Move in the direction you wish to stop (or start again) mapping from." );
    switch_exit_stops_mapping = 1;
+}
+
+
+
+void do_exit_joinareas( char *arg )
+{
+   if ( mode != CREATING )
+     {
+	clientfr( "Turn mapping on, first." );
+	return;
+     }
+   
+   clientfr( "Move into the other area." );
+   switch_exit_joins_areas = 1;
 }
 
 
@@ -7947,6 +8036,72 @@ void do_go( char *arg )
 
 void do_mhelp( char *arg )
 {
+   FILE *fl;
+   char buf[4096];
+   char name[256];
+   char *p;
+   int found = 0;
+   
+   if ( !arg[0] )
+     {
+	clientf( "Use 'mhelp index' for a list of mhelp files.\r\n" );
+	return;
+     }
+   
+   fl = fopen( "mhelp", "r" );
+   
+   if ( !fl )
+     {
+	clientf( C_R "[" );
+	clientff( "Unable to open mhelp: %s.", strerror( errno ) );
+	clientf( "]\r\n" C_0 );
+	return;
+     }
+   
+   while ( 1 )
+     {
+	if ( !fgets( buf, 4096, fl ) )
+	  break;
+	
+	/* Comments... Ignored. */
+	if ( buf[0] == '#' )
+	  continue;
+	
+	/* Names. */
+	if ( buf[0] == ':' )
+	  {
+	     if ( found )
+	       break;
+	     
+	     p = buf + 1;
+	     
+	     while ( *p )
+	       {
+		  p = get_string( p, name, 256 );
+		  if ( !case_strcmp( arg, name ) )
+		    {
+		       found = 1;
+		       break;
+		    }
+	       }
+	     
+	     continue;
+	  }
+	
+	if ( found )
+	  clientf( buf );
+     }
+   
+   fclose( fl );
+   
+   if ( !found )
+     clientfr( "No such help file by that name." );
+}
+
+
+
+void do_old_mhelp( char *arg )
+{
    if ( !strcmp( arg, "index" ) )
      {
 	clientf( C_C "MAPPER HELP" C_0 "\r\n\r\n" );
@@ -8075,6 +8230,7 @@ FUNC_DATA cmd_table[] =
      { "unilink",	do_exit_unilink,CMD_EXIT },
      { "lock",		do_exit_lock,	CMD_EXIT },
      { "destroy",	do_exit_destroy,CMD_EXIT },
+     { "joinareas",	do_exit_joinareas,CMD_EXIT },
      { "special",	do_exit_special,CMD_EXIT },
    
    /* Normal commands. */
