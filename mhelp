@@ -1,7 +1,56 @@
-: first
+: "Mapper Help File" mhelp "mhelp file" file
 
-: index
+Oookay... So this is how it works.
 
-This is the index!
+The first line of an mhelp file begins with a colon. It contains a list of
+possible names that can be used with "mhelp". The first name is also used as
+the title. In THIS file that you're reading, there are four names, so there
+are four ways to access this file:
+  mhelp mapper help file
+  mhelp mhelp
+  mhelp mhelp file
+  mhelp file
+
+The next lines contain the help file itself. The end of an mhelp file is
+marked by the beginning of the next... In other words, by a colon.
+
+Any line that begins with the '#' symbol is a comment, and not displayed.
+#This is a comment. Go ahead and type "mhelp mhelp", you won't see this.
+
+All empty lines at the beginning and end of the file are removed completely.
+
+For information on how to use colours, type "mhelp colours".
+
+: "Help Index" index
+
+This is the index! Or will be.
+
+: "Colours" colors colour color
+
+# Don't read this in an editor, read it with "mhelp colours". Else you'll
+# get confused.
+
+Colour codes start with the '^^' symbol. If you want the '^^' symbol itself
+to be shown and not a colour, double it ('^^^^').
+
+Normal:
+  ^^r = ^rRed^x
+  ^^g = ^gGreen^x
+  ^^y = ^yYellow (or brown)^x
+  ^^b = ^bBlue^x
+  ^^m = ^mMagenta^x
+  ^^c = ^cCyan^x
+  ^^w = ^wWhite^x
+Bright:
+  ^^R = ^RRed^x
+  ^^G = ^GGreen^x
+  ^^Y = ^YYellow^x
+  ^^B = ^BBlue^x
+  ^^M = ^MMagenta^x
+  ^^C = ^CCyan^x
+  ^^W = ^WWhite^x
+
+  ^^x = Reset back to normal
+  ^^^^ = ^^
 
 : end
