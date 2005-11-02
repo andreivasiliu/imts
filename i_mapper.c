@@ -8034,6 +8034,79 @@ void do_go( char *arg )
 
 
 
+void print_mhelp_line( char *line )
+{
+   char buf[8096];
+   char *p, *b, *c;
+   
+   p = line;
+   b = buf;
+   
+   while ( *p )
+     {
+	if ( *p != '^' )
+	  {
+	     *(b++) = *(p++);
+	     continue;
+	  }
+	
+	p++;
+	switch ( *p )
+	  {
+	   case 'r':
+	     c = "\33[0;31m"; break;
+	   case 'g':
+	     c = "\33[0;32m"; break;
+	   case 'y':
+	     c = "\33[0;33m"; break;
+	   case 'b':
+	     c = "\33[0;34m"; break;
+	   case 'm':
+	     c = "\33[0;35m"; break;
+	   case 'c':
+	     c = "\33[0;36m"; break;
+	   case 'w':
+	     c = "\33[0;37m"; break;
+	   case 'R':
+	     c = "\33[1;31m"; break;
+	   case 'G':
+	     c = "\33[1;32m"; break;
+	   case 'Y':
+	     c = "\33[1;33m"; break;
+	   case 'B':
+	     c = "\33[1;34m"; break;
+	   case 'M':
+	     c = "\33[1;35m"; break;
+	   case 'C':
+	     c = "\33[1;36m"; break;
+	   case 'W':
+	     c = "\33[1;37m"; break;
+	   case 'x':
+	     c = "\33[0;37m"; break;
+	   case '^':
+	     c = "^"; break;
+	   case 0:
+	     c = NULL;
+	     break;
+	   default:
+	     c = "-?-";
+	  }
+	
+	if ( !c )
+	  break;
+	
+	while ( *c )
+	  *(b++) = *(c++);
+	p++;
+     }
+   
+   *b = 0;
+   
+   clientf( buf );
+}
+
+
+
 void do_mhelp( char *arg )
 {
    FILE *fl;
@@ -8041,6 +8114,7 @@ void do_mhelp( char *arg )
    char name[256];
    char *p;
    int found = 0;
+   int empty_lines = 0;
    
    if ( !arg[0] )
      {
@@ -8049,6 +8123,8 @@ void do_mhelp( char *arg )
      }
    
    fl = fopen( "mhelp", "r" );
+   if ( !fl )
+     fl = fopen( "mhelp.txt", "r" );
    
    if ( !fl )
      {
@@ -8067,6 +8143,12 @@ void do_mhelp( char *arg )
 	if ( buf[0] == '#' )
 	  continue;
 	
+        /* Strip newline. */     
+	p = buf;
+	while ( *p != '\n' && *p != '\r' && *p )
+	  p++;
+	*p = 0;
+	
 	/* Names. */
 	if ( buf[0] == ':' )
 	  {
@@ -8080,7 +8162,13 @@ void do_mhelp( char *arg )
 		  p = get_string( p, name, 256 );
 		  if ( !case_strcmp( arg, name ) )
 		    {
-		       found = 1;
+		       /* This is it. Start printing. */
+		       
+		       found = 2;
+		       empty_lines = 0;
+		       
+		       get_string( buf+1, name, 256 );
+		       clientff( C_C "MAPPER HELP" C_0 " - " C_W "%s" C_0 "\r\n\r\n", name );
 		       break;
 		    }
 	       }
@@ -8088,14 +8176,36 @@ void do_mhelp( char *arg )
 	     continue;
 	  }
 	
+	/* One line that must be displayed. */
 	if ( found )
-	  clientf( buf );
+	  {
+	     /* Remember empty lines, print them later. */
+	     /* Helps to skip them at the beginning and at the end. */
+	     if ( !buf[0] )
+	       {
+		  empty_lines++;
+		  continue;
+	       }
+	     
+	     if ( found == 2 )
+	       empty_lines = 0, found = 1;
+	     else
+	       if ( empty_lines > 0 )
+		 while ( empty_lines )
+		   {
+		      clientf( "\r\n" );
+		      empty_lines--;
+		   }
+	     
+	     print_mhelp_line( buf );
+	     clientf( "\r\n" );
+	  }
      }
    
    fclose( fl );
    
    if ( !found )
-     clientfr( "No such help file by that name." );
+     clientfr( "No help file by that name." );
 }
 
 
