@@ -582,16 +582,28 @@ void offensive_process_server_line( LINE *l )
    if ( !cmp( "^ rubs some salve on ^ ^.", l->line ) &&
 	cmp( "^ rubs some salve on ^ skin.", l->line ) &&
 	cmp( "^ rubs some salve on ^ body.", l->line ) )
-     prefix( C_B );
+     {
+	prefix( C_B );
+	suffix( C_0 );
+     }
    
    if ( !cmp( "^ touches a tree of life tattoo.", l->line ) )
-     prefix( C_Y );
+     {
+	prefix( C_Y );
+	suffix( C_0 );
+     }
    
    if ( !cmp( "^ stands up and stretches ^ arms out wide.", l->line ) )
-     prefix( C_W );
+     {
+	prefix( C_W );
+	suffix( C_0 );
+     }
    
    if ( !cmp( "^ slowly pulls back *", l->line ) )
-     prefix( C_W );
+     {
+	prefix( C_W );
+	suffix( C_0 );
+     }
    
    caiman_and_creeper_targetting( l->line );
    
