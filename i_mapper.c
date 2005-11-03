@@ -1974,7 +1974,7 @@ void show_map_new( ROOM_DATA *room )
    
    
    /* Are we able to get a SECURE mode on MXP? */
-   if ( !disable_mxp_map && !skip_newline_on_map && mxp_tag( TAG_LOCK_SECURE ) )
+   if ( !disable_mxp_map && mxp_tag( TAG_LOCK_SECURE ) )
      use_mxp = 1;
    
    /* Upper banner. */
@@ -2193,13 +2193,13 @@ void show_map_new( ROOM_DATA *room )
    s = buf, len = 0;
    while( *s )
      *(p++) = *(s++), len++;
-   for ( x = len; x < MAP_X * 4 - 5; x++ )
+   for ( x = len; x < MAP_X * 4 - 5 - skip_newline_on_map*9; x++ )
      *(p++) = '-';
    
    if ( !skip_newline_on_map )
      s = "/\r\n";
    else
-     s = "/";
+     s = C_C "<send>go</send>" C_0 "/" C_C "<send>stop</send>" C_0 "--/";
    while( *s )
      *(p++) = *(s++);
    *p = 0;
@@ -2470,11 +2470,13 @@ void show_floating_map( ROOM_DATA *room )
      return;
    
    mxp( "<DEST IMapper X=0 Y=0>" );
+   mxp_tag( TAG_LOCK_SECURE );
    
    skip_newline_on_map = 1;
    show_map_new( room );
    skip_newline_on_map = 0;
    
+   mxp_tag( TAG_LOCK_SECURE );
    mxp( "</DEST>" );
    mxp_tag( TAG_DEFAULT );
 }
@@ -6120,7 +6122,7 @@ void do_map_window( char *arg )
 	return;
      }
    
-   if ( !mxp_tag( TAG_TEMP_SECURE ) )
+   if ( !mxp_tag( TAG_LOCK_SECURE ) )
      {
 	floating_map_enabled = 0;
 	clientfr( "Unable to get a SECURE tag. Maybe your client does not support MXP?" );
@@ -6130,6 +6132,14 @@ void do_map_window( char *arg )
    floating_map_enabled = 1;
    mxp( "<FRAME IMapper Left=\"-57c\" Top=\"2c\" Height=\"21c\""
 	" Width=\"55c\" FLOATING>" );
+   mxp( "<DEST IMapper>" );
+   mxp_tag( TAG_LOCK_SECURE );
+   mxp( "<!element mpelm '<send \"map path &v;|room look &v;\" "
+	"hint=\"&r;|Vnum: &v;|Type: &t;\">' ATT='v r t'>" );
+   mxp( "<!element mppers '<send \"map path &v;|room look &v;|who &p;\" "
+	"hint=\"&p; (&r;)|Vnum: &v;|Type: &t;|Player: &p;\">' ATT='v r t p'>" );
+   mxp( "</DEST>" );
+   mxp_tag( TAG_DEFAULT );
    clientfr( "Enabled. Warning, this may slow you down." );
 }
 

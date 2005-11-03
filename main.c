@@ -3323,6 +3323,12 @@ void process_client_line( char *buf )
 	
 	show_prompt( );
      }
+   else if ( buf[0] == '\33' && buf[1] == '[' && buf[2] == '1' && buf[3] == 'z' )
+     {
+	/* MXP line from the client. Parse it, but don't send it. */
+	if ( safe_mode )
+	  module_process_client_aliases( buf );
+     }
    else
      {
 	/* A one character line? Imperian refuses to read them. */

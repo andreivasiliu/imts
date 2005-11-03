@@ -10,7 +10,7 @@ IMTS-unstable
 - Impatience should stop trying to focus.
 (IMapper:)
 - Autolinking added, and enabled by default. Added an option to disable it.
-- Floating MXP map window added.
+- Floating MXP map window added. Go/Stop buttons added on it, too.
 - Duplicate room detection while mapping, added.
 - Merging of two identic rooms (duplicate) into one, added.
 - Most Pathfinder bugs are now gone. This will mostly affect the wings room
