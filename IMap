@@ -1816,7 +1816,9 @@ ROOM v887
 Name: Crumbled path leading down.
 Type: Natural underground
 E: northeast 841
+EJ: northeast 1
 E: down 888
+UE: down west
 
 ROOM v888
 Name: Collapsed arena path.
@@ -1824,6 +1826,7 @@ Type: Natural underground
 E: north 893
 E: west 889
 E: up 887
+UE: up east
 
 ROOM v889
 Name: Debris-choked underground path.
@@ -1844,6 +1847,8 @@ E: east 892
 EL: east 1
 E: southeast 890
 E: up 907
+UE: up north
+EJ: up 1
 
 ROOM v892
 Name: Tunnel paved with cobblestones.
@@ -1857,6 +1862,7 @@ Name: Disintegrated underground wall.
 Type: Natural underground
 E: north 894
 E: east 896
+ES: east 1
 E: south 888
 E: northwest 892
 
@@ -1870,6 +1876,7 @@ ROOM v896
 Name: Blocked-off underground chamber.
 Type: Natural underground
 E: west 893
+ES: west 1
 
 ROOM v899
 Name: Tunnel underneath the arena.
@@ -1891,13 +1898,16 @@ ROOM v843
 Name: A small pool.
 Type: Freshwater
 E: east 842
+EJ: east 1
 E: south 911
+EJ: south 1
 E: west 904
 
 ROOM v903
 Name: On a crumbling pillar.
 Type: Road
 E: east 902
+EJ: east 1
 E: down 909
 
 ROOM v904
@@ -1924,6 +1934,8 @@ Name: Abrupt end at a chasm.
 Type: Road
 E: north 906
 E: down 891
+UE: down south
+EJ: down 1
 
 ROOM v908
 Name: Cracked cobblestone path.
@@ -1931,12 +1943,14 @@ Type: Road
 E: north 905
 E: northeast 909
 E: southeast 3775
+ES: southeast 1
 E: down 894
 
 ROOM v909
 Name: At a large pillar.
 Type: Road
 E: east 911
+EJ: east 1
 E: southwest 908
 E: up 903
 
@@ -1945,6 +1959,7 @@ Name: Forest covered ruins.
 Type: Forest
 E: southeast 3776
 E: northwest 908
+ES: northwest 1
 
 ROOM v3776
 Name: Rubble-filled woodlands.
@@ -1961,6 +1976,7 @@ Name: Wall at a pillar.
 Type: Path
 E: southeast 835
 E: west 843
+EJ: west 1
 E: up 901
 
 ROOM v834
@@ -1968,11 +1984,13 @@ Name: Forest inside the arena walls.
 Type: Forest
 E: north 835
 E: west 833
+EJ: west 1
 
 ROOM v835
 Name: At a small break in the ruined wall.
 Type: Path
 E: southeast 836
+EJ: southeast 1
 E: south 834
 E: northwest 842
 
@@ -1987,6 +2005,7 @@ Name: Crossing a shaky causeway.
 Type: Path
 E: northeast 901
 E: west 903
+EJ: west 1
 
 ROOM v3770
 Name: Underwater Tunnel.
@@ -2013,8 +2032,10 @@ ROOM v911
 Name: Water-filled pit.
 Type: Freshwater
 E: north 843
+EJ: north 1
 E: east 3774
 E: west 909
+EJ: west 1
 
 ROOM v3774
 Name: A murky pool.
@@ -2033,6 +2054,7 @@ Type: Path
 E: north 839
 E: northeast 838
 E: southwest 887
+EJ: southwest 1
 
 ROOM v840
 Name: Forested square.
@@ -2046,6 +2068,7 @@ Type: Path
 E: east 838
 E: south 841
 E: southwest 897
+ES: southwest 1
 E: northwest 840
 
 ROOM v838
@@ -2066,11 +2089,13 @@ Name: Path around the walls.
 Type: Path
 E: south 837
 E: northwest 835
+EJ: northwest 1
 
 ROOM v833
 Name: Flourishing woodland.
 Type: Forest
 E: east 834
+EJ: east 1
 E: south 840
 E: down 3770
 
@@ -2078,6 +2103,7 @@ ROOM v897
 Name: Inside the crumbled walls.
 Type: Path
 E: northeast 839
+ES: northeast 1
 E: northwest 898
 
 ROOM v898
@@ -33110,6 +33136,7 @@ ROOM v3371
 Name: Entering an arched doorway.
 Type: Urban
 E: north 3372
+EJ: north 1
 E: southeast 3370
 E: southwest 3368
 
@@ -33149,15 +33176,18 @@ ROOM v3385
 Name: Courtyard before the northern tower.
 Type: Path
 E: north 3386
+EJ: north 1
 E: east 3392
 E: south 3375
 E: southwest 3378
+EJ: southwest 1
 
 ROOM v3377
 Name: Courtyard before the eastern tower.
 Type: Path
 E: north 3392
 E: east 3393
+EJ: east 1
 E: southwest 3372
 E: west 3375
 E: down 3407
@@ -33166,6 +33196,7 @@ ROOM v3376
 Name: A palm orchard.
 Type: Forest
 E: north 3378
+EJ: north 1
 E: northeast 3375
 E: east 3372
 
@@ -33178,6 +33209,7 @@ E: east 3377
 E: south 3372
 E: southwest 3376
 E: west 3378
+EJ: west 1
 E: down 3399
 
 ROOM v3372
@@ -33186,6 +33218,7 @@ Type: Forest
 E: north 3375
 E: northeast 3377
 E: south 3371
+EJ: south 1
 E: west 3376
 
 
@@ -33227,8 +33260,11 @@ ROOM v3378
 Name: Courtyard before the western tower.
 Type: Path
 E: northeast 3385
+EJ: northeast 1
 E: east 3375
+EJ: east 1
 E: south 3376
+EJ: south 1
 E: west 3379
 
 ROOM v3379
@@ -33272,6 +33308,7 @@ Name: Entering an open doorway.
 Type: Urban
 E: northeast 3387
 E: south 3385
+EJ: south 1
 E: northwest 3388
 
 ROOM v3387
@@ -33321,6 +33358,7 @@ Type: Urban
 E: northeast 3394
 E: southeast 3396
 E: west 3377
+EJ: west 1
 
 
 
@@ -41008,6 +41046,8 @@ ROOM v5546
 Name: A breezy expanse of grasslands within the Celidon.
 Type: Grasslands
 E: north 5550
+EL: north 3
+EJ: north 1
 E: east 5547
 E: southeast 5548
 E: south 5544
@@ -41052,7 +41092,10 @@ Name: A heavily-canopied forest.
 Type: Forest
 E: northeast 5551
 E: southeast 5552
+EJ: southeast 1
 E: south 5546
+EL: south 3
+EJ: south 1
 E: northwest 5556
 
 ROOM v5554
@@ -41121,6 +41164,7 @@ Name: A towering mountain pass.
 Type: Mountains
 E: east 5553
 E: northwest 5550
+EJ: northwest 1
 E: down 5561
 UE: down south
 
@@ -41155,7 +41199,9 @@ ROOM v5565
 Name: A fortified pass before the bridge.
 Type: Mountains
 E: northeast 5568
+EJ: northeast 1
 E: southeast 5566
+EJ: southeast 1
 E: west 5564
 
 
@@ -41175,6 +41221,7 @@ Name: A forest littered with stone.
 Type: Forest
 E: southeast 5567
 E: northwest 5565
+EJ: northwest 1
 E: down 5562
 
 ROOM v5576
@@ -41247,6 +41294,7 @@ Type: Swamp
 E: northeast 5569
 E: east 5572
 E: southwest 5565
+EJ: southwest 1
 
 ROOM v5570
 Name: Flowering orange blossoms.
@@ -49016,24 +49064,28 @@ ROOM v7220
 Name: Before the tower.
 Type: Urban
 E: north 7218
+EJ: north 1
 E: south 7221
 
 ROOM v7219
 Name: Southwest stairway to the ramparts.
 Type: Urban
 E: northeast 7218
+EJ: northeast 1
 E: up 7215
 
 ROOM v7217
 Name: Southeast stairway to the ramparts.
 Type: Urban
 E: northwest 7218
+EJ: northwest 1
 E: up 7214
 
 ROOM v7215
 Name: Southwest upper ramparts.
 Type: Urban
 E: east 7214
+EJ: east 1
 E: northwest 7206
 E: down 7219
 
@@ -49041,6 +49093,7 @@ ROOM v7210
 Name: Northeastern upper ramparts.
 Type: Urban
 E: southeast 7211
+EJ: southeast 1
 E: west 7209
 
 ROOM v7209
@@ -49082,9 +49135,13 @@ ROOM v7237
 Name: Fast-running stream.
 Type: Freshwater
 E: east 7236
+EJ: east 1
 E: southeast 7234
+EJ: southeast 1
 E: southwest 7238
+EJ: southwest 1
 E: northwest 7240
+EJ: northwest 1
 
 ROOM v7233
 Name: Underground shrine.
@@ -49101,17 +49158,28 @@ ROOM v7229
 Name: A dirt path.
 Type: Path
 E: north 7234
+EL: north 3
+EJ: north 1
 E: northeast 7230
+EL: northeast 1
+EJ: northeast 1
 E: south 7222
+EJ: south 1
 E: northwest 7239
+EL: northwest 1
+EJ: northwest 1
 
 ROOM v7218
 Name: A grand foyer.
 Type: Urban
 E: north 7222
+EJ: north 1
 E: southeast 7217
+EJ: southeast 1
 E: south 7220
+EJ: south 1
 E: southwest 7219
+EJ: southwest 1
 E: down 7232
 
 ROOM v7214
@@ -49119,6 +49187,7 @@ Name: Southeast upper ramparts.
 Type: Urban
 E: northeast 7213
 E: west 7215
+EJ: west 1
 E: down 7217
 
 ROOM v7213
@@ -49132,6 +49201,7 @@ Name: Near a bend in the eastern upper ramparts.
 Type: Urban
 E: south 7212
 E: northwest 7210
+EJ: northwest 1
 
 ROOM v7212
 Name: Further along the eastern upper ramparts.
@@ -49149,37 +49219,43 @@ Name: The edge of a small stream.
 Type: Freshwater
 E: east 7222
 E: northwest 7243
+EL: northwest 1
 
 ROOM v7243
 Name: Edge of a forest.
 Type: Forest
 E: north 7242
-EL: north 1
+ES: north 1
 E: northeast 7239
+EJ: northeast 1
 E: southeast 7244
+EL: southeast 1
 
 ROOM v7242
 Name: A wooded hill.
 Type: Forest
 E: north 7241
-EL: north 1
+ES: north 1
 E: east 7247
+EJ: east 1
 E: south 7243
-EL: south 1
+ES: south 1
 
 ROOM v7241
 Name: A forested hill.
 Type: Forest
 E: northeast 7240
+EJ: northeast 1
 E: south 7242
-EL: south 1
+ES: south 1
 
 ROOM v7224
 Name: An area of deep forest.
 Type: Forest
 E: north 7225
-EL: north 1
+EL: north 2
 E: southwest 7223
+EL: southwest 1
 E: northwest 7230
 
 ROOM v7227
@@ -49187,36 +49263,40 @@ Name: Forest within the arena.
 Type: Forest
 E: southeast 7226
 E: southwest 7235
+EJ: southwest 1
 E: west 7248
+EL: west 1
+EJ: west 1
 
 ROOM v7226
 Name: A twisted forest.
 Type: Forest
 E: south 7225
-EL: south 1
 E: northwest 7227
 
 ROOM v7225
 Name: Forest on the edge of the grasslands.
 Type: Forest
 E: north 7226
-EL: north 1
 E: south 7224
-EL: south 1
+EL: south 2
 E: west 7228
 
 ROOM v7223
 Name: An open patch of woodlands.
 Type: Forest
 E: northeast 7224
+EL: northeast 1
 E: west 7222
 
 ROOM v7222
 Name: Grasslands near a stream.
 Type: Grasslands
 E: north 7229
+EJ: north 1
 E: east 7223
 E: south 7218
+EJ: south 1
 E: west 7244
 
 
@@ -49228,6 +49308,8 @@ ROOM v7248
 Name: Upon the plains.
 Type: Grasslands
 E: east 7227
+EL: east 1
+EJ: east 1
 E: south 7236
 E: west 7240
 EL: west 1
@@ -49236,7 +49318,9 @@ ROOM v7247
 Name: Eastern Plains.
 Type: Grasslands
 E: east 7238
+ES: east 1
 E: west 7242
+EJ: west 1
 
 ROOM v7240
 Name: A wide stream.
@@ -49244,7 +49328,9 @@ Type: Freshwater
 E: east 7248
 EL: east 1
 E: southeast 7237
+EJ: southeast 1
 E: southwest 7241
+EJ: southwest 1
 
 ROOM v7239
 Name: Bridge over a waterfall.
@@ -49254,17 +49340,22 @@ EL: north 1
 E: northeast 7234
 EL: northeast 1
 E: southeast 7229
+EL: southeast 1
+EJ: southeast 1
 E: southwest 7243
+EJ: southwest 1
 
 ROOM v7238
 Name: Swamp within the arena.
 Type: Swamp
 E: northeast 7237
+EJ: northeast 1
 E: east 7234
 EL: east 1
 E: south 7239
 EL: south 1
 E: west 7247
+ES: west 1
 
 ROOM v7236
 Name: A barren clearing.
@@ -49273,11 +49364,13 @@ E: north 7248
 E: east 7235
 E: south 7234
 E: west 7237
+EJ: west 1
 
 ROOM v7235
 Name: A small field.
 Type: Grasslands
 E: northeast 7227
+EJ: northeast 1
 E: southeast 7231
 E: southwest 7234
 E: west 7236
@@ -49292,11 +49385,14 @@ EL: east 1
 E: southeast 7230
 EL: southeast 1
 E: south 7229
+EL: south 3
+EJ: south 1
 E: southwest 7239
 EL: southwest 1
 E: west 7238
 EL: west 1
 E: northwest 7237
+EJ: northwest 1
 
 ROOM v7230
 Name: Grassy hills.
@@ -49305,6 +49401,8 @@ E: north 7231
 EL: north 1
 E: southeast 7224
 E: southwest 7229
+EL: southwest 1
+EJ: southwest 1
 E: northwest 7234
 EL: northwest 1
 
@@ -53095,6 +53193,8 @@ Name: Just south of a small wooded hill.
 Type: Forest
 E: southeast 8110
 E: southwest 8111
+EL: southwest 1
+EJ: southwest 1
 E: west 8108
 
 ROOM v8108
@@ -53139,12 +53239,14 @@ Name: Within a redwood copse.
 Type: Constructed underground
 E: north 8115
 E: east 8117
+EJ: east 1
 E: northwest 8134
 
 ROOM v8121
 Name: Before a massive underground forest.
 Type: Forest
 E: southeast 8118
+EJ: southeast 1
 
 
 
@@ -53170,12 +53272,15 @@ ES: north 1
 E: northeast 8146
 E: east 8112
 E: northwest 8142
+EJ: northwest 1
 
 ROOM v8123
 Name: A hidden alcove within the tunnels.
 Type: Constructed underground
 E: south 8122
+EJ: south 1
 E: out 8124
+UE: out east
 
 ROOM v8112
 Name: Near a shattered wall in the Court-yard of Marcell.
@@ -53189,20 +53294,27 @@ Name: Within a moss covered Court-yard of Marcell.
 Type: Ruins
 E: north 8112
 E: northeast 8107
+EL: northeast 1
+EJ: northeast 1
 
 ROOM v8117
 Name: A grove of mingling trees.
 Type: Constructed underground
 E: south 8118
+EL: south 1
 E: west 8116
+EJ: west 1
 
 ROOM v8118
 Name: A clearing in the forest of Darrin.
 Type: Constructed underground
 E: north 8117
+EL: north 1
 E: east 8122
+EJ: east 1
 E: southwest 8120
 E: northwest 8121
+EJ: northwest 1
 
 ROOM v8120
 Name: Within a redwood copse.
@@ -53272,12 +53384,15 @@ Name: Down the southern tunnel branch.
 Type: Constructed underground
 E: east 8125
 E: in 8123
+UE: in west
 
 ROOM v8122
 Name: Beside a pool of ebony waters.
 Type: Constructed underground
 E: north 8123
+EJ: north 1
 E: west 8118
+EJ: west 1
 
 
 
@@ -53316,6 +53431,7 @@ Name: Amid the bubbling waters of Lake Taigaer.
 Type: Freshwater
 E: north 8143
 E: southeast 8141
+EJ: southeast 1
 
 ROOM v8143
 Name: A flooded water vent beneath the lake.
