@@ -7,6 +7,7 @@ IMTS-unstable
 (Imperian:)
 - Rat/spider worth parsing is working again, also added caiman, serpents
   and locusts.
+- Impatience should stop trying to focus.
 (IMapper:)
 - Autolinking added, and enabled by default. Added an option to disable it.
 - Floating MXP map window added.
@@ -19,6 +20,10 @@ IMTS-unstable
 - The 'landmarks' command can be used to list all rooms with a tag.
 - 'map path' works with tags instead of vnums too. If more rooms have a
   given tag, 'go' will go to the nearest.
+- Now possible to show two or more areas in a single 'map'.
+- With the above feature, the parts of the arenas were joined together.
+- Binary maps will no longer be generated if one doesn't already exist.
+- Mapper help system added. Check 'mhelp index'.
 (IOffense:)
 - Script block/statement parser added, that supports, in order of creation...
 - C-like comments and spacing.

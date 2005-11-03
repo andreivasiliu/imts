@@ -2991,6 +2991,8 @@ void force_off_mccp( )
 
 void process_client_line( char *buf )
 {
+   printf( "line: [%s]\n", buf );
+   
    if ( buf[0] == '`' ) /* Command */
      {
 	char *b;
@@ -3346,8 +3348,11 @@ void process_client_line( char *buf )
 int process_client( void )
 {
    static char last_client_line[4096];
+   static char iac_string[4];
+   static char sub_telnet[4096];
    static int last_client_pos = 0;
    static int in_iac;
+   static int in_sb;
    char raw_buf[4096], buf[4096];
    int bytes, i;
    
@@ -3371,15 +3376,110 @@ int process_client( void )
    
    log_bytes( "c->m", raw_buf, bytes );
    
+   memcpy( buf, raw_buf, 4096 );
+#if 0
    client_telnet( raw_buf, buf, &bytes );
+#endif
    
    for ( i = 0; i < bytes; i++ )
      {
+	/* Interpret As Command! */
+	if ( buf[i] == (char) IAC )
+	  {
+	     in_iac = 1;
+	     
+	     printf( "Entering IAC.\n" );
+	     
+	     iac_string[0] = buf[i];
+	     iac_string[1] = 0;
+	     iac_string[2] = 0;
+	     continue;
+	  }
+	
+	if ( in_iac )
+	  {
+	     iac_string[in_iac] = buf[i];
+	     
+	     /* These need another byte. Wait for one more... */
+	     if ( buf[i] == (char) WILL ||
+		  buf[i] == (char) WONT ||
+		  buf[i] == (char) DO ||
+		  buf[i] == (char) DONT )
+	       {
+		  in_iac = 2;
+		  continue;
+	       }
+	     
+	     printf( "Leaving IAC on character %d.\n", in_iac );
+	     iac_string[in_iac+1] = 0;
+	     in_iac = 0;
+	     
+	     /* We have everything? Let's see what, then. */
+	     
+	     if ( iac_string[1] == (char) DO && iac_string[2] == (char) TELOPT_MXP )
+	       {
+		  mxp_enabled = 1;
+		  debugf( "mxp: Supported by your Client!" );
+		  
+		  if ( default_mxp_mode )
+		    mxp_tag( default_mxp_mode );
+		  
+		  module_mxp_enabled( );
+		  continue;
+	       }
+	     
+	     else if ( iac_string[1] == (char) DONT && iac_string[2] == (char) TELOPT_MXP )
+	       {
+		  mxp_enabled = 0;
+		  debugf( "mxp: Unsupported by your client." );
+		  continue;
+	       }
+	     
+	     else if ( iac_string[1] == (char) SB )
+	       {
+		  in_sb = 1;
+		  printf( "Entering SB.\n" );
+		  continue;
+	       }
+	     
+	     else if ( iac_string[1] == (char) SE && in_sb )
+	       {
+		  in_sb = 0;
+		  
+		  printf( "Leaving SB.\n" );
+		  sub_telnet[in_sb-1] = 0;
+		  
+		  /* Handle sub negotiation. */
+		  printf( "sub: [%s]\n", sub_telnet+1 );
+		  continue;
+	       }
+	     
+	     /* Else, send it. */
+	     
+	     /* Flush any text first. */
+	     if ( last_client_pos )
+	       {
+		  debugf( "Forced to flush unfinished client input." );
+		  process_client_line( last_client_line );
+		  last_client_line[0] = 0;
+		  last_client_pos = 0;
+	       }
+	     
+	     process_client_line( iac_string );
+	     continue;
+	  }
+	
+	if ( in_sb )
+	  {
+	     sub_telnet[in_sb++] = buf[i];
+	     continue;
+	  }
+	
 	/* Anything usually gets dumped here. */
 	last_client_line[last_client_pos] = buf[i];
 	last_client_line[++last_client_pos] = 0;
 	
-	if ( buf[i] == '\n' && !in_iac )
+	if ( buf[i] == '\n' && !in_sb )
 	  {
 	     last_client_line[last_client_pos] = '\r';
 	     last_client_line[++last_client_pos] = 0;
@@ -3392,18 +3492,18 @@ int process_client( void )
 	     last_client_line[0] = 0;
 	     last_client_pos = 0;
 	  }
-	else if ( buf[i] == '\r' && !in_iac )
+	else if ( buf[i] == '\r' && !in_sb )
 	  {
 	     /* Ignore them. */
 	     last_client_line[--last_client_pos] = 0;
 	  }
 	else if ( buf[i] == (char) SB )
 	  {
-	     in_iac = 1;
+	     in_sb = 1;
 	  }
 	else if ( buf[i] == (char) SE )
 	  {
-	     in_iac = 0;
+	     in_sb = 0;
 	     process_client_line( last_client_line );
 	     
 	     /* Clear the line. */

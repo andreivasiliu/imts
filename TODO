@@ -9,21 +9,15 @@ High Priority
 
 - Windows crash report.
 - do_before's and do_after's.
-- Time args for prompt.
-- Positive health gain in prompt.
-- Focus while impatient.
-- Balance table.
 - Logging bytes off client.
-- Undo.
-- Arenas should be shown as a whole.
 - MXP Support.
 - Use Perma Moss.
-- Alertness blank lines.
 - Telnet Neg nag.
 - One time keep-up.
 - landmarks type <type>
 - Variable free/calloc max_x max_y
 - Mxp on Command.
+- Add Davion's changes. Beware of writhing.
 
 
 
@@ -41,16 +35,24 @@ IMPERIAN
 - Timer on Pipes.
 - "The salve fizzles away without effect."
 - Blackout trips.
+- Auto-diag, perhaps (something) counter too.
+- MXP floating afflist.
+- Test broken/metra limbs.
+- Balance table.
 
 IMAPPER
 =======
 
 - Customizable colors.
 - Personal rooms, stored in a personal map file.
+- Vnums on real map.
+- Time args for prompt.
+- Positive health gain in prompt.
+- Undo.
 
 IOFFENSE
 ========
 
-- More support for RegEx triggers.
-- A better, hopefully expandable parsing system.
-
+- Integer variables.
+- Arrays.
+- Pointers, structures.
