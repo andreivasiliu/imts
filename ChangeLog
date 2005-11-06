@@ -4,13 +4,17 @@ IMTS-unstable
 (MudBot:)
 - Completely rewritten the way lines/prompts are parsed and sent to the
   modules for processing.
+- Also rewritten the way client data is processed.
+- MXP made a tiny bit more compatible for MushClient.
+- MCCP starting on the same packet that stopped it, fixed. Editing journals
+  or scrolls should no longer be buggy.
 (Imperian:)
 - Rat/spider worth parsing is working again, also added caiman, serpents
   and locusts.
 - Impatience should stop trying to focus.
 (IMapper:)
 - Autolinking added, and enabled by default. Added an option to disable it.
-- Floating MXP map window added. Go/Stop buttons added on it, too.
+- Floating MXP map window added. Warning, Zmud acts buggy about it.
 - Duplicate room detection while mapping, added.
 - Merging of two identic rooms (duplicate) into one, added.
 - Most Pathfinder bugs are now gone. This will mostly affect the wings room

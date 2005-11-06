@@ -2961,16 +2961,14 @@ int mxp_tag( int tag )
 
 
 void do_test( )
-{
-   char will_mxp[] = { IAC, WILL, TELOPT_MXP, 0 };
+{ 
+   char mccp_start[] = { IAC, DO, TELOPT_COMPRESS2, 0 };
+   char mccp_stop[] = { IAC, DONT, TELOPT_COMPRESS2, 0 };
    
-   if ( !mxp_enabled )
-     clientf( will_mxp );
-   else
-     {
-	mxp_tag( 1 );
-	mxp( "This can be <send \"map|map config|map create|map follow\" hint=\"Yes, it can indeed be clicked!|Show Map|Configure|Enable Mapping|Disable Mapping\">clicked</send>!\r\n" );
-     }
+   debugf( "Temporarely stopping MCCP." );
+   clientfb( "Temporarely stopping MCCP." );
+   send_to_server( mccp_stop );
+   send_to_server( mccp_start );
 }
 
 
@@ -3424,8 +3422,12 @@ int process_client( void )
 	     
 	     if ( iac_string[1] == (char) DO && iac_string[2] == (char) TELOPT_MXP )
 	       {
+		  char start_mxp[] = { IAC, SB, TELOPT_MXP, IAC, SE, 0 };
+		  
 		  mxp_enabled = 1;
 		  debugf( "mxp: Supported by your Client!" );
+		  
+		  clientf( start_mxp );
 		  
 		  if ( default_mxp_mode )
 		    mxp_tag( default_mxp_mode );
@@ -3994,10 +3996,13 @@ int mccp_decompress( char *src, int src_bytes )
 	     break;
 	  }
 	
-	/* I believe here avail_in is zero. If not, error. */
+	process_buffer( buf, INPUT_BUF - zstream->avail_out );
+	
 	if ( status == Z_STREAM_END )
 	  {
+	     compressed = 0;
 	     debugf( "mccp: Decompression ended." );
+	     
 	     if ( verbose_mccp )
 	       {
 		  verbose_mccp = 0;
@@ -4005,15 +4010,27 @@ int mccp_decompress( char *src, int src_bytes )
 		  show_prompt( );
 	       }
 	     
-	     compressed = 0;
+	     /* If avail_in is not empty, we have uncompressed data. */
+	     if ( zstream->avail_in )
+	       {
+		  memcpy( buf, zstream->next_in, zstream->avail_in );
+		  status = zstream->avail_in;
+	       }
+	     else
+	       status = 0;
 	     
-	     /* Copy whatever is after it. */
-	     memcpy( buf, zstream->next_in, zstream->avail_in );
 	     inflateEnd( zstream );
 	     zstream->avail_in = 0;
+	     
+	     /* But warning! Uncompressed data may start compression again! */
+	     if ( status )
+	       {
+		  /* Leave. Don't do anything else here, recursivity and
+		   * global variables don't go well together. */
+		  mccp_decompress( buf, status );
+		  return 1;
+	       }
 	  }
-	
-	process_buffer( buf, INPUT_BUF - zstream->avail_out );
      }
    
    return 1;
