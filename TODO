@@ -15,11 +15,17 @@ High Priority
 - landmarks type <type>
 - Variable free/calloc max_x max_y
 - Add Davion's changes. Beware of writhing.
+- Check pcre.dll.
 
 
 
 Low Priority
 ============
+
+MUDBOT
+======
+
+- Client-side telnet Sub-Negotiation left untested.
 
 IMPERIAN
 ========
@@ -36,6 +42,8 @@ IMPERIAN
 - MXP floating afflist.
 - Test broken/metra limbs.
 - Balance table.
+- Time args for prompt.
+- Positive health gain in prompt.
 
 IMAPPER
 =======
@@ -43,9 +51,8 @@ IMAPPER
 - Customizable colors.
 - Personal rooms, stored in a personal map file.
 - Vnums on real map.
-- Time args for prompt.
-- Positive health gain in prompt.
 - Undo.
+- New Exit warning.
 
 IOFFENSE
 ========

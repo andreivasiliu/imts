@@ -831,6 +831,8 @@ int parse_title( const char *line )
    int created = 0;
    int q, i;
    
+   DEBUG( "parse_title" );
+   
    /* Capturing mode. */
    if ( mode == CREATING && capture_special_exit )
      {
@@ -884,6 +886,7 @@ int parse_title( const char *line )
 	clientff( C_R "\r\n[Special exit created.]" );
 	spexit = create_exit( current_room );
 	spexit->to = new_room;
+	spexit->vnum = new_room->vnum;
 	
 	clientff( C_R "\r\nCommand: '" C_W "%s" C_R "'" C_0,
 		  cse_command[0] ? cse_command : "null" );
