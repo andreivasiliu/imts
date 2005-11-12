@@ -153,6 +153,7 @@ int reset_time;
 int allow_diagdef;
 int yoth;
 int can_kipup;
+int perma_moss;
 
 
 /* One little powerful thing, that deserves a comment. ;) */
@@ -471,6 +472,8 @@ void load_options( char *section )
 	       tree_recovery = value >= 1 ? value : 1;
 	     else if ( !strcmp( name, "arti_pipes" ) )
 	       arti_pipes = value ? 1 : 0;
+	     else if ( !strcmp( name, "perma_moss" ) )
+	       perma_moss = value ? 1 : 0;
 	     else if ( !strcmp( name, "reset_time" ) )
 	       reset_time = value >= 1 ? value : 1;
 	     else if ( !strcmp( name, "can_kipup" ) )
@@ -2007,29 +2010,47 @@ void check_bleeding( )
 {
    int can_clot, clots, i;
    
+   if ( bleeding < 10 )
+     return;
+   
    /* Bleeding more than 10 health? Ouch, let's fix that. */
-   if ( bleeding < 10 || !use_mana_above || !clot_mana_usage )
-     return;
    
-   /* Hopefully we don't run out of mana, by doing so. */
-   if ( p_mana < use_mana_above )
-     return;
+   if ( !perma_moss )
+     {
+	if ( !use_mana_above || !clot_mana_usage )
+	  return;
+	
+	/* Hopefully we don't run out of mana, by doing so. */
+	if ( p_mana < use_mana_above )
+	  return;
+	
+	/* How many can we do, with our current mana level? */
+	can_clot = ( p_mana - use_mana_above ) / clot_mana_usage;
+	if ( can_clot <= 0 )
+	  return;
+	
+	/* And how many should we do? One clot will take one bleeding. */
+	clots = can_clot > bleeding / 2 ? bleeding / 2 : can_clot;
+	
+	clientff( C_B "(" C_W "clot * %d" C_B ") " C_0, clots );
+	
+	/* Good, go ahead and send it to the server, "clots" times. */
+	for ( i = 0; i < clots; i++ )
+	  send_to_server( "clot\r\n" );
+     }
+   else
+     {
+	/* How many should we do? One moss will take five bleeding. */
+	clots = bleeding / 5;
+	
+	clientff( C_B "(" C_W "touch moss * %d" C_B ") " C_0, clots );
+	
+	/* Good, go ahead and send it to the server, "clots" times. */
+	for ( i = 0; i < clots; i++ )
+	  send_to_server( "touch moss\r\n" );
+     }
    
-   /* How many can we do, with our current mana level? */
-   can_clot = ( p_mana - use_mana_above ) / clot_mana_usage;
-   if ( can_clot <= 0 )
-     return;
-   
-   /* And how many should we do? One clot will take one bleeding. */
-   clots = can_clot > bleeding / 2 ? bleeding / 2 : can_clot;
-   
-   clientff( C_B "(" C_W "clot * %d" C_B ") " C_0, clots );
-   
-   /* Good, go ahead and send it to the server, "clots" times. */
-   for ( i = 0; i < clots; i++ )
-     send_to_server( "clot\r\n" );
-   
-   /* But also make sure we don't do this at each prompt we get. */
+   /* Make sure we don't do this at each prompt we get. */
    bleeding = 0;
 }
 

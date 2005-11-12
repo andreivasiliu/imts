@@ -10,7 +10,6 @@ High Priority
 - Windows crash report.
 - do_before's and do_after's.
 - Logging bytes off client.
-- Use Perma Moss.
 - One time keep-up.
 - landmarks type <type>
 - Variable free/calloc max_x max_y
