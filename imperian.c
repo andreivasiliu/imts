@@ -388,7 +388,9 @@ void load_options( char *section )
 	     p = get_string( p, name, 1024 );
 	     p = get_string( p, value_str, 1024 );
 	     
-	     value = !strncmp( value_str, "on", 2 ) ? 1 : 0;
+	     value = !strcmp( value_str, "on" ) ? 1 : 0;
+	     if ( !value )
+	       value = !strcmp( value_str, "once" ) ? 2 : 0;
 	     
 	     if ( !strcmp( name, "all" ) )
 	       {
@@ -411,6 +413,9 @@ void load_options( char *section )
 		    }
 		  
 		  defences[defence].keepon = value;
+		  
+		  if ( defences[defence].on && value == 2 )
+		    defences[defence].keepon = 0;
 	       }
 	  }
 	else if ( buf[0] == 'P' && buf[1] == ' ' )
@@ -1824,12 +1829,13 @@ int parse_diagnose( char *line )
      }
    
    /* Check for defences. */
+   /* And make sure to turn .keepon off, if needed. */
    if ( !strcmp( line, "an insomniac." ) )
      {
 	for ( i = 0; defences[i].name; i++ )
 	  {
 	     if ( !strcmp( defences[i].name, "insomnia" ) )
-	       defences[i].on = 1;
+	       defences[i].on = 1, defences[i].keepon = defences[i].keepon == 2 ? 0 : 1;
 	  }
      }
    
@@ -1838,7 +1844,7 @@ int parse_diagnose( char *line )
 	for ( i = 0; defences[i].name; i++ )
 	  {
 	     if ( !strcmp( defences[i].name, "blindness" ) )
-	       defences[i].on = 1;
+	       defences[i].on = 1, defences[i].keepon = defences[i].keepon == 2 ? 0 : 1;
 	  }
      }
    
@@ -1847,7 +1853,7 @@ int parse_diagnose( char *line )
 	for ( i = 0; defences[i].name; i++ )
 	  {
 	     if ( !strcmp( defences[i].name, "deafness" ) )
-	       defences[i].on = 1;
+	       defences[i].on = 1, defences[i].keepon = defences[i].keepon == 2 ? 0 : 1;
 	  }
      }
    
@@ -3104,6 +3110,9 @@ void parse_triggers( LINE *l )
 		    }
 		  
 		  defences[j].on = triggers[i].gives;
+		  /* Bring up only once? */
+		  if ( defences[j].on && defences[j].keepon == 2 )
+		    defences[j].keepon = 0;
 		  defences[j].tried = 0;
 		  sprintf( buf, "reset_defence_%s", defences[j].name );
 		  del_timer( buf );
@@ -4536,12 +4545,16 @@ void imperian_process_server_prompt_informative( char *line, char *rawline )
 		  defences[i].on = p_deaf;
 		  if ( defences[i].tried && p_deaf )
 		    defences[i].tried = 0;
+		  if ( defences[i].on && defences[i].keepon == 2 )
+		    defences[i].keepon = 0;
 	       }
 	     else if ( !strcmp( defences[i].name, "blindness" ) )
 	       {
 		  defences[i].on = p_blind;
 		  if ( defences[i].tried && p_blind )
 		    defences[i].tried = 0;
+		  if ( defences[i].on && defences[i].keepon == 2 )
+		    defences[i].keepon = 0;
 	       }
 	     else
 	       continue;
@@ -5758,7 +5771,8 @@ int imperian_process_client_aliases( char *line )
 	     strcat( selfishness_buffer, line );
 	     strcat( selfishness_buffer, "\r\n" );
 	     
-	     if ( defences[i].keepon )
+	     /* Can also be 2, which is not our case. */
+	     if ( defences[i].keepon == 1 )
 	       {
 		  add_timer( "restore_selfishness", 10, restore_selfishness, 0, 0, 0 );
 		  

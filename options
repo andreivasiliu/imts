@@ -16,6 +16,7 @@ tree_recovery 10
 arti_pipes 0
 reset_time 3
 can_kipup 0
+perma_moss 0
 
 # Sections begin here.
 
@@ -41,7 +42,7 @@ D "selfishness" on
 D "insomnia" on
 D "third eye" on
 D "warning" on
-D "splitting" on
+D "splitting" once
 D "regeneration" on
 # Huge, I know, but nice.
 P "^x<^1%h^x/^g%H^xh ^2%m^x/^g%M^xm ^3%e^xe ^4%w^xw ^g%x^xx ?k{^5%k^xk }<?e{^ge^x}!{-}?b{^gb^x}!{-}?l{^gp^x}!{-}?r{^gp^x}!{-}>?A{ <^r}?H{h}?S{s}?P{p}?C{c}?T{t}?F{f}?U{b}?W{w}?A{^x>}?a{ <^Y}?p{p}?f{f}?B{b}?d{d}?s{s}?t{^b%t^Y}?L{^Gl^Y}?M{^Rl^Y}?a{^x>}?D{ <^r%D^x>}>^x "
