@@ -3831,7 +3831,7 @@ void process_buffer( char *raw_buf, int bytes )
    
    DEBUG( "process_buffer" );
    
-   mb_section = "Processing Buffer";
+   mb_section = "Processing buffer";
    crash_buffer = raw_buf;
    crash_buffer_len = INPUT_BUF;
    
@@ -3841,9 +3841,9 @@ void process_buffer( char *raw_buf, int bytes )
    
    log_bytes( "s->m", raw_buf, bytes );
    
-   mb_section = "server_telnet";
+   mb_section = "Looking for telnet negotations in buffer";
    server_telnet( raw_buf, buf, &bytes );
-   mb_section = "Processing Buffer";
+   mb_section = "Processing buffer";
    crash_buffer = buf;
    
    if ( show_processing_time )
@@ -4321,7 +4321,7 @@ void crash_report( FILE *fl )
    int i;
    
    fprintf( fl, "[MB]\n" );
-   fprintf( fl, "Section - %s\n", mb_section ? mb_section : "Unknown" );
+   fprintf( fl, "Section - %s.\n", mb_section ? mb_section : "Unknown" );
    
    fprintf( fl, "[MOD]\n" );
    if ( !mod_section )

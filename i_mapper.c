@@ -6902,10 +6902,6 @@ void do_room_look( char *arg )
    char buf[256];
    int i;
    
-   char *c;
-   c = 0;
-   *c = 0;
-   
    if ( arg[0] && isdigit( arg[0] ) )
      {
 	if ( !( room = get_room( atoi( arg ) ) ) )

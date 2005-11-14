@@ -7,13 +7,10 @@ OVERALL
 High Priority
 =============
 
-- Windows crash report.
 - do_before's and do_after's.
 - Logging bytes off client.
-- landmarks type <type>
 - Add Davion's changes. Beware of writhing.
 - Check pcre.dll.
-- Show_Prompt issue.
 
 
 

@@ -63,6 +63,10 @@ extern int main_version_major, main_version_minor;
 extern int logging;
 extern int a_on;
 
+extern char *mb_section;
+extern char *desc_name;
+extern char *desc_section;
+
 int sock_list[256];
 int iconized;
 char *editor_buffer[3];
@@ -153,6 +157,7 @@ void win_sig_segv_handler( int sig )
 {
    FILE *fl;
    extern char *debug[6];
+   void crash_report( FILE *fl );
    int i;
    
    if ( logging )
@@ -168,10 +173,7 @@ void win_sig_segv_handler( int sig )
    if ( !fl )
      return;
    
-   fprintf( fl, "History:\r\n" );
-   
-   for ( i = 0; i < 6 && debug[i]; i++ )
-     fprintf( fl, " (%d) %s\r\n", i, debug[i] );
+   crash_report( fl );
    
    fclose( fl );
    
@@ -831,8 +833,10 @@ void check_descriptors( )
    DESCRIPTOR *d, *d_next;
    int maxdesc = 0;
    
+   mb_section = "Checking timers";
    /* Check all timers. */
    check_timers( );
+   mb_section = NULL;
    
    FD_ZERO( &in_set );
    FD_ZERO( &out_set );
@@ -873,23 +877,29 @@ void check_descriptors( )
 	if ( d->fd < 1 )
 	  continue;
 	
+	desc_name = d->name;
+	
 	current_descriptor = d;
 	
+	desc_section = "Reading from...";
 	if ( d->callback_in && FD_ISSET( d->fd, &in_set ) )
 	  (*d->callback_in)( d );
 	
 	if ( !current_descriptor )
 	  continue;
 	
+	desc_section = "Writing to...";
 	if ( d->callback_out && FD_ISSET( d->fd, &out_set ) )
 	  (*d->callback_out)( d );
 	
 	if ( !current_descriptor )
 	  continue;
 	
+	desc_section = "Exception handler at...";
 	if ( d->callback_exc && FD_ISSET( d->fd, &exc_set ) )
 	  (*d->callback_exc)( d );
      }
+   desc_name = NULL;
 }
 
 

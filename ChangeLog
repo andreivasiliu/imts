@@ -8,6 +8,7 @@ IMTS-unstable
 - MXP made a tiny bit more compatible for MushClient.
 - MCCP starting on the same packet that stopped it, fixed. Editing journals
   or scrolls should no longer be buggy.
+- Crash logs have a bit more info.
 (Imperian:)
 - Rat/spider worth parsing is working again, also added caiman, serpents
   and locusts.
