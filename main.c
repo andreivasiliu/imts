@@ -23,6 +23,75 @@
 
 /* Main source file, handles sockets, signals and other little things. */
 
+/* -= STACK FLOW =-
+
+main
+\
+ \ - modules_register
+ |   \
+ |    \ - read_config
+ |    |
+ |    \ - load_builtin_modules
+ |
+ \ - module_init_data
+ |
+ \ - module_main_loop
+ |
+ \ - main_loop
+
+main_loop
+\
+ \ - check_timers
+ |
+ \ - control.in
+ |   \
+ |    \ - new_descriptor
+ |
+ \ - client.in
+ |   \
+ |    \ - process_client
+ |        \
+ |         \ - log_bytes
+ |         |
+ |         \ - process_client_line
+ |             \
+ |              \ - module_process_client_aliases
+ |              |
+ |              \ - send_to_server
+ |
+ \ - client.out
+ |
+ \ - client.exc
+ |
+ \ - server.in
+ |   \
+ |    \ - process_server
+ |        \
+ |         \ - mccp_decompress
+ |             \
+ |              \ - process_buffer
+ |      	    \
+ |                   \ - log_bytes
+ |                   |
+ |      	     \ - server_telnet
+ |                   |   \
+ |                   |    \ - module_mxp_enabled
+ |                   |    |
+ |                   |    \ - handle_atcp
+ |      	     |
+ |      	     \ - module_process_server_line
+ |      	     |
+ |      	     \ - module_process_server_prompt
+ |      	     |
+ |      	     \ - print_line/clean_line
+ |
+ \ - server.exc
+ |
+... (module descriptors)
+
+*/
+
+
 #define MAIN_ID "$Name$ $Id$"
 
 #include <unistd.h>	/* For write(), read() */
@@ -95,7 +164,7 @@ int mxp_tag( int tag );
 #if defined( FOR_WINDOWS )
 int gettimeofday( struct timeval *tv, void * );
 #endif
-char *get_string( char *argument, char *arg_first, int max );
+char *get_string( const char *argument, char *arg_first, int max );
 int cmp( char *trigger, char *string );
 
 /* Timers */
@@ -148,6 +217,9 @@ z_stream *zstream;
 #endif
 int compressed;
 
+const char iac_sb[] = { IAC, SB, 0 };
+const char iac_se[] = { IAC, SE, 0 };
+
 /* The three magickal numbers. */
 DESCRIPTOR *control;
 DESCRIPTOR *client;
@@ -173,7 +245,17 @@ char *prefix_buffer, *prefix_p, *prefix_max;
 char *suffix_buffer, *suffix_p, *suffix_max;
 char *replace_buffer, *replace_p, *replace_max;
 
+/* Info that may be useful on a crash. */
+char *mb_section = "Initializing";
+char *mod_section = NULL;
+MODULE *current_mod;
+char *desc_name;
+char *desc_section;
+char *crash_buffer;
+int crash_buffer_len;
+LINE *crash_line;
 
+/* Misc. */
 char buffer_noclient[65536];
 char buffer_data[65536], *g_b = buffer_data;
 const char *g_blimit = buffer_data + 16384;
@@ -1142,11 +1224,16 @@ void modules_register( )
    
    DEBUG( "modules_register" );
    
+   mod_section = "Registering Modules";
+   
    for ( mod = modules; mod; mod = mod->next )
      {
+	current_mod = mod;
 	mod->get_func = get_function;
 	(mod->register_module)( mod );
      }
+   
+   mod_section = NULL;
    
    update_modules( );
 }
@@ -1174,15 +1261,18 @@ void module_show_version( )
 	     "for more details.\r\n\r\n",
 	     main_version_major, main_version_minor, OS );
    
+   mod_section = "Module Notice";
    /* Mod versions and notices. */
    for ( module = modules; module; module = module->next )
      {
+	current_mod = module;
 	clientff( C_B "Module: %s v" C_G "%d" C_B "." C_G "%d" C_B ".\r\n",
 		  module->name, module->version_major, module->version_minor );
 	
 	if ( module->show_notice )
 	  (*module->show_notice)( module );
      }
+   mod_section = NULL;
 }
 
 
@@ -1197,14 +1287,17 @@ void module_show_id( )
    clientf( winmain_id );
 #endif
    
+   mod_section = "Showing ID.";
    for ( module = modules; module; module = module->next )
      {
+	current_mod = module;
 	clientff( C_D "\r\n(" C_B "%s:" C_D ")\r\n" C_W, module->name );
 	if ( module->id )
 	  clientf( module->id );
 	else
 	  clientf( "-- Unknown --\r\n" );
      }
+   mod_section = NULL;
 }
 
 
@@ -1215,11 +1308,14 @@ void module_init_data( )
    
    DEBUG( "module_init_data" );
    
+   mod_section = "Initializing Module";
    for ( mod = modules; mod; mod = mod->next )
      {
+	current_mod = mod;
 	if ( mod->init_data )
 	  (mod->init_data)( );
      }
+   mod_section = NULL;
 }
 
 
@@ -1269,11 +1365,14 @@ void module_mxp_enabled( )
    
    DEBUG( "module_mxp_enabled" );
    
+   mod_section = "Notifying modules about MXP.";
    for ( module = modules; module; module = module->next )
      {
+	current_mod = module;
 	if ( module->mxp_enabled )
 	  (module->mxp_enabled)( );
      }
+   mod_section = NULL;
 }
 
 
@@ -1324,11 +1423,14 @@ void module_process_server_line( LINE *line )
      }
 #endif
    
+   mod_section = "Processing server line";
    for ( module = modules; module; module = module->next )
      {
+	current_mod = module;
 	if ( module->process_server_line )
 	  (module->process_server_line)( line );
      }
+   mod_section = NULL;
    
    clientf_modifies_suffix = 0;
 }
@@ -1350,11 +1452,14 @@ void module_process_server_prompt( LINE *line )
 	clientf( telnet_echo_off );
      }
    
+   mod_section = "Processing server prompt";
    for ( module = modules; module; module = module->next )
      {
+	current_mod = module;
 	if ( module->process_server_prompt )
 	  (module->process_server_prompt)( line );
      }
+   mod_section = NULL;
    
    clientf_modifies_suffix = 0;
 }
@@ -1370,13 +1475,16 @@ int module_process_client_command( char *rawcmd )
    /* Strip weird characters */
    strip_unprint( rawcmd, cmd );
    
+   mod_section = "Processing client command";
    for ( module = modules; module; module = module->next )
      {
+	current_mod = module;
 	if ( module->process_client_command )
 	  if ( !(module->process_client_command)( cmd ) )
 	    return 0;
      }
-     
+   mod_section = NULL;
+   
    return 1;
 }
 
@@ -1396,11 +1504,14 @@ int module_process_client_aliases( char *line )
    buffer_send_to_server = 1;
    send_buffer[0] = 0;
    
+   mod_section = "Processing client aliases";
    for ( module = modules; module; module = module->next )
      {
+	current_mod = module;
 	if ( module->process_client_aliases )
 	  used = (module->process_client_aliases)( cmd ) || used;
      }
+   mod_section = NULL;
    
    buffer_send_to_server = 0;
    if ( send_buffer[0] )
@@ -1417,8 +1528,10 @@ char *module_build_custom_prompt( )
    
    DEBUG( "module_build_custom_prompt" );
    
+   mod_section = "Build custom prompt";
    for ( module = modules; module; module = module->next )
      {
+	current_mod = module;
 	if ( module->build_custom_prompt )
 	  {
 	     prompt = (module->build_custom_prompt)( );
@@ -1426,6 +1539,7 @@ char *module_build_custom_prompt( )
 	       return prompt;
 	  }
      }
+   mod_section = NULL;
    
    return NULL;
 }
@@ -1882,13 +1996,13 @@ void fd_client_in( DESCRIPTOR *self )
 {
    int process_client( void );
    
-   if ( !server )
-     check_for_server( );
-   else
-     {
+//   if ( !server )
+//     check_for_server( );
+//   else
+//     {
 	if ( process_client( ) )
 	  assign_client( 0 );
-     }
+//     }
 }
 
 
@@ -2517,8 +2631,6 @@ void add_timer( char *name, int delay, void (*cb)( TIMER *timer ),
    t->data[0] = d0;
    t->data[1] = d1;
    t->data[2] = d2;
-   
-   check_timers( );
 }
 
 
@@ -2586,7 +2698,6 @@ void handle_atcp( char *msg )
 	  {
 	     char buf[1024];
 	     char sb_atcp[] = { IAC, SB, ATCP, 0 };
-	     char se[] = { IAC, SE, 0 };
 	     
 	     if ( body )
 	       {
@@ -2595,7 +2706,7 @@ void handle_atcp( char *msg )
 		  
 		  sprintf( buf, "%s" "auth %d %s" "%s",
 			   sb_atcp, atcp_authfunc( body ),
-			   atcp_login_as, se );
+			   atcp_login_as, iac_se );
 		  send_to_server( buf );
 	       }
 	     else
@@ -2754,7 +2865,6 @@ void server_telnet( char *buf, char *dst, int *bytes )
    const char will_atcp[] = { IAC, WILL, ATCP, 0 };
    const char do_atcp[] = { IAC, DO, ATCP, 0 };
    const char sb_atcp[] = { IAC, SB, ATCP, 0 };
-   const char se[] = { IAC, SE, 0 };
    
    static char iac_string[3];
    static int in_iac;
@@ -2821,7 +2931,6 @@ void server_telnet( char *buf, char *dst, int *bytes )
 	       {
 		  char buf[256];
 		  char sb_atcp[] = { IAC, SB, ATCP, 0 };
-		  char se[] = { IAC, SE, 0 };
 		  
 		  /* Send it for ourselves. */
 		  send_to_server( (char *) do_atcp );
@@ -2832,13 +2941,13 @@ void server_telnet( char *buf, char *dst, int *bytes )
 		    sprintf( atcp_login_as, "MudBot %d.%d", main_version_major, main_version_minor );
 		  
 		  sprintf( buf, "%s" "hello %s\nauth 1\ncomposer 1\nchar_name 1\nchar_vitals 1\nroom_brief 0\nroom_exits 0" "%s",
-			   sb_atcp, atcp_login_as, se );
+			   sb_atcp, atcp_login_as, iac_se );
 		  send_to_server( buf );
 		  
 		  if ( default_user[0] && default_pass[0] )
 		    {
 		       sprintf( buf, "%s" "login %s %s" "%s",
-				sb_atcp, default_user, default_pass, se );
+				sb_atcp, default_user, default_pass, iac_se );
 		       send_to_server( buf );
 		       debugf( "atcp: Requested login with '%s'.", default_user );
 		    }
@@ -2852,7 +2961,7 @@ void server_telnet( char *buf, char *dst, int *bytes )
 	       }
 	     
 	     /* This one only has two bytes. */
-	     else if ( in_atcp && !memcmp( iac_string, se, 2 ) )
+	     else if ( in_atcp && !memcmp( iac_string, iac_se, 2 ) )
 	       {
 		  atcp_msg[k] = 0;
 		  handle_atcp( atcp_msg );
@@ -2886,7 +2995,7 @@ void server_telnet( char *buf, char *dst, int *bytes )
 
 
 /* A function that gets a word, or string between two quotes. */
-char *get_string( char *argument, char *arg_first, int max )
+char *get_string( const char *argument, char *arg_first, int max )
 {
    char cEnd = ' ';
    
@@ -2918,7 +3027,7 @@ char *get_string( char *argument, char *arg_first, int max )
    while ( isspace( *argument ) )
      argument++;
    
-   return argument;
+   return (char *) argument;
 }
 
 
@@ -2989,7 +3098,50 @@ void force_off_mccp( )
 
 void process_client_line( char *buf )
 {
-   printf( "line: [%s]\n", buf );
+   /* If not connected, parse differently. */
+   if ( !server )
+     {
+	char hostname[256];
+	char portbuf[256];
+	char *p;
+	int port;
+	int sock;
+	
+	if ( strncmp( buf, "connect ", 8 ) ||
+	     !( p = get_string( buf+8, hostname, 256 ) ) ||
+	     !hostname[0] ||
+	     !( p = get_string( p, portbuf, 256 ) ) ||
+	     !portbuf[0] ||
+	     !( port = atoi( portbuf ) ) )
+	  {
+	     clientf( C_B "No no... Look here. Syntax:\r\n" C_0
+		      C_W "  connect <hostname> <port>\r\n" C_0
+		      C_B "Example: connect imperian.com 23\r\n" C_0 );
+	     return;
+	  }
+	
+	debugf( "Connecting to: %s %d.", hostname, port );
+	clientf( C_B "Connecting... " C_0 );
+	
+	sock = mb_connect( hostname, port );
+	
+	if ( sock < 0 )
+	  {
+	     debugf( "Failed (%s)", get_connect_error( ) );
+	     clientff( C_B "%s.\r\n" C_0, get_connect_error( ) );
+	     assign_server( 0 );
+	     return;
+	  }
+	
+	debugf( "Connected." );
+	clientf( C_B "Done.\r\n" C_0 );
+	clientfb( "Send `help to get some help." );
+	
+	strcpy( server_hostname, hostname );
+	
+	assign_server( sock );
+	return;
+     }
    
    if ( buf[0] == '`' ) /* Command */
      {
@@ -3213,10 +3365,9 @@ void process_client_line( char *buf )
 	else if ( !strncmp( buf, "`sendatcp", 9 ) )
 	  {
 	     const char sb_atcp[] = { IAC, SB, ATCP, 0 };
-	     const char se[] = { IAC, SE, 0 };
 	     char buf[1024];
 	     
-	     sprintf( buf, "%s%s%s", sb_atcp, buf + 10, se );
+	     sprintf( buf, "%s%s%s", sb_atcp, buf + 10, iac_se );
 	     send_to_server( buf );
 	  }
 #if defined( FOR_WINDOWS )
@@ -3329,19 +3480,15 @@ void process_client_line( char *buf )
      }
    else
      {
+	char *send = buf;
+	
 	/* A one character line? Imperian refuses to read them. */
 	/* Kmud likes to send one char lines. */
-	if ( !buf[1] )
-	  {
-	     if ( buf[0] == '\n' )
-	       {
-		  buf[1] = '\r';
-		  buf[2] = 0;
-	       }
-	  }
+	if ( !buf[1] && buf[0] == '\n' )
+	  send = "\r\n";
 	
 	if ( safe_mode || !module_process_client_aliases( buf ) )
-	  send_to_server( buf );
+	  send_to_server( send );
      }
    
    return;
@@ -3361,6 +3508,8 @@ int process_client( void )
    int bytes, i;
    
    DEBUG( "process_client" );
+   
+   mb_section = "Processing client data";
    
    bytes = c_read( client->fd, raw_buf, 4095 );
    
@@ -3385,14 +3534,15 @@ int process_client( void )
    client_telnet( raw_buf, buf, &bytes );
 #endif
    
+   crash_buffer = buf;
+   crash_buffer_len = 4096;
+   
    for ( i = 0; i < bytes; i++ )
      {
 	/* Interpret As Command! */
 	if ( buf[i] == (char) IAC )
 	  {
 	     in_iac = 1;
-	     
-	     printf( "Entering IAC.\n" );
 	     
 	     iac_string[0] = buf[i];
 	     iac_string[1] = 0;
@@ -3414,7 +3564,6 @@ int process_client( void )
 		  continue;
 	       }
 	     
-	     printf( "Leaving IAC on character %d.\n", in_iac );
 	     iac_string[in_iac+1] = 0;
 	     in_iac = 0;
 	     
@@ -3446,7 +3595,6 @@ int process_client( void )
 	     else if ( iac_string[1] == (char) SB )
 	       {
 		  in_sb = 1;
-		  printf( "Entering SB.\n" );
 		  continue;
 	       }
 	     
@@ -3454,11 +3602,19 @@ int process_client( void )
 	       {
 		  in_sb = 0;
 		  
-		  printf( "Leaving SB.\n" );
 		  sub_telnet[in_sb-1] = 0;
 		  
-		  /* Handle sub negotiation. */
-		  printf( "sub: [%s]\n", sub_telnet+1 );
+		  /* Flush any text first. */
+		  if ( last_client_pos )
+		    {
+		       debugf( "Forced to flush unfinished client input." );
+		       process_client_line( last_client_line );
+		       last_client_line[0] = 0;
+		       last_client_pos = 0;
+		    }
+		  
+		  /* Handle sub negotiation. For now, just send it. */
+		  clientff( "%s%s%s", iac_sb, sub_telnet, iac_se );
 		  continue;
 	       }
 	     
@@ -3487,7 +3643,7 @@ int process_client( void )
 	last_client_line[last_client_pos] = buf[i];
 	last_client_line[++last_client_pos] = 0;
 	
-	if ( buf[i] == '\n' && !in_sb )
+	if ( buf[i] == '\n' )
 	  {
 	     last_client_line[last_client_pos] = '\r';
 	     last_client_line[++last_client_pos] = 0;
@@ -3500,25 +3656,14 @@ int process_client( void )
 	     last_client_line[0] = 0;
 	     last_client_pos = 0;
 	  }
-	else if ( buf[i] == '\r' && !in_sb )
+	else if ( buf[i] == '\r' )
 	  {
 	     /* Ignore them. */
 	     last_client_line[--last_client_pos] = 0;
 	  }
-	else if ( buf[i] == (char) SB )
-	  {
-	     in_sb = 1;
-	  }
-	else if ( buf[i] == (char) SE )
-	  {
-	     in_sb = 0;
-	     process_client_line( last_client_line );
-	     
-	     /* Clear the line. */
-	     last_client_line[0] = 0;
-	     last_client_pos = 0;
-	  }
      }
+   
+   crash_buffer = NULL;
    
    return 0;
 }
@@ -3686,13 +3831,20 @@ void process_buffer( char *raw_buf, int bytes )
    
    DEBUG( "process_buffer" );
    
+   mb_section = "Processing Buffer";
+   crash_buffer = raw_buf;
+   crash_buffer_len = INPUT_BUF;
+   
    processing = 1;
    
    bytes_uncompressed += bytes;
    
    log_bytes( "s->m", raw_buf, bytes );
    
+   mb_section = "server_telnet";
    server_telnet( raw_buf, buf, &bytes );
+   mb_section = "Processing Buffer";
+   crash_buffer = buf;
    
    if ( show_processing_time )
      gettimeofday( &tvold2, NULL );
@@ -3763,6 +3915,8 @@ void process_buffer( char *raw_buf, int bytes )
 	     if ( prompt > 0 )
 	       last_prompt = line;
 	     
+	     crash_line = &line;
+	     
 	     /* Let the modules do some processing on it, then print it. */
 	     if ( prompt )
 	       module_process_server_prompt( &line );
@@ -3791,6 +3945,8 @@ void process_buffer( char *raw_buf, int bytes )
 		  print_line( &line, 1 );
 		  clean_line( &line );
 	       }
+	     
+	     crash_line = NULL;
 	     
 	     if ( prompt >= 0 )
 	       continue;
@@ -3844,13 +4000,19 @@ void process_buffer( char *raw_buf, int bytes )
      }
    
    processing = 0;
+   
+   mb_section = "Out of process_buffer";
+   crash_buffer = NULL;
 }
 
 
 
 void show_prompt( )
 {
-   void process_buffer( char *raw_buf, int bytes );
+   char *last_section;
+   
+   last_section = mb_section;
+   mb_section = "Reparsing prompt";
    
    if ( processing )
      {
@@ -3860,6 +4022,7 @@ void show_prompt( )
      {
 	LINE line;
 	
+	crash_line = &line;
 	sent_something = 1;
 	line = last_prompt;
 	line.rawp[0] = line.raw;
@@ -3870,7 +4033,10 @@ void show_prompt( )
 	print_line( &line, 1 );
 	clean_line( &line );
 	empty_buffer( );
+	crash_line = NULL;
      }
+   
+   mb_section = last_section;
 }
 
 
@@ -4150,21 +4316,83 @@ void remove_newline( char *string )
 }
 
 
-void sig_segv_handler( int sig )
+void crash_report( FILE *fl )
 {
    int i;
    
+   fprintf( fl, "[MB]\n" );
+   fprintf( fl, "Section - %s\n", mb_section ? mb_section : "Unknown" );
+   
+   fprintf( fl, "[MOD]\n" );
+   if ( !mod_section )
+     fprintf( fl, "Section - Not in a module.\n" );
+   else
+     {
+	fprintf( fl, "Section - %s.\n", mod_section );
+	fprintf( fl, "Module - %s.\n", ( current_mod && current_mod->name ) ? current_mod->name : "Unknown" );
+     }
+   
+   fprintf( fl, "[DESC]\n" );
+   if ( !desc_name )
+     fprintf( fl, "Section - Not in a descriptor.\n" );
+   else
+     {
+	fprintf( fl, "Section - %s\n", desc_section ? desc_section : "Unknown..." );
+	fprintf( fl, "Descriptor - %s.\n", desc_name );
+     }
+   
+   fprintf( fl, "[Buffer:]\n" );
+   if ( crash_buffer )
+     {
+	fprintf( fl, "\"" );
+	for ( i = 0; i < crash_buffer_len && crash_buffer[i]; i++ )
+	  {
+	     if ( isprint( crash_buffer[i] ) )
+	       fprintf( fl, "%c", crash_buffer[i] );
+	     else
+	       fprintf( fl, "[%d]", (int) crash_buffer[i] );
+	  }
+	fprintf( fl, "\"\n" );
+	if ( i == crash_buffer_len )
+	  fprintf( fl, "Going out of bounds!" );
+     }
+   
+   if ( crash_line )
+     {
+	fprintf( fl, "[Line Structure:]\n" );
+	
+	fprintf( fl, "Line - \"%s\"\n", crash_line->line );
+	fprintf( fl, "Length - %d (raw %d)\n", crash_line->len, crash_line->raw_len );
+     }
+   
+   fprintf( fl, "[History:]\n" );
+   
+   for ( i = 0; i < 6; i++ )
+     {
+	if ( !debug[i] )
+	  break;
+	fprintf( fl, " (%d) %s\n", i, debug[i] );
+     }
+}
+
+
+
+void sig_segv_handler( int sig )
+{
    /* Crash for good, if something bad happens here, too. */
    signal( sig, SIG_DFL );
    
    debugf( "Eep! Segmentation fault!" );
-   debugf( "History:" );
+   
+   crash_report( stdout );
+   
+/*   debugf( "History:" );
    for ( i = 0; i < 6; i++ )
      {
 	if ( !debug[i] )
 	  break;
 	debugf( " (%d) %s", i, debug[i] );
-     }
+     }*/
    
 #if !defined( FOR_WINDOWS )
    if ( !client || !server )
@@ -4265,8 +4493,10 @@ void main_loop( )
 	       continue;
 	  }
 	
+	mb_section = "Checking timers";
 	/* Check timers. */
 	check_timers( );
+	mb_section = NULL;
 	
 	DEBUG( "main_loop - descriptors" );
 	
@@ -4279,23 +4509,29 @@ void main_loop( )
 	     if ( d->fd < 1 )
 	       continue;
 	     
+	     desc_name = d->name;
+	     
 	     current_descriptor = d;
 	     
+	     desc_section = "Reading from...";
 	     if ( d->callback_in && FD_ISSET( d->fd, &in_set ) )
 	       (*d->callback_in)( d );
 	     
 	     if ( !current_descriptor )
 	       continue;
 	     
+	     desc_section = "Writing to...";
 	     if ( d->callback_out && FD_ISSET( d->fd, &out_set ) )
 	       (*d->callback_out)( d );
 	     
 	     if ( !current_descriptor )
 	       continue;
 	     
+	     desc_section = "Exception handler at...";
 	     if ( d->callback_exc && FD_ISSET( d->fd, &exc_set ) )
 	       (*d->callback_exc)( d );
 	  }
+	desc_name = NULL;
      }
 }
 

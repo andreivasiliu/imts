@@ -12,6 +12,9 @@ IMTS-unstable
 - Rat/spider worth parsing is working again, also added caiman, serpents
   and locusts.
 - Impatience should stop trying to focus.
+- Defences can be marked to be brought up only once. Use 'once' instead of
+  'on' in the options file.
+- Option 'perma_moss' added.
 (IMapper:)
 - Autolinking added, and enabled by default. Added an option to disable it.
 - Floating MXP map window added. Warning, Zmud acts buggy about it.

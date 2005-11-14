@@ -6826,6 +6826,32 @@ void do_room_find( char *arg )
 	return;
      }
    
+   /* Looking for a room type? */
+   if ( !strncmp( arg, "type ", 5 ) )
+     {
+	ROOM_TYPE *type;
+	
+	for ( type = room_types; type; type = type->next )
+	  if ( !strcmp( type->name, arg+5 ) )
+	    break;
+	
+	if ( !type )
+	  clientfr( "What room type? Use 'room types' for a list." );
+	else
+	  {
+	     clientfr( "Rooms that match:" );
+	     for ( room = world; room; room = room->next_in_world )
+	       if ( room->room_type == type )
+		 clientff( " " C_D "(" C_G "%d" C_D ")" C_0 " %s%s%s%s\r\n",
+			   room->vnum, room->name,
+			   room->area != current_area ? " (" : "",
+			   room->area != current_area ? room->area->name : "",
+			   room->area != current_area ? ")" : "" );
+	  }
+	
+	return;
+     }
+   
    clientfr( "Rooms that match:" );
    for ( room = world; room; room = room->next_in_world )
      {
@@ -6875,6 +6901,10 @@ void do_room_look( char *arg )
    ROOM_DATA *room;
    char buf[256];
    int i;
+   
+   char *c;
+   c = 0;
+   *c = 0;
    
    if ( arg[0] && isdigit( arg[0] ) )
      {

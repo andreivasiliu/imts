@@ -10,11 +10,10 @@ High Priority
 - Windows crash report.
 - do_before's and do_after's.
 - Logging bytes off client.
-- One time keep-up.
 - landmarks type <type>
-- Variable free/calloc max_x max_y
 - Add Davion's changes. Beware of writhing.
 - Check pcre.dll.
+- Show_Prompt issue.
 
 
 
@@ -52,6 +51,7 @@ IMAPPER
 - Vnums on real map.
 - Undo.
 - New Exit warning.
+- Variable free/calloc max_x max_y
 
 IOFFENSE
 ========

@@ -47,6 +47,11 @@ T: "Church" cyan 1 1 no no
 T: "Wetlands Village" brown 1 1 no no
 T: "Blackstone Dungeon" brown 1 1 no no
 T: "Blackstone Keep" dark 1 1 no no
+T: "Volcano" dark 1 1 no no
+T: "Blackened Lands" dark 1 1 no no
+T: "Lake of Fire" bright-red 5 5 no no
+T: "ShallahTemple" bright-white 1 1 no no
+T: "Arcane Temple" cyan 1 1 no no
 
 
 MESSAGES
@@ -2719,6 +2724,7 @@ Name: A narrow run of rapids.
 Type: River
 E: northeast 3009
 E: south 3007
+E: west 8650
 
 ROOM v3007
 Name: A wide pool in the river.
@@ -5467,7 +5473,7 @@ E: northwest 2834
 E: down 628
 
 ROOM v2832
-Name: Rampart above the the Cactii Gate.
+Name: Rampart above the Cactii Gate.
 Type: Urban
 E: southeast 2831
 E: northwest 2833
@@ -7015,16 +7021,10 @@ Name: Trading headquarters of Stavenn.
 Type: Urban
 E: south 320
 
-ROOM v5884
-Name: An underground public bath.
-Type: Underground Lake
-E: up 5860
-
 ROOM v1220
 Name: Inside the home of Hulo.
 Type: Urban
 E: out 311
-UE: out west
 
 ROOM v346
 Name: Stavennite Post Office.
@@ -7215,19 +7215,16 @@ ROOM v319
 Name: A cluttered workshop.
 Type: Urban
 E: out 310
-UE: out west
 
 ROOM v318
 Name: Inside the home of Hadush.
 Type: Urban
 E: out 313
-UE: out west
 
 ROOM v317
 Name: Inside the home of Hilo.
 Type: Urban
 E: out 312
-UE: out west
 
 ROOM v316
 Name: A curving path.
@@ -7235,38 +7232,32 @@ Type: Path
 E: east 311
 DEL: in
 
-ROOM v315
-Name: A courtyard in the shadow of an ominous citadel.
-Type: Urban
-E: north 8382
-E: down 314
-
 ROOM v314
-Name: A small paved path.
+Name: A path ending before a gate.
 Type: Path
 E: east 312
-E: up 315
+DEL: west
 
 ROOM v313
 Name: Blocked by rocks on the Ascendo del Roccia.
 Type: Urban
 E: southwest 8385
 EL: southwest 1
+E: west 8772
 E: northwest 312
 EL: northwest 1
 E: in 318
-UE: in east
 
 ROOM v312
 Name: The summit of Ascendo del Roccia.
 Type: Urban
 E: northeast 311
+E: east 8771
 E: southeast 313
 EL: southeast 1
 E: south 8381
 E: west 314
 E: in 317
-UE: in east
 
 ROOM v311
 Name: Ascendo del Roccia before a cave dwelling.
@@ -7275,7 +7266,6 @@ E: northeast 310
 E: southwest 312
 E: west 316
 E: in 1220
-UE: in east
 
 ROOM v310
 Name: A steep mountain road.
@@ -7285,7 +7275,6 @@ E: down 309
 EL: down 1
 UE: down northeast
 E: in 319
-UE: in east
 
 ROOM v309
 Name: The base of Ascendo del Roccia.
@@ -7406,7 +7395,7 @@ Type: Urban
 E: northeast 289
 
 ROOM v290
-Name: A ramshackle hovel.
+Name: The beginnings of Via Capio.
 Type: Urban
 E: southeast 289
 E: northwest 5860
@@ -7424,7 +7413,9 @@ Type: Urban
 E: north 293
 E: northeast 295
 E: east 287
+E: southeast 8769
 E: south 292
+E: southwest 8767
 E: west 289
 E: northwest 7751
 SPE: 1531 10 "enter grate" "You step through a sewer grate."
@@ -7538,21 +7529,10 @@ E: east 270
 E: west 8376
 
 ROOM v5860
-Name: Before exclusive quarters.
+Name: Before the Imperial Tenements.
 Type: Urban
-DEL: north
-DEL: northeast
-E: east 5861
 E: southeast 290
-DEL: south
-DEL: southwest
-DEL: up
-E: down 5884
-
-ROOM v5861
-Name: Within a shadowy chamber.
-Type: Urban
-E: west 5860
+E: in 8764
 
 ROOM v5964
 Name: Sordid Secrets.
@@ -7711,29 +7691,66 @@ Type: Urban
 E: north 312
 DEL: south
 
-ROOM v8382
-Name: A dark and opulently decorated reception chamber.
-Type: Urban
-E: east 8383
-E: south 315
-
-ROOM v8383
-Name: A dimly lit vaulted marble gallery.
-Type: Urban
-E: east 8384
-E: west 8382
-
-ROOM v8384
-Name: A cherry wood paneled armoury.
-Type: Urban
-E: west 8383
-
 ROOM v8385
-Name: Amidst a lush jungle.
+Name: An ominous marble path.
 Type: Garden
 DEL: north
 E: northeast 313
 EL: northeast 1
+
+ROOM v8764
+Name: Within the Imperial Tenements.
+Type: Urban
+E: north 8765
+E: out 5860
+
+ROOM v8765
+Name: Courtyard within the Imperial Tenements.
+Type: Garden
+E: north 8766
+DEL: northeast
+DEL: southeast
+E: south 8764
+DEL: southwest
+DEL: northwest
+
+ROOM v8766
+Name: Courtyard within the Imperial Tenements.
+Type: Garden
+DEL: north
+DEL: northeast
+E: south 8765
+DEL: northwest
+
+ROOM v8767
+Name: The Scuderia Animale.
+Type: Urban
+E: northeast 288
+E: southeast 8768
+
+ROOM v8768
+Name: A well-lit paddock.
+Type: Garden
+E: northeast 8769
+E: northwest 8767
+
+ROOM v8769
+Name: The Scuderia Equus.
+Type: Urban
+E: southwest 8768
+E: northwest 288
+
+ROOM v8771
+Name: A twisting, dark path.
+Type: Urban
+DEL: south
+E: west 312
+
+ROOM v8772
+Name: Before the darkened mansion.
+Type: Path
+E: east 313
+DEL: west
 
 
 
@@ -8692,7 +8709,7 @@ E: south 193
 E: west 198
 
 ROOM v196
-Name: Hall of ancient antiquities.
+Name: Hall of antiquities.
 Type: Urban
 E: north 193
 
@@ -8979,7 +8996,7 @@ E: north 143
 E: south 8387
 
 ROOM v144
-Name: Ethereal Pathways.
+Name: Lokrien Pleasures.
 Type: Urban
 E: south 143
 DEL: down
@@ -9135,8 +9152,12 @@ EL: north 1
 E: east 191
 E: south 124
 EL: south 1
+E: southwest 8762
+ES: southwest 1
 E: west 947
 ES: west 1
+E: northwest 8763
+ES: northwest 1
 
 ROOM v122
 Name: Along East Circle nearing the Park of Ages.
@@ -9145,6 +9166,7 @@ E: north 121
 EL: north 1
 E: south 123
 EL: south 1
+DEL: up
 
 ROOM v121
 Name: North Circle road.
@@ -9217,20 +9239,22 @@ Type: Urban
 DEL: north
 DEL: east
 E: south 111
-DEL: west
 
 ROOM v112
 Name: A tree-lined street.
 Type: Urban
 E: east 111
+DEL: south
 DEL: southwest
 DEL: west
+DEL: northwest
 
 ROOM v111
 Name: A tree-lined street.
 Type: Urban
 E: north 113
 E: east 110
+DEL: south
 E: west 112
 DEL: down
 
@@ -9336,6 +9360,7 @@ E: west 8606
 ROOM v946
 Name: Amethyst avenue in front of Leaf Tower.
 Type: Urban
+E: north 8761
 E: southeast 116
 
 ROOM v1045
@@ -9366,7 +9391,7 @@ E: north 135
 DEL: down
 
 ROOM v5819
-Name: Wolf's Run.
+Name: Wayward Paths.
 Type: Urban
 E: west 153
 DEL: down
@@ -9496,24 +9521,50 @@ E: west 131
 
 ROOM v8606
 Name: A simple arched anteroom.
+Type: Arcane Temple
 E: east 945
 E: southwest 8609
 E: northwest 8607
 
 ROOM v8607
 Name: A peaceful sanctuary.
+Type: Arcane Temple
 E: southeast 8606
 E: southwest 8608
 
 ROOM v8608
 Name: A tranquil garden of sapphire-hued orchids.
+Type: Garden
 E: northeast 8607
 E: southeast 8609
 
 ROOM v8609
 Name: A quiet chapel.
+Type: Arcane Temple
 E: northeast 8606
 E: northwest 8608
+
+ROOM v8761
+Name: An enchanted path of crushed amethyst and crystal.
+Type: Garden
+DEL: north
+E: south 946
+
+ROOM v8762
+Name: A well-swept, comfortable kennel.
+Type: Urban
+E: north 8763
+EL: north 1
+E: northeast 123
+ES: northeast 1
+
+ROOM v8763
+Name: Within a large, well-kept stable.
+Type: Urban
+E: southeast 123
+ES: southeast 1
+E: south 8762
+EL: south 1
 
 
 
@@ -14199,6 +14250,7 @@ E: down 8641
 
 ROOM v8644
 Name: Beneath an elysian dome of rapturous beauty.
+Type: ShallahTemple
 E: down 8640
 
 
@@ -17742,6 +17794,17 @@ Name: Isolated cave high on a peak.
 Type: Mountains
 E: out 3148
 UE: out southwest
+
+ROOM v8759
+Name: Within a fiery crater.
+Type: Volcano
+E: out 8760
+SPE: -1 0 "eat ice" "cold stone of a volcano."
+
+ROOM v8760
+Name: A ravaged volcanic slope.
+Type: Mountains
+E: in 8759
 
 
 
@@ -25070,7 +25133,6 @@ Type: Path
 E: north 470
 E: up 472
 UE: up northwest
-DE: in
 
 ROOM v470
 Name: Nearing the ruined walls of an ancient coliseum.
@@ -27657,6 +27719,7 @@ E: west 3585
 ROOM v3580
 Name: Wide open plains.
 Type: Grasslands
+E: east 8715
 E: southwest 3579
 
 ROOM v3579
@@ -31900,13 +31963,14 @@ AREA
 Name: Ithaqua Forest.
 
 ROOM v8320
-Name: A half-sphere covered in sawdust.
+Name: A cold, empty sphere.
 Type: Dark Forest
 E: southeast 7118
 
 ROOM v7118
 Name: An unfurnished Ithaquan sphere.
 Type: Dark Forest
+E: northeast 8707
 E: northwest 8320
 E: down 5054
 
@@ -31945,6 +32009,7 @@ Name: Within a tree trunk.
 Type: Urban
 E: up 5968
 UE: up north
+E: down 8710
 E: out 5965
 UE: out south
 
@@ -32591,7 +32656,7 @@ EL: north 1
 E: west 5090
 
 ROOM v5092
-Name: You Are What You Eat.
+Name: You are what you eat.
 Type: Dark Forest
 E: northeast 5090
 E: down 5093
@@ -32844,9 +32909,11 @@ ROOM v5130
 Name: Among the lofty eaves of the Ithaqua.
 Type: Dark Forest
 E: north 5131
+E: northeast 8708
 E: south 5133
 E: southwest 5134
 E: west 5132
+E: northwest 8709
 E: down 5103
 
 ROOM v5131
@@ -33038,6 +33105,7 @@ E: northwest 5159
 ROOM v5161
 Name: Amidst a copse of black and dismal pines.
 Type: Dark Forest
+E: northeast 8711
 E: southwest 5149
 EL: southwest 1
 E: west 5159
@@ -33139,6 +33207,26 @@ ROOM v7104
 Name: A stone embankment in the wood.
 Type: Dark Forest
 E: south 5761
+
+ROOM v8707
+Name: An empty room.
+Type: Urban
+E: southwest 7118
+
+ROOM v8708
+Name: An eerie kennel.
+Type: Dark Forest
+E: southwest 5130
+
+ROOM v8709
+Name: An unnaturally quiet stable.
+Type: Dark Forest
+E: southeast 5130
+
+ROOM v8710
+Name: A dusty library.
+Type: Urban
+E: up 5967
 
 
 
@@ -33527,6 +33615,7 @@ E: west 5830
 ROOM v5828
 Name: A warm passage within a mountain.
 Type: Natural underground
+E: northeast 8658
 E: northwest 5829
 E: out 3653
 UE: out east
@@ -43759,8 +43848,10 @@ UE: out north
 
 ROOM v8610
 Name: Within a fiery crater.
+Type: Volcano
 E: out 6224
 SPE: -1 0 "touch pillar" "edge of a strange lake."
+SPE: 8611 0 "touch pillar" "edge of a strange lake."
 
 
 
@@ -56108,25 +56199,39 @@ Name: Northern Plains.
 
 ROOM v8611
 Name: Before a lake of fire.
+Type: Blackened Lands
 E: north 8612
-SPE: -1 0 "agree shadow" "the platform of ice."
+SPE: 8613 0 "agree shadow" "the platform of ice."
 
 ROOM v8612
 Name: Within a lake of fire.
-E: south 8611
+Type: Lake of Fire
+E: north 8612
+ES: north 1
+E: east 8612
+ES: east 1
+E: south 8612
+ES: south 1
+E: west 8612
+ES: west 1
 
 ROOM v8613
 Name: Upon a float of ice in the midst of a lake of fire.
+Type: Lake of Fire
 E: out 8611
+SPE: 8614 0 "" "to form a frigid walkway towards the looming shadow of a vast metal Spire."
 
 ROOM v8614
 Name: Upon a float of ice in the midst of a lake of fire.
+Type: Lake of Fire
 E: out 8615
+SPE: 8613 0 "" "rocky shoreline."
 
 ROOM v8615
 Name: Before the Wrath Spire.
+Type: Blackened Lands
 E: south 8612
-E: in 8614
+SPE: 8614 0 "agree shadow" "the platform of ice."
 
 
 
@@ -56137,6 +56242,665 @@ ROOM v8643
 Name: Within the clouds under the arch of the rainbow.
 Type: Undefined
 E: down 8642
+
+
+
+AREA
+Name: Tylaran Village.
+
+ROOM v8650
+Name: Before the gates of Tylaran village.
+Type: Village
+E: east 3008
+E: west 8651
+
+ROOM v8651
+Name: Gates of the Tylaran village.
+Type: Village
+E: east 8650
+E: west 8652
+
+ROOM v8652
+Name: Village path.
+Type: Village
+E: east 8651
+E: west 8653
+
+ROOM v8653
+Name: Village square.
+Type: Village
+E: north 8654
+E: east 8652
+E: south 8655
+E: west 8656
+
+ROOM v8654
+Name: Village path.
+Type: Village
+E: north 8692
+E: east 8691
+E: south 8653
+
+ROOM v8655
+Name: Village path heading towards the hills.
+Type: Village
+E: north 8653
+E: east 8690
+
+ROOM v8656
+Name: Entrance of the village hall.
+Type: Village
+E: east 8653
+E: west 8657
+
+ROOM v8657
+Name: Hallway within the village hall.
+Type: Village
+E: north 8694
+E: east 8656
+E: south 8693
+
+ROOM v8690
+Name: Tylaran newsroom.
+Type: Village
+E: west 8655
+
+ROOM v8691
+Name: Tylaran post.
+Type: Village
+E: west 8654
+
+ROOM v8692
+Name: Village path.
+Type: Village
+E: north 8698
+E: east 8695
+E: south 8654
+E: west 8696
+
+ROOM v8693
+Name: Office of the village chief.
+Type: Village
+E: north 8657
+
+ROOM v8694
+Name: Tylaran village council room.
+Type: Village
+E: south 8657
+
+ROOM v8695
+Name: Tylaran commodities.
+Type: Village
+E: west 8692
+
+ROOM v8696
+Name: The Mountain Goat.
+Type: Village
+E: east 8692
+E: south 8697
+
+ROOM v8697
+Name: A lounge room.
+Type: Village
+E: north 8696
+
+ROOM v8698
+Name: Village path before the mine.
+Type: Village
+E: northeast 8699
+E: south 8692
+
+ROOM v8699
+Name: Entrance to the mine.
+Type: Village
+E: east 8700
+E: southwest 8698
+
+ROOM v8700
+Name: Mine passage.
+Type: Constructed underground
+E: northeast 8705
+E: southeast 8701
+E: west 8699
+
+ROOM v8701
+Name: A descending mine passage.
+Type: Constructed underground
+E: east 8702
+E: northwest 8700
+
+ROOM v8702
+Name: Fork in the mine passage.
+Type: Constructed underground
+E: northeast 8703
+E: west 8701
+E: northwest 8704
+
+ROOM v8703
+Name: A newly built mine passage.
+Type: Constructed underground
+E: southwest 8702
+
+ROOM v8704
+Name: A small room in the mine.
+Type: Constructed underground
+E: southeast 8702
+
+ROOM v8705
+Name: An ascending mine passage.
+Type: Constructed underground
+E: east 8706
+E: southwest 8700
+
+ROOM v8706
+Name: Caved mine passage.
+Type: Constructed underground
+E: west 8705
+
+
+
+AREA
+Name: Pol'Pera.
+
+ROOM v8658
+Name: Before the gates of Pol'Pera.
+Type: Natural underground
+E: north 8659
+E: southwest 5828
+
+ROOM v8659
+Name: An ancient lava tube.
+Type: Constructed underground
+E: north 8661
+E: northeast 8665
+E: east 8666
+E: south 8658
+E: west 8660
+E: up 8671
+
+ROOM v8660
+Name: The dwarven training grounds.
+Type: Constructed underground
+E: east 8659
+E: south 8664
+E: southwest 8663
+E: northwest 8662
+
+ROOM v8661
+Name: The grand hall of Pol'Pera.
+Type: Constructed underground
+E: east 8665
+E: south 8659
+E: up 8672
+
+ROOM v8662
+Name: The armoury of Pol'Pera.
+Type: Constructed underground
+E: southeast 8660
+
+ROOM v8663
+Name: The Crimson Forge.
+Type: Constructed underground
+E: northeast 8660
+
+ROOM v8664
+Name: Dwarven sleeping quarters.
+Type: Constructed underground
+E: north 8660
+
+ROOM v8665
+Name: A dwarven chapel.
+Type: Constructed underground
+E: southwest 8659
+E: west 8661
+E: down 8687
+
+ROOM v8666
+Name: Precious Gems.
+Type: Constructed underground
+E: northeast 8667
+E: west 8659
+
+ROOM v8667
+Name: A dwarven refinery.
+Type: Constructed underground
+E: southwest 8666
+E: down 8668
+
+ROOM v8668
+Name: A small mineshaft.
+Type: Constructed underground
+E: southeast 8669
+E: up 8667
+
+ROOM v8669
+Name: A small mineshaft.
+Type: Constructed underground
+E: northeast 8670
+E: northwest 8668
+
+ROOM v8670
+Name: A collapsed mineshaft.
+Type: Constructed underground
+E: east 8689
+E: southwest 8669
+
+ROOM v8671
+Name: An underground street.
+Type: Constructed underground
+E: north 8672
+EL: north 1
+E: east 8677
+E: south 8673
+E: west 8674
+E: down 8659
+
+ROOM v8672
+Name: An underground street leading north.
+Type: Constructed underground
+E: north 8676
+E: south 8671
+EL: south 1
+E: up 8681
+E: down 8661
+
+ROOM v8673
+Name: The southern courtyard.
+Type: Constructed underground
+E: north 8671
+E: south 8686
+
+ROOM v8674
+Name: Underground street before the Post Office.
+Type: Constructed underground
+E: east 8671
+E: northwest 8675
+
+ROOM v8675
+Name: A small post office.
+Type: Constructed underground
+E: northeast 8676
+EL: northeast 1
+E: southeast 8674
+
+ROOM v8676
+Name: Before the Golden Hammer.
+Type: Constructed underground
+E: northeast 8679
+E: southeast 8678
+EL: southeast 1
+E: south 8672
+E: southwest 8675
+EL: southwest 1
+
+ROOM v8677
+Name: The towne well.
+Type: Constructed underground
+E: northeast 8678
+E: west 8671
+
+ROOM v8678
+Name: Pol'Pera News.
+Type: Constructed underground
+E: southwest 8677
+E: northwest 8676
+EL: northwest 1
+
+ROOM v8679
+Name: The Golden Hammer.
+Type: Constructed underground
+E: southwest 8676
+E: west 8680
+
+ROOM v8680
+Name: Quiet lounge of the Golden Hammer.
+Type: Constructed underground
+E: east 8679
+
+ROOM v8681
+Name: Before the towne chambers.
+Type: Constructed underground
+E: east 8682
+E: down 8672
+
+ROOM v8682
+Name: The assembly lounge.
+Type: Constructed underground
+E: north 8683
+E: east 8684
+E: south 8685
+E: west 8681
+
+ROOM v8683
+Name: The development chambers.
+Type: Constructed underground
+E: southeast 8684
+E: south 8682
+
+ROOM v8684
+Name: Towne chambers.
+Type: Constructed underground
+E: southwest 8685
+E: west 8682
+E: northwest 8683
+
+ROOM v8685
+Name: The war chambers.
+Type: Constructed underground
+E: north 8682
+E: northeast 8684
+
+ROOM v8686
+Name: Pathway to the residences.
+Type: Constructed underground
+E: north 8673
+DEL: south
+
+ROOM v8687
+Name: Above the crypt.
+Type: Constructed underground
+E: up 8665
+E: down 8688
+
+ROOM v8688
+Name: An ancient crypt.
+Type: Constructed underground
+E: up 8687
+
+ROOM v8689
+Name: A small clearing in the rubble.
+Type: Constructed underground
+E: west 8670
+
+
+
+AREA
+Name: Skegdald.
+
+ROOM v8711
+Name: A wide snow-covered path.
+Type: Path
+E: northeast 8712
+E: southwest 5161
+
+ROOM v8712
+Name: A dirt pathway leading into an encampment.
+Type: Path
+E: northeast 8713
+E: southwest 8711
+
+ROOM v8713
+Name: Nearing an snowy encampment.
+Type: Path
+E: east 8714
+E: southwest 8712
+
+ROOM v8714
+Name: Within the shadows of Skagdald.
+Type: Path
+DE: east
+E: west 8713
+
+
+
+AREA
+Name: Hamlet of Aherindale.
+
+ROOM v8715
+Name: A narrow path through grassland.
+Type: Grasslands
+E: north 8716
+E: southeast 8750
+E: west 3580
+
+ROOM v8716
+Name: Inside the south gate.
+Type: Village
+E: north 8717
+E: south 8715
+
+ROOM v8717
+Name: Dirt road circling a large ring.
+Type: Village
+E: north 8718
+EL: north 1
+E: northeast 8721
+E: south 8716
+E: northwest 8720
+
+ROOM v8718
+Name: Large ring circled by wooden bleachers.
+Type: Village
+E: north 8724
+EL: north 1
+E: east 8722
+EL: east 1
+E: south 8717
+EL: south 1
+E: west 8719
+EL: west 1
+
+ROOM v8719
+Name: Dirt road circling a large ring.
+Type: Village
+E: northeast 8723
+E: east 8718
+EL: east 1
+E: southeast 8720
+E: west 8728
+
+ROOM v8720
+Name: Dirt road circling a large ring.
+Type: Village
+E: southeast 8717
+E: south 8726
+E: northwest 8719
+
+ROOM v8721
+Name: Dirt road circling a large ring.
+Type: Village
+E: northeast 8722
+E: southeast 8745
+E: southwest 8717
+
+ROOM v8722
+Name: Dirt road circling a large ring.
+Type: Village
+E: east 8739
+E: southwest 8721
+E: west 8718
+EL: west 1
+E: northwest 8725
+
+ROOM v8723
+Name: Dirt road circling a large ring.
+Type: Village
+E: northeast 8724
+E: southwest 8719
+E: northwest 8734
+
+ROOM v8724
+Name: Before the Great Hall.
+Type: Village
+DEL: north
+E: southeast 8725
+E: south 8718
+EL: south 1
+E: southwest 8723
+E: in 8747
+
+ROOM v8725
+Name: Dirt road circling a large ring.
+Type: Village
+E: northeast 8736
+E: southeast 8722
+E: northwest 8724
+
+ROOM v8726
+Name: A fence-enclosed pen.
+Type: Village
+E: north 8720
+E: northwest 8727
+
+ROOM v8727
+Name: A small storage shed.
+Type: Village
+E: southeast 8726
+
+ROOM v8728
+Name: Inside the west gate.
+Type: Village
+E: east 8719
+E: west 8729
+
+ROOM v8729
+Name: Hoof-trodden path across the plains.
+Type: Grasslands
+E: east 8728
+E: southwest 8730
+
+ROOM v8730
+Name: Hoof-trodden path across the plains.
+Type: Grasslands
+E: northeast 8729
+E: west 8731
+
+ROOM v8731
+Name: A heavily trodden path.
+Type: Grasslands
+E: north 8732
+E: east 8730
+
+ROOM v8732
+Name: Trampled corral bearing a large lean-to.
+Type: Village
+E: south 8731
+E: in 8733
+
+ROOM v8733
+Name: A crude, rectangular tent.
+Type: Village
+E: out 8732
+
+ROOM v8734
+Name: Around a raging bonfire.
+Type: Village
+E: southeast 8723
+E: in 8735
+
+ROOM v8735
+Name: In the shop of the farrier.
+Type: Village
+E: out 8734
+
+ROOM v8736
+Name: Before a few simple buildings.
+Type: Village
+E: south 8738
+E: southwest 8725
+E: west 8737
+E: in 8754
+
+ROOM v8737
+Name: A small, round dwelling.
+Type: Village
+E: east 8736
+
+ROOM v8738
+Name: Inside a large wooden home.
+Type: Village
+E: north 8736
+
+ROOM v8739
+Name: Inside the east gate.
+Type: Village
+E: east 8740
+E: west 8722
+
+ROOM v8740
+Name: Narrow path through the grasslands.
+Type: Grasslands
+E: northeast 8741
+E: west 8739
+
+ROOM v8741
+Name: Narrow path through the grasslands.
+Type: Grasslands
+E: northeast 8742
+E: southwest 8740
+
+ROOM v8742
+Name: Narrow path leading to a camp.
+Type: Grasslands
+E: east 8743
+E: southwest 8741
+
+ROOM v8743
+Name: A large oval track ringed by fences.
+Type: Village
+E: west 8742
+E: in 8744
+
+ROOM v8744
+Name: An elongated stable.
+Type: Village
+E: out 8743
+
+ROOM v8745
+Name: Lush enclosure before a large stable.
+Type: Village
+E: northwest 8721
+E: in 8746
+
+ROOM v8746
+Name: A large stable.
+Type: Village
+E: out 8745
+
+ROOM v8747
+Name: Inside the Great Hall.
+Type: Village
+E: east 8749
+E: west 8748
+E: out 8724
+
+ROOM v8748
+Name: A fire-lit meeting room.
+Type: Village
+E: east 8747
+
+ROOM v8749
+Name: Tidy kitchen warmed by hearths.
+Type: Village
+E: west 8747
+
+ROOM v8750
+Name: Before a quaint camp.
+Type: Grasslands
+E: south 8751
+E: southwest 8752
+E: northwest 8715
+
+ROOM v8751
+Name: A canvas-covered ring.
+Type: Village
+E: north 8750
+E: in 8753
+
+ROOM v8752
+Name: A small peaked tent.
+Type: Village
+E: northeast 8750
+
+ROOM v8753
+Name: A spacious and elegant stable.
+Type: Village
+E: out 8751
+
+ROOM v8754
+Name: A foul-smelling abode.
+Type: Village
+E: out 8736
 
 
 
