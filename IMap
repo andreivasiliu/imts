@@ -52,6 +52,7 @@ T: "Blackened Lands" dark 1 1 no no
 T: "Lake of Fire" bright-red 5 5 no no
 T: "ShallahTemple" bright-white 1 1 no no
 T: "Arcane Temple" cyan 1 1 no no
+T: "Docks" bright-cyan 1 1 no no
 
 
 MESSAGES
@@ -4121,7 +4122,7 @@ Type: Desert
 E: north 5477
 E: northeast 5478
 E: southeast 662
-DEL: southwest
+E: southwest 8649
 E: northwest 664
 
 ROOM v662
@@ -5781,7 +5782,7 @@ DEL: south
 E: northwest 605
 
 ROOM v614
-Name: B & S Sundries.
+Name: The Blazing Sun.
 Type: Urban
 E: north 605
 DEL: southeast
@@ -6299,6 +6300,7 @@ E: out 590
 ROOM v8649
 Name: Caanae Gate.
 Type: Urban
+E: northeast 663
 E: southwest 607
 
 
@@ -14052,19 +14054,19 @@ E: south 2015
 E: northwest 2018
 
 ROOM v2018
-Name: Steep mountain slope covered with chapparel.
+Name: Steep mountain slope covered with chaparral.
 Type: Mountains
 E: southeast 2017
 E: down 2019
 
 ROOM v2019
-Name: Steep mountain slope covered with chapparel.
+Name: Steep mountain slope covered with chaparral.
 Type: Mountains
 E: up 2018
 E: down 2020
 
 ROOM v2020
-Name: Steep mountain slope covered with chapparel.
+Name: Steep mountain slope covered with chaparral.
 Type: Mountains
 E: up 2019
 E: down 2021
@@ -24369,7 +24371,7 @@ E: north 3520
 DEL: down
 
 ROOM v3522
-Name: The Arivan Boutique.
+Name: The Lilies Repose.
 Type: Forest
 E: south 3520
 DEL: down
@@ -24410,7 +24412,7 @@ E: east 3525
 E: southwest 3529
 
 ROOM v3528
-Name: Shoppe in the Redwood.
+Name: The Grove's Storage.
 Type: Forest
 E: south 3527
 DEL: down
@@ -24541,6 +24543,7 @@ Name: North of gnarled tree.
 Type: Forest
 E: north 3548
 E: south 3544
+E: west 8773
 
 ROOM v3548
 Name: Pathway leading to the gnarled tree.
@@ -24617,7 +24620,7 @@ E: northeast 3514
 DEL: down
 
 ROOM v7253
-Name: The Staff and the Hammer.
+Name: Hemlock and Firefly.
 Type: Forest
 E: southeast 3514
 DEL: down
@@ -24632,6 +24635,17 @@ Name: A small backroom.
 Type: Forest
 E: west 3482
 ES: west 1
+
+ROOM v8773
+Name: The mighty boughs of a Redwood.
+Type: Forest
+E: east 3547
+E: west 8774
+
+ROOM v8774
+Name: Beyond the veil of dewy mist.
+Type: Forest
+E: east 8773
 
 
 
@@ -31974,63 +31988,6 @@ E: northeast 8707
 E: northwest 8320
 E: down 5054
 
-ROOM v7112
-Name: A crowded library.
-Type: Dark Forest
-E: west 7109
-
-ROOM v7111
-Name: A claustrophobic chapel.
-Type: Dark Forest
-E: south 7109
-
-ROOM v7110
-Name: A leafy crypt.
-Type: Dark Forest
-E: east 7109
-
-ROOM v7109
-Name: A gloomy entrance hall.
-Type: Dark Forest
-E: north 7111
-E: east 7112
-E: south 5110
-ES: south 1
-E: west 7110
-
-ROOM v5968
-Name: The Ithaquan Observatory.
-Type: Dark Forest
-E: down 5967
-UE: down south
-
-ROOM v5967
-Name: Within a tree trunk.
-Type: Urban
-E: up 5968
-UE: up north
-E: down 8710
-E: out 5965
-UE: out south
-
-ROOM v5966
-Name: In a small lecture room.
-Type: Urban
-E: east 5965
-
-ROOM v5965
-Name: The Confluence Forum.
-Type: Dark Forest
-E: west 5966
-E: down 5133
-E: in 5967
-UE: in north
-
-ROOM v5767
-Name: Amidst hectic renovation.
-Type: Dark Forest
-E: southeast 5086
-
 ROOM v5766
 Name: An underwater spring.
 Type: Freshwater
@@ -32549,421 +32506,6 @@ E: up 5076
 E: out 5074
 UE: out south
 
-ROOM v5076
-Name: Entryway to the village of Ithaqua.
-Type: Dark Forest
-E: north 5077
-E: down 5075
-
-ROOM v5077
-Name: Along a swinging bridge.
-Type: Dark Forest
-E: north 5078
-E: south 5076
-
-ROOM v5078
-Name: A junction of Wendigo catwalk.
-Type: Dark Forest
-E: east 5116
-E: south 5077
-E: west 5079
-
-ROOM v5079
-Name: Wendigo catwalk above the barrens.
-Type: Dark Forest
-E: east 5078
-E: west 5080
-
-ROOM v5080
-Name: Wendigo catwalk angling northwards.
-Type: Dark Forest
-E: east 5079
-E: northwest 5081
-E: up 5134
-
-ROOM v5081
-Name: Wendigo catwalk and Unseelie Lane.
-Type: Dark Forest
-E: north 5096
-E: southeast 5080
-E: west 5082
-
-ROOM v5082
-Name: Unseelie Lane.
-Type: Dark Forest
-E: east 5081
-E: west 5083
-
-ROOM v5083
-Name: Unseelie Lane adrift with snow.
-Type: Dark Forest
-E: east 5082
-E: southwest 5084
-E: northwest 5085
-
-ROOM v5084
-Name: Around the loop of Unseelie Lane.
-Type: Dark Forest
-E: northeast 5083
-E: south 5091
-EL: south 1
-
-ROOM v5085
-Name: Nearing several shops.
-Type: Dark Forest
-E: southeast 5083
-E: west 5086
-
-ROOM v5086
-Name: Unseelie Court by a ruined shop.
-Type: Dark Forest
-E: east 5085
-E: southwest 5087
-E: northwest 5767
-
-ROOM v5087
-Name: Unseelie Court amidst frost-rimmed storefronts.
-Type: Dark Forest
-E: northeast 5086
-E: southeast 5088
-E: west 5095
-
-ROOM v5088
-Name: Unseelie Court.
-Type: Dark Forest
-E: southwest 5089
-E: northwest 5087
-
-ROOM v5089
-Name: Near the southern end of Unseelie Court.
-Type: Dark Forest
-E: northeast 5088
-E: southeast 5090
-E: west 5094
-
-ROOM v5090
-Name: Unseelie Lane by an icy courtyard.
-Type: Dark Forest
-E: east 5091
-E: southwest 5092
-E: northwest 5089
-
-ROOM v5091
-Name: Northern bend in Unseelie Lane.
-Type: Dark Forest
-E: north 5084
-EL: north 1
-E: west 5090
-
-ROOM v5092
-Name: You are what you eat.
-Type: Dark Forest
-E: northeast 5090
-E: down 5093
-UE: down south
-
-ROOM v5093
-Name: Meat locker.
-Type: Dark Forest
-E: up 5092
-UE: up north
-
-ROOM v5094
-Name: An empty herbalist shop.
-Type: Dark Forest
-E: east 5089
-
-ROOM v5095
-Name: Calafalas Haberdashery.
-Type: Dark Forest
-E: east 5087
-
-ROOM v5096
-Name: An icy catwalk above a frozen tarn.
-Type: Dark Forest
-E: northeast 5097
-E: south 5081
-
-ROOM v5097
-Name: Nearing a ladderway.
-Type: Dark Forest
-E: east 5098
-EL: east 1
-E: southwest 5096
-
-ROOM v5098
-Name: Beneath a canopy of icy pines.
-Type: Dark Forest
-E: north 5099
-E: west 5097
-EL: west 1
-E: up 5132
-
-ROOM v5099
-Name: A catwalk over a snow-crusted swamp.
-Type: Dark Forest
-E: south 5098
-E: northwest 5100
-
-ROOM v5100
-Name: A precarious catwalk.
-Type: Dark Forest
-E: northeast 5102
-E: east 5101
-E: southeast 5099
-
-ROOM v5101
-Name: Overlooking a dismal bracken.
-Type: Dark Forest
-E: north 5102
-E: east 5103
-E: west 5100
-
-ROOM v5102
-Name: A path to a great tree.
-Type: Dark Forest
-E: southeast 5103
-E: south 5101
-E: southwest 5100
-E: northwest 5104
-
-ROOM v5103
-Name: Wendigo catwalk beneath a ladderway.
-Type: Dark Forest
-E: southeast 5119
-EL: southeast 1
-E: west 5101
-E: northwest 5102
-E: up 5130
-
-ROOM v5104
-Name: A platform around a vast tree trunk.
-Type: Dark Forest
-E: northeast 5110
-E: southeast 5102
-E: up 5105
-UE: up north
-
-ROOM v5105
-Name: Atop a carved ladderwell.
-Type: Dark Forest
-E: north 5106
-E: down 5104
-UE: down south
-
-ROOM v5106
-Name: A grim entrance hall.
-Type: Dark Forest
-E: south 5105
-E: west 5107
-
-ROOM v5107
-Name: Chapel of Wrath.
-Type: Dark Forest
-E: east 5106
-E: south 5109
-E: northwest 5108
-
-ROOM v5108
-Name: A rectory alive with flames.
-Type: Dark Forest
-E: southeast 5107
-
-ROOM v5109
-Name: A black unhallowed library.
-Type: Dark Forest
-E: north 5107
-
-ROOM v5110
-Name: Following a path around a huge pine.
-Type: Dark Forest
-E: north 7109
-ES: north 1
-E: southwest 5104
-E: up 5111
-UE: up northeast
-
-ROOM v5111
-Name: At the top of an icy ladderway.
-Type: Dark Forest
-E: north 5112
-E: down 5110
-UE: down southwest
-
-ROOM v5112
-Name: A darkened entry hall.
-Type: Dark Forest
-E: north 5113
-E: east 5114
-E: southeast 5115
-E: south 5111
-
-ROOM v5113
-Name: In a cramped chamber.
-Type: Dark Forest
-E: south 5112
-
-ROOM v5114
-Name: A shambles of a library.
-Type: Dark Forest
-E: south 5115
-E: west 5112
-
-ROOM v5115
-Name: Construction site.
-Type: Dark Forest
-E: north 5114
-E: northwest 5112
-
-ROOM v5116
-Name: At the foot of a fungi ladder.
-Type: Dark Forest
-E: northeast 5117
-E: west 5078
-E: up 5133
-
-ROOM v5117
-Name: Wendigo catwalk laced with icicles.
-Type: Dark Forest
-E: north 5118
-E: southwest 5116
-
-ROOM v5118
-Name: A catwalk over a dismal forest.
-Type: Dark Forest
-E: northeast 5119
-E: south 5117
-
-ROOM v5119
-Name: Wendigo catwalk and Will O' Wisp Street.
-Type: Dark Forest
-E: east 5120
-E: southwest 5118
-E: northwest 5103
-EL: northwest 1
-
-ROOM v5120
-Name: Will O' Wisp Street.
-Type: Dark Forest
-E: northeast 5121
-E: west 5119
-
-ROOM v5121
-Name: Among the huts.
-Type: Dark Forest
-E: northeast 5124
-E: southwest 5120
-E: northwest 5122
-
-ROOM v5122
-Name: Beneath a series of hanging huts.
-Type: Dark Forest
-E: northeast 5123
-E: southeast 5121
-
-ROOM v5123
-Name: Crossroads of Will O' Wisp Street.
-Type: Dark Forest
-E: northeast 5126
-E: southeast 5124
-E: southwest 5122
-E: west 5125
-E: northwest 5128
-
-ROOM v5124
-Name: Under a canopy of hammock huts.
-Type: Dark Forest
-E: southwest 5121
-E: northwest 5123
-
-ROOM v5125
-Name: A forge in the boughs.
-Type: Dark Forest
-E: east 5123
-
-ROOM v5126
-Name: Will O' Wisp Street under a canopy of hammocks.
-Type: Dark Forest
-E: southwest 5123
-E: northwest 5127
-
-ROOM v5127
-Name: Will O' Wisp Street under huts.
-Type: Dark Forest
-E: northeast 5129
-E: southeast 5126
-E: southwest 5128
-
-ROOM v5128
-Name: Under a network of hanging huts.
-Type: Dark Forest
-E: northeast 5127
-E: southeast 5123
-
-ROOM v5129
-Name: A cul-de-sac on Will O' Wisp Street.
-Type: Dark Forest
-E: southwest 5127
-
-ROOM v5130
-Name: Among the lofty eaves of the Ithaqua.
-Type: Dark Forest
-E: north 5131
-E: northeast 8708
-E: south 5133
-E: southwest 5134
-E: west 5132
-E: northwest 8709
-E: down 5103
-
-ROOM v5131
-Name: The Raven Loft.
-Type: Dark Forest
-E: south 5130
-
-ROOM v5132
-Name: In the towering branches.
-Type: Dark Forest
-E: east 5130
-E: southeast 5133
-E: south 5134
-E: west 5137
-E: down 5098
-
-ROOM v5133
-Name: High in the trees of the Ithaqua.
-Type: Dark Forest
-E: north 5130
-E: east 5136
-E: west 5134
-E: northwest 5132
-E: up 5965
-E: down 5116
-
-ROOM v5134
-Name: Above the Ithaqua catwalks.
-Type: Dark Forest
-E: north 5132
-E: northeast 5130
-E: east 5133
-E: south 5135
-E: down 5080
-
-ROOM v5135
-Name: A meeting hall in the pine boughs.
-Type: Dark Forest
-E: north 5134
-
-ROOM v5136
-Name: A hanging treasury.
-Type: Dark Forest
-E: west 5133
-
-ROOM v5137
-Name: The Ithaquan Archive.
-Type: Dark Forest
-E: east 5132
-
 ROOM v5145
 Name: A dismal clearing.
 Type: Dark Forest
@@ -33212,21 +32754,6 @@ ROOM v8707
 Name: An empty room.
 Type: Urban
 E: southwest 7118
-
-ROOM v8708
-Name: An eerie kennel.
-Type: Dark Forest
-E: southwest 5130
-
-ROOM v8709
-Name: An unnaturally quiet stable.
-Type: Dark Forest
-E: southeast 5130
-
-ROOM v8710
-Name: A dusty library.
-Type: Urban
-E: up 5967
 
 
 
@@ -46547,6 +46074,7 @@ E: east 6739
 EL: east 1
 E: south 6756
 E: southwest 6761
+E: west 8777
 
 ROOM v6756
 Name: Dwarven Mother's waters.
@@ -48960,7 +48488,7 @@ E: southeast 6951
 
 
 AREA
-Name: Village of Tirhin.
+Name: Fortified Towne of Tirhin.
 
 ROOM v7153
 Name: Before a Baker's shop.
@@ -48986,6 +48514,7 @@ Name: Along a cobblestone pathway.
 Type: Hills
 E: north 7157
 E: east 7158
+E: southeast 8776
 E: west 7155
 
 ROOM v7157
@@ -49164,6 +48693,11 @@ Name: Within a farm yard.
 Type: Farmland
 E: north 7167
 E: northwest 7166
+
+ROOM v8776
+Name: Within a vegetable patch.
+Type: Garden
+E: northwest 7156
 
 
 
@@ -56901,6 +56435,783 @@ ROOM v8754
 Name: A foul-smelling abode.
 Type: Village
 E: out 8736
+
+
+
+AREA
+Name: En'Aruna Village.
+
+ROOM v8777
+Name: The dock's end.
+Type: Docks
+E: east 6757
+E: west 8778
+
+ROOM v8778
+Name: A rickety dock.
+Type: Docks
+E: east 8777
+E: west 8779
+
+ROOM v8779
+Name: A thin strip of beach before the dock.
+Type: Beach
+E: north 8780
+E: east 8778
+E: west 8783
+
+ROOM v8780
+Name: A narrow sliver of sand.
+Type: Beach
+E: north 8781
+E: south 8779
+
+ROOM v8781
+Name: A pool of golden sand before a small shack.
+Type: Beach
+E: north 8782
+E: south 8780
+
+ROOM v8782
+Name: A dilapidated wooden shack.
+Type: Urban
+E: south 8781
+
+ROOM v8783
+Name: A cobblestone path leading to the village.
+Type: Village
+E: east 8779
+E: west 8784
+
+ROOM v8784
+Name: The En'Aruna archway.
+Type: Village
+E: east 8783
+E: southwest 8793
+EL: southwest 3
+E: west 8794
+EL: west 1
+E: northwest 8785
+EL: northwest 3
+
+ROOM v8785
+Name: Standing alongside the corner of the northern wall.
+Type: Village
+E: southeast 8784
+EL: southeast 3
+E: west 8786
+
+ROOM v8786
+Name: A lone willow tree by the northern wall.
+Type: Village
+E: east 8785
+E: west 8787
+EL: west 1
+
+ROOM v8787
+Name: Lush green grasses by the northern wall.
+Type: Village
+E: east 8786
+EL: east 1
+E: west 8788
+
+ROOM v8788
+Name: A patch of flowers by the corner of the western wall.
+Type: Village
+E: east 8787
+E: south 8789
+EL: south 3
+
+ROOM v8789
+Name: Meandering along the western wall.
+Type: Village
+E: north 8788
+EL: north 3
+E: south 8790
+EL: south 3
+
+ROOM v8790
+Name: Rounding the corner of the southern wall.
+Type: Village
+E: north 8789
+EL: north 3
+E: east 8791
+
+ROOM v8791
+Name: A crack in the southern wall.
+Type: Village
+E: northeast 8802
+ES: northeast 1
+E: east 8792
+EL: east 1
+E: west 8790
+
+ROOM v8792
+Name: Skirting the southern wall of En'Aruna.
+Type: Village
+E: east 8793
+E: west 8791
+EL: west 1
+
+ROOM v8793
+Name: A flat, grassy plain by the corner of En'Aruna's wall.
+Type: Village
+E: northeast 8784
+EL: northeast 3
+E: west 8792
+
+ROOM v8794
+Name: Voz'Umrea Lane.
+Type: Village
+E: east 8784
+EL: east 1
+E: west 8795
+
+ROOM v8795
+Name: Voz'Umrea Lane nearing the centre square.
+Type: Village
+E: northeast 8803
+E: east 8794
+E: west 8796
+
+ROOM v8796
+Name: The Centre Square.
+Type: Village
+E: north 8804
+E: east 8795
+E: south 8814
+E: west 8797
+
+ROOM v8797
+Name: Meandering Voz'Umrea Lane.
+Type: Village
+E: east 8796
+E: southwest 8798
+E: west 8817
+
+ROOM v8798
+Name: Ol'Thodul Path.
+Type: Village
+E: northeast 8797
+E: southwest 8799
+ES: southwest 1
+
+ROOM v8799
+Name: A fork in the path.
+Type: Village
+E: northeast 8798
+ES: northeast 1
+E: south 8800
+E: west 8801
+
+ROOM v8800
+Name: A shadow-filled dead end.
+Type: Village
+E: north 8799
+
+ROOM v8801
+Name: The end of Ol'Thodul Path.
+Type: Village
+E: east 8799
+E: southwest 8802
+
+ROOM v8802
+Name: An unmarked path by a crack in the southern wall.
+Type: Village
+E: northeast 8801
+E: southwest 8791
+ES: southwest 1
+DEL: in
+
+ROOM v8803
+Name: The Fisherman's Oasis.
+Type: Village
+E: southwest 8795
+
+ROOM v8804
+Name: Aslinn Way.
+Type: Village
+E: north 8805
+E: south 8796
+E: northwest 8809
+
+ROOM v8805
+Name: Continuing on Aslinn Way.
+Type: Village
+E: north 8808
+E: east 8806
+E: south 8804
+
+ROOM v8806
+Name: An ostentatious great room.
+Type: Village
+E: west 8805
+E: up 8807
+
+ROOM v8807
+Name: An opulent sitting room.
+Type: Village
+E: down 8806
+
+ROOM v8808
+Name: An abrupt dead-end.
+Type: Village
+E: south 8805
+
+ROOM v8809
+Name: Orc on Fire Tavern and Inn.
+Type: Village
+E: north 8810
+E: southeast 8804
+E: up 8811
+
+ROOM v8810
+Name: A windowless sitting room.
+Type: Village
+E: south 8809
+
+ROOM v8811
+Name: A short, painting adorned hallway.
+Type: Village
+E: east 8813
+E: west 8812
+E: down 8809
+
+ROOM v8812
+Name: A quiet, ill-lighted bedchamber.
+Type: Village
+E: east 8811
+
+ROOM v8813
+Name: A morose, black boudoir.
+Type: Village
+E: west 8811
+
+ROOM v8814
+Name: Just south of the centre square.
+Type: Village
+E: north 8796
+E: south 8815
+
+ROOM v8815
+Name: Aslinn Way by the village walls.
+Type: Village
+E: north 8814
+E: northeast 8816
+
+ROOM v8816
+Name: A modest stone dwelling.
+Type: Village
+E: southwest 8815
+
+ROOM v8817
+Name: Advancing on Voz'Umrea Lane.
+Type: Village
+E: east 8797
+E: west 8818
+
+ROOM v8818
+Name: Standing before a small stone building.
+Type: Village
+E: north 8819
+E: east 8817
+
+ROOM v8819
+Name: The Silverfin Bulletin.
+Type: Village
+E: south 8818
+
+
+
+AREA
+Name: Ithaquan Council.
+
+ROOM v5076
+Name: Entryway to the village of Ithaqua.
+Type: Dark Forest
+E: north 5077
+E: down 5075
+
+ROOM v5077
+Name: Along a swinging bridge.
+Type: Dark Forest
+E: north 5078
+E: south 5076
+
+ROOM v5078
+Name: A junction of Wendigo catwalk.
+Type: Dark Forest
+E: east 5116
+E: south 5077
+E: west 5079
+
+ROOM v5116
+Name: At the foot of a fungi ladder.
+Type: Dark Forest
+E: northeast 5117
+E: west 5078
+E: up 5133
+
+ROOM v5117
+Name: Wendigo catwalk laced with icicles.
+Type: Dark Forest
+E: north 5118
+E: southwest 5116
+
+ROOM v5118
+Name: A catwalk over a dismal forest.
+Type: Dark Forest
+E: northeast 5119
+E: south 5117
+
+ROOM v5119
+Name: Wendigo catwalk and Will O' Wisp Street.
+Type: Dark Forest
+E: east 5120
+E: southwest 5118
+E: northwest 5103
+EL: northwest 1
+
+ROOM v5120
+Name: Will O' Wisp Street.
+Type: Dark Forest
+E: northeast 5121
+E: west 5119
+
+ROOM v5121
+Name: Among the huts.
+Type: Dark Forest
+E: northeast 5124
+E: southwest 5120
+E: northwest 5122
+
+ROOM v5124
+Name: Under a canopy of hammock huts.
+Type: Dark Forest
+E: southwest 5121
+E: northwest 5123
+
+ROOM v5123
+Name: Crossroads of Will O' Wisp Street.
+Type: Dark Forest
+E: northeast 5126
+E: southeast 5124
+E: southwest 5122
+E: west 5125
+E: northwest 5128
+
+ROOM v5122
+Name: Beneath a series of hanging huts.
+Type: Dark Forest
+E: northeast 5123
+E: southeast 5121
+
+ROOM v5126
+Name: Will O' Wisp Street under a canopy of hammocks.
+Type: Dark Forest
+E: southwest 5123
+E: northwest 5127
+
+ROOM v5127
+Name: Will O' Wisp Street under huts.
+Type: Dark Forest
+E: northeast 5129
+E: southeast 5126
+E: southwest 5128
+
+ROOM v5129
+Name: A cul-de-sac on Will O' Wisp Street.
+Type: Dark Forest
+E: southwest 5127
+
+ROOM v5128
+Name: Under a network of hanging huts.
+Type: Dark Forest
+E: northeast 5127
+E: southeast 5123
+
+ROOM v5125
+Name: A forge in the boughs.
+Type: Dark Forest
+E: east 5123
+
+ROOM v5103
+Name: Wendigo catwalk beneath a ladderway.
+Type: Dark Forest
+E: southeast 5119
+EL: southeast 1
+E: west 5101
+E: northwest 5102
+E: up 5130
+
+ROOM v5101
+Name: Overlooking a dismal bracken.
+Type: Dark Forest
+E: north 5102
+E: east 5103
+E: west 5100
+
+ROOM v5102
+Name: A path to a great tree.
+Type: Dark Forest
+E: southeast 5103
+E: south 5101
+E: southwest 5100
+E: northwest 5104
+
+ROOM v5100
+Name: A precarious catwalk.
+Type: Dark Forest
+E: northeast 5102
+E: east 5101
+E: southeast 5099
+
+ROOM v5099
+Name: A catwalk over a snow-crusted swamp.
+Type: Dark Forest
+E: south 5098
+E: northwest 5100
+
+ROOM v5098
+Name: Beneath a canopy of icy pines.
+Type: Dark Forest
+E: north 5099
+E: west 5097
+EL: west 1
+E: up 5132
+
+ROOM v5097
+Name: Nearing a ladderway.
+Type: Dark Forest
+E: east 5098
+EL: east 1
+E: southwest 5096
+
+ROOM v5096
+Name: An icy catwalk above a frozen tarn.
+Type: Dark Forest
+E: northeast 5097
+E: south 5081
+
+ROOM v5079
+Name: Wendigo catwalk above the barrens.
+Type: Dark Forest
+E: east 5078
+E: west 5080
+
+ROOM v5080
+Name: Wendigo catwalk angling northwards.
+Type: Dark Forest
+E: east 5079
+E: northwest 5081
+E: up 5134
+
+ROOM v5081
+Name: Wendigo catwalk and Unseelie Lane.
+Type: Dark Forest
+E: north 5096
+E: southeast 5080
+E: west 5082
+
+ROOM v5082
+Name: Unseelie Lane.
+Type: Dark Forest
+E: east 5081
+E: west 5083
+
+ROOM v5083
+Name: Unseelie Lane adrift with snow.
+Type: Dark Forest
+E: east 5082
+E: southwest 5084
+E: northwest 5085
+
+ROOM v5085
+Name: Nearing several shops.
+Type: Dark Forest
+E: southeast 5083
+E: west 5086
+
+ROOM v5086
+Name: Unseelie Court by a ruined shop.
+Type: Dark Forest
+E: east 5085
+E: southwest 5087
+E: northwest 5767
+
+ROOM v5767
+Name: Amidst hectic renovation.
+Type: Dark Forest
+E: southeast 5086
+
+ROOM v5095
+Name: Calafalas Haberdashery.
+Type: Dark Forest
+E: east 5087
+
+ROOM v5087
+Name: Unseelie Court amidst frost-rimmed storefronts.
+Type: Dark Forest
+E: northeast 5086
+E: southeast 5088
+E: west 5095
+
+ROOM v5088
+Name: Unseelie Court.
+Type: Dark Forest
+E: southwest 5089
+E: northwest 5087
+
+ROOM v5094
+Name: An empty herbalist shop.
+Type: Dark Forest
+E: east 5089
+
+ROOM v5089
+Name: Near the southern end of Unseelie Court.
+Type: Dark Forest
+E: northeast 5088
+E: southeast 5090
+E: west 5094
+
+ROOM v5090
+Name: Unseelie Lane by an icy courtyard.
+Type: Dark Forest
+E: east 5091
+E: southwest 5092
+E: northwest 5089
+
+ROOM v5092
+Name: You are what you eat.
+Type: Dark Forest
+E: northeast 5090
+E: down 5093
+UE: down south
+
+ROOM v5084
+Name: Around the loop of Unseelie Lane.
+Type: Dark Forest
+E: northeast 5083
+E: south 5091
+EL: south 1
+
+ROOM v5091
+Name: Northern bend in Unseelie Lane.
+Type: Dark Forest
+E: north 5084
+EL: north 1
+E: west 5090
+
+ROOM v5104
+Name: A platform around a vast tree trunk.
+Type: Dark Forest
+E: northeast 5110
+E: southeast 5102
+E: up 5105
+UE: up north
+
+ROOM v5105
+Name: Atop a carved ladderwell.
+Type: Dark Forest
+E: north 5106
+E: down 5104
+UE: down south
+
+ROOM v5106
+Name: A grim entrance hall.
+Type: Dark Forest
+E: south 5105
+E: west 5107
+
+ROOM v5107
+Name: Chapel of Wrath.
+Type: Dark Forest
+E: east 5106
+E: south 5109
+E: northwest 5108
+
+ROOM v5109
+Name: A black unhallowed library.
+Type: Dark Forest
+E: north 5107
+
+ROOM v5108
+Name: A rectory alive with flames.
+Type: Dark Forest
+E: southeast 5107
+
+ROOM v5110
+Name: Following a path around a huge pine.
+Type: Dark Forest
+E: north 7109
+ES: north 1
+E: southwest 5104
+E: up 5111
+UE: up northeast
+
+ROOM v5111
+Name: At the top of an icy ladderway.
+Type: Dark Forest
+E: north 5112
+E: down 5110
+UE: down southwest
+
+ROOM v5112
+Name: A darkened entry hall.
+Type: Dark Forest
+E: north 5113
+E: east 5114
+E: southeast 5115
+E: south 5111
+
+ROOM v7112
+Name: A crowded library.
+Type: Dark Forest
+E: west 7109
+
+ROOM v7109
+Name: A gloomy entrance hall.
+Type: Dark Forest
+E: north 7111
+E: east 7112
+E: south 5110
+ES: south 1
+E: west 7110
+
+ROOM v7111
+Name: A claustrophobic chapel.
+Type: Dark Forest
+E: south 7109
+
+ROOM v7110
+Name: A leafy crypt.
+Type: Dark Forest
+E: east 7109
+
+ROOM v5114
+Name: A shambles of a library.
+Type: Dark Forest
+E: south 5115
+E: west 5112
+
+ROOM v5115
+Name: Construction site.
+Type: Dark Forest
+E: north 5114
+E: northwest 5112
+
+ROOM v5113
+Name: In a cramped chamber.
+Type: Dark Forest
+E: south 5112
+
+ROOM v8708
+Name: An eerie kennel.
+Type: Dark Forest
+E: southwest 5130
+
+ROOM v5131
+Name: The Raven Loft.
+Type: Dark Forest
+E: south 5130
+
+ROOM v8709
+Name: An unnaturally quiet stable.
+Type: Dark Forest
+E: southeast 5130
+
+ROOM v5136
+Name: The Ironwood Vault.
+Type: Dark Forest
+E: west 5133
+
+ROOM v5135
+Name: A meeting hall in the pine boughs.
+Type: Dark Forest
+E: north 5134
+
+ROOM v5137
+Name: The Ithaquan Archive.
+Type: Dark Forest
+E: east 5132
+
+ROOM v5132
+Name: In the towering branches.
+Type: Dark Forest
+E: east 5130
+E: southeast 5133
+E: south 5134
+E: west 5137
+E: down 5098
+
+ROOM v5134
+Name: Above the Ithaqua catwalks.
+Type: Dark Forest
+E: north 5132
+E: northeast 5130
+E: east 5133
+E: south 5135
+E: down 5080
+
+ROOM v5130
+Name: Among the lofty eaves of the Ithaqua.
+Type: Dark Forest
+E: north 5131
+E: northeast 8708
+E: south 5133
+E: southwest 5134
+E: west 5132
+E: northwest 8709
+E: down 5103
+
+ROOM v5133
+Name: High in the trees of the Ithaqua.
+Type: Dark Forest
+E: north 5130
+E: east 5136
+E: west 5134
+E: northwest 5132
+E: up 5965
+E: down 5116
+
+ROOM v5966
+Name: In a small lecture room.
+Type: Urban
+E: east 5965
+
+ROOM v5965
+Name: The Confluence Forum.
+Type: Dark Forest
+E: west 5966
+E: down 5133
+E: in 5967
+UE: in north
+
+ROOM v5967
+Name: Within a tree trunk.
+Type: Urban
+E: up 5968
+UE: up north
+E: down 8710
+E: out 5965
+UE: out south
+
+ROOM v8710
+Name: A dusty library.
+Type: Urban
+E: up 5967
+
+ROOM v5968
+Name: The Ithaquan Observatory.
+Type: Dark Forest
+E: down 5967
+UE: down south
+
+ROOM v5093
+Name: Meat locker.
+Type: Dark Forest
+E: up 5092
+UE: up north
 
 
 

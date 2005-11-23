@@ -5,6 +5,7 @@
 # Files to be built.
 SO_FILES = imperian.so i_mapper.so i_offense.so mmchat.so voter.so
 BIN_FILES = bot
+DIST_FILES = ChangeLog characters COPYING data IMap mhelp options *.is
 
 # Target Operating System: Linux, Darwin, or SunOS.
 OS = $(shell uname)
@@ -22,17 +23,14 @@ M_FLAGS =
 
 ifeq ($(BUILDTYPE),dist)
   C_FLAGS += -O3
-  B_FLAGS += -static
-  M_FLAGS += -static
 else
-  C_FLAGS += -ggdb
+  C_FLAGS += -ggdb -Wall
 endif
 
 # System-specific rules.
 
 # Linux
 ifeq ($(OS),Linux)
-  C_FLAGS  += -Wall
   M_FLAGS  += -shared
 endif
 
@@ -41,7 +39,6 @@ ifeq ($(OS),Darwin)
   INCS     += -I/sw/include
   LIBS     += -L/sw/lib
   M_FLAGS  += -dynamiclib -Xlinker -single_module
-  SO_FILES = imperian.so i_mapper.so mmchat.so voter.so
 endif
 
 # Solaris
@@ -49,25 +46,47 @@ ifeq ($(OS),SunOS)
   B_FLAGS  += -lsocket -lnsl -lresolv
   C_FLAGS  += 
   M_FLAGS  += -shared
-  SO_FILES = imperian.so i_mapper.so i_offense.so mmchat.so voter.so
 endif
 
 SRC     = *.c *.h
 
-LIBS_bot = -lz -ldl
+# External library dependences.
+ifeq ($(BUILDTYPE),dist)
+LIBS_i_offense.so = deps/$(OS)/libpcre.a
+LIBS_bot = deps/$(OS)/libz.a -ldl
+else
 LIBS_i_offense.so = -lpcre
+LIBS_bot = -lz -ldl
+endif
 
 all: $(BIN_FILES) $(SO_FILES)
+ifeq ($(BUILDTYPE),dist)
+	@echo -e "\33[1;30mBuildtype was set as 'dist'.\33[0m"
+endif
 
 # Generic rules...
 
 $(BIN_FILES): main.c header.h
 	@echo -e "\33[1;30mbin \33[1;37m'\33[1;36m$@\33[1;37m'\33[0m"
-	$(CC) $(B_FLAGS) $(C_FLAGS) -o $@ $< $(LIBS_$@)
+	@$(CC) $(B_FLAGS) $(C_FLAGS) -o $@ $< $(LIBS_$@)
+ifeq ($(BUILDTYPE),dist)
+	@strip $@
+endif
 
 %.so:	%.c header.h module.h
 	@echo -e "\33[1;30mmod \33[1;37m'\33[1;36m$<\33[1;37m'\33[0m"
-	$(CC) $(M_FLAGS) $(C_FLAGS) -o $@ $< $(LIBS_$@)
+	@$(CC) $(M_FLAGS) $(C_FLAGS) -o $@ $< $(LIBS_$@)
+ifeq ($(BUILDTYPE),dist)
+	@strip $@
+endif
+
+gz: clean all
+	@echo -e "\33[1;30mPreparing package.\33[0m"
+	@rm -rf ./imts
+	@mkdir imts
+	@mv $(BIN_FILES) $(SO_FILES) imts
+	@cp $(DIST_FILES) imts
+	@tar -zcf imts.tgz imts
 
 clean:
 	@echo -e "\33[1;30mCleaning up.\33[0m"
@@ -77,8 +96,4 @@ clean:
 
 i_mapper.so: i_mapper.h
 imperian.so: imperian.h
-
-#i_offense.so : i_offense.c header.h module.h
-#	@echo -e "\33[1;30mmod \33[1;37m'\33[1;36m$<\33[1;37m'\33[0m"
-#	@$(CC) $(M_FLAGS) -o $@ $< $(C_FLAGS) -lpcre
 
