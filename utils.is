@@ -10,22 +10,8 @@ trigger regex "^\"[a-zA-Z]+(\\d+)\" +a fluffy jambaali$" { pet_nr = arg "1"; }
 
 // From PETLIST.
 trigger "Your Pets in the Land" { pet_list = "yes"; }
-trigger prompt *
-{
-   if ( pet_list )
-     {
-	pet_list = "";
-	pet_nr = "";
-     }
-}
-trigger regex "^(\\d+)  [^*]+$"
-{
-   if ( pet_list )
-     {
-	pet_list = "";
-	pet_nr = arg "1";
-     }
-}
+trigger prompt * { if ( pet_list ) { pet_list = ""; pet_nr = ""; } }
+trigger regex "^(\\d+)  [^*]+$" { if ( pet_list ) { pet_list = ""; pet_nr = arg "1"; } }
 
 alias pet
 {
@@ -52,9 +38,9 @@ alias pet
 	send "petskills " + pet_nr;
 	return;
      }
-   else if ( cmd == "con" )
+   else if ( cmd == "con" || cmd == "consider" )
      {
-	send "petskills " + pet_nr;
+	send "petconsider " + pet_nr;
 	return;
      }
    else if ( cmd == "help" || !cmd )
