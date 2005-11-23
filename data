@@ -120,6 +120,7 @@ A "chills"              n/a n/a caloric        no  no   n/a          "shivering.
 A "elixirs-slow"        n/a n/a epidermal      no  no   n/a          "unable to process healing elixirs efficiently."
 A "fire"                n/a n/a mending        no  no   n/a          "ablaze."
 A "withered-throat"     n/a n/a epidermal      no  no   n/a          "stricken with a withered throat."
+A "losingbond"          n/a n/a mending        no  yes  n/a          "losing the bond with the animal spirits."
 #  Unknown.
 A "stuttering"          n/a n/a epidermal      no  no   n/a
 #  Pipes.
@@ -514,6 +515,10 @@ A "something"           n/a n/a n/a            no  no   n/a          "---"
 # Health-leech
 "Your health begins to drain away." health-leech give
 "Your aching, pain-wracked body is soothed and calmed." health-leech cure
+
+# Losing bond.
+"You shudder and grimace, straining to maintain your bonding." losingbond give
+"You feel the barrier that separated you from your animal consciousness has*" losingbond cure
 
 # Fire.
 "Flames erupt over all over your body and begin to consume your flesh." fire give
