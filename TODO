@@ -11,6 +11,7 @@ High Priority
 - Logging bytes off client.
 - Add Davion's changes. Beware of writhing.
 - Check pcre.dll.
+- Link Mac version statically.
 
 
 
