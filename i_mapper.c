@@ -4487,6 +4487,28 @@ void parse_scout( char *line )
 
 
 
+void parse_view( char *line )
+{
+   char name[256], buf[256];
+   
+   DEBUG( "parse_view" );
+   
+   /* You see Name at Location. */
+   
+   if ( cmp( "You see *", line ) )
+     return;
+   
+   line = get_string( line + 8, name, 256 );
+   line = get_string( line, buf, 256 );
+   
+   if ( cmp( "at", buf ) )
+     return;
+   
+   locate_room( line, 0, name );
+}
+
+
+
 void parse_pursue( char *line )
 {
    char buf[512], buf2[512], name[512];
@@ -5236,6 +5258,7 @@ void i_mapper_process_server_line( LINE *l )
 	parse_ka( l->line );
 	parse_seek( l->line );
 	parse_scout( l->line );
+	parse_view( l->line );
 	parse_pursue( l->line );
 	parse_eventstatus( l->line );
 	
