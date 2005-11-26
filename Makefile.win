@@ -16,18 +16,20 @@ MAKEDLL = $(DLLWRAP) $(LIBS) --quiet --no-export-all-symbols --add-stdcall-alias
 MAKEOBJ = $(CC) $(CFLAGS) -c
 MAKEEXE = $(CC) $(LIBS) -mwindows
 
-# Dependencies.
-LIBS_mb-core.exe   = -lzdll -lwsock32 -lcomctl32
-LIBS_i_offense.dll = -lpcre
-# Warning, can't get these to work yet.
-DEPS_imperian      = imperian.h
-DEPS_i_mapper      = i_mapper.h
-DEPS_winmain       = winres.h
 
 # Targets.
 FILES   = $(BIN) i_mapper.dll imperian.dll mmchat.dll voter.dll i_offense.dll
+EXTRA   = ChangeLog characters COPYING data IMap mhelp options *.is
 
 all: $(FILES)
+
+# Dependencies.
+LIBS_mb-core.exe   = -lzdll -lwsock32 -lcomctl32
+LIBS_i_offense.dll = -lpcre
+imperian.o: header.h module.h imperian.h
+i_mapper.o: header.h module.h i_mapper.h
+i_offense.o: header.h module.h deps/pcre.h
+winmain.o: header.h winres.h
 
 clean:
 	rm -f *~ *.o *.res *.def $(BIN) *.dll
