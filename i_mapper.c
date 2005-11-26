@@ -8087,7 +8087,7 @@ void do_landmarks( char *arg )
 	for ( room = area->rooms; room; room = room->next_in_area )
 	  {
 	     for ( tag = room->tags; tag; tag = tag->next )
-	       if ( !strcmp( (char *) tag->p, name[0] ? name : "mark" ) )
+	       if ( !case_strcmp( (char *) tag->p, name[0] ? name : "mark" ) )
 		 break;
 	     
 	     if ( !tag )
