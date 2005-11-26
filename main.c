@@ -245,6 +245,7 @@ int bytes_uncompressed;
 char *prefix_buffer, *prefix_p, *prefix_max;
 char *suffix_buffer, *suffix_p, *suffix_max;
 char *replace_buffer, *replace_p, *replace_max;
+/* A few more buffers are local static variables. */
 
 /* Info that may be useful on a crash. */
 char *mb_section = "Initializing";
@@ -695,7 +696,7 @@ void generate_config( char *file_name )
    
    fprintf( fl, "# Mud eXtension Protocol. Can be \"disabled\", \"locked\", \"open\", or \"secure\".\n"
 	    "# Read the MXP specifications on www.zuggsoft.com for more info.\n\n"
-	    "default_mxp_mode \"locked\"\n\n\n" );
+	    "default_mxp_mode \"open\"\n\n\n" );
    
    fprintf( fl, "# Telnet Go-Ahead sequence. Some clients can't live with it, some can't without it.\n\n"
 	    "strip_telnet_ga \"no\"\n\n\n" );
@@ -2861,137 +2862,17 @@ void client_telnet( char *buf, char *dst, int *bytes )
 }
 
 
-void server_telnet( char *buf, char *dst, int *bytes )
+int check_sub_telnet( char *sub )
 {
-   const char will_compress2[] = { IAC, WILL, TELOPT_COMPRESS2, 0 };
-   const char will_atcp[] = { IAC, WILL, ATCP, 0 };
-   const char do_atcp[] = { IAC, DO, ATCP, 0 };
-   const char sb_atcp[] = { IAC, SB, ATCP, 0 };
-   
-   static char iac_string[3];
-   static int in_iac;
-   static char atcp_msg[4096];
-   static int in_atcp, k;
-   
-   int i, j;
-   
-   DEBUG( "server_telnet" );
-   
-   for ( i = 0, j = 0; i < *bytes; i++ )
+   if ( sub[0] == (char) ATCP )
      {
-	/* Interpret As Command! */
-	if ( buf[i] == (char) IAC )
-	  {
-//	     debugf( "Entering IAC." );
-	     
-	     in_iac = 1;
-	     
-	     iac_string[0] = buf[i];
-	     iac_string[1] = 0;
-	     iac_string[2] = 0;
-	     
-	     continue;
-	  }
-	
-	if ( in_iac )
-	  {
-	     iac_string[in_iac] = buf[i];
-	     
-	     /* These need another byte. Wait for one more... */
-	     if ( buf[i] == (char) WILL ||
-		  buf[i] == (char) WONT ||
-		  buf[i] == (char) DO ||
-		  buf[i] == (char) DONT ||
-		  buf[i] == (char) SB )
-	       {
-		  in_iac = 2;
-		  continue;
-	       }
-	     
-	     /* We have everything? Let's see what, then. */
-	     
-	     if ( !memcmp( iac_string, will_compress2, 3 ) )
-	       {
-#if !defined( DISABLE_MCCP )
-		  if ( !disable_mccp )
-		    {
-		       const char do_compress2[] =
-			 { IAC, DO, TELOPT_COMPRESS2, 0 };
-		       
-		       /* Send it for ourselves. */
-		       send_to_server( (char *) do_compress2 );
-		       
-		       debugf( "mccp: Sent IAC DO COMPRESS2." );
-		    }
-#else
-		  debugf( "mccp: Internally disabled, ignoring." );
-#endif
-	       }
-	     
-	     else if ( !memcmp( iac_string, will_atcp, 3 ) &&
-		       strcmp( atcp_login_as, "none" ) )
-	       {
-		  char buf[256];
-		  char sb_atcp[] = { IAC, SB, ATCP, 0 };
-		  
-		  /* Send it for ourselves. */
-		  send_to_server( (char *) do_atcp );
-		  
-		  debugf( "atcp: Sent IAC DO ATCP." );
-		  
-		  if ( !atcp_login_as[0] || !strcmp( atcp_login_as, "default" ) )
-		    sprintf( atcp_login_as, "MudBot %d.%d", main_version_major, main_version_minor );
-		  
-		  sprintf( buf, "%s" "hello %s\nauth 1\ncomposer 1\nchar_name 1\nchar_vitals 1\nroom_brief 0\nroom_exits 0" "%s",
-			   sb_atcp, atcp_login_as, iac_se );
-		  send_to_server( buf );
-		  
-		  if ( default_user[0] && default_pass[0] )
-		    {
-		       sprintf( buf, "%s" "login %s %s" "%s",
-				sb_atcp, default_user, default_pass, iac_se );
-		       send_to_server( buf );
-		       debugf( "atcp: Requested login with '%s'.", default_user );
-		    }
-	       }
-	     
-	     else if ( !memcmp( iac_string, sb_atcp, 3 ) &&
-		       strcmp( atcp_login_as, "none" ) )
-	       {
-		  in_atcp = 1;
-		  k = 0;
-	       }
-	     
-	     /* This one only has two bytes. */
-	     else if ( in_atcp && !memcmp( iac_string, iac_se, 2 ) )
-	       {
-		  atcp_msg[k] = 0;
-		  handle_atcp( atcp_msg );
-		  in_atcp = 0;
-	       }
-	     
-	     else
-	       {
-		  /* Nothing we know about? Send it further then. */
-		  dst[j++] = iac_string[0];
-		  dst[j++] = iac_string[1];
-		  if ( in_iac == 2 )
-		    dst[j++] = iac_string[2];
-	       }
-	     
-	     in_iac = 0;
-	     
-	     continue;
-	  }
-	
-	if ( in_atcp )
-	  atcp_msg[k++] = buf[i];
-	else
-	  /* Copy, one by one. */
-	  dst[j++] = buf[i];
+	handle_atcp( sub+1 );
+	return a_on;
      }
+   else
+     debugf( "Unknown IAC/SB IAC/SE sequence." );
    
-   *bytes = j;
+   return 0;
 }
 
 
@@ -3096,13 +2977,22 @@ int mxp_stag( int tag, char *dest )
 
 void do_test( )
 { 
-   char mccp_start[] = { IAC, DO, TELOPT_COMPRESS2, 0 };
-   char mccp_stop[] = { IAC, DONT, TELOPT_COMPRESS2, 0 };
+   void process_buffer( char *buf, int bytes );
+   char buf[4096*4096];
+   int i;
    
-   debugf( "Temporarely stopping MCCP." );
-   clientfb( "Temporarely stopping MCCP." );
-   send_to_server( mccp_stop );
-   send_to_server( mccp_start );
+//   random( );
+   
+   for ( i = 0; i < 4096*4096; i++ )
+     buf[i] = 'a';
+   
+   buf[0] = (char) IAC;
+   buf[1] = (char) SB;
+   buf[2] = (char) ATCP;
+   buf[4096*2047-128] = IAC;
+   buf[4096*2047-127] = SE;
+   
+   process_buffer( buf, 4096*2048 );
 }
 
 
@@ -3270,11 +3160,13 @@ void process_client_line( char *buf )
 		  clientff( "Name: " C_G "%s" C_0 ".\r\n", a_name[0] ? a_name : "Unknown" );
 		  clientff( "Full name: " C_G "%s" C_0 ".\r\n", a_title[0] ? a_title : "Unknown" );
 		  clientff( "H:" C_G "%d" C_0 "/" C_G "%d" C_0 "  "
-			    "M:" C_G "%d" C_0 "/" C_G "%d" C_0 ".\r\n",
-			    a_hp, a_max_hp, a_mana, a_max_mana );
-		  clientff( "E:" C_G "%d" C_0 "/" C_G "%d" C_0 "  "
+			    "E:" C_G "%d" C_0 "/" C_G "%d" C_0 ".\r\n",
+			    a_hp, a_max_hp, a_end, a_max_end );
+		  clientff( "M:" C_G "%d" C_0 "/" C_G "%d" C_0 "  "
 			    "W:" C_G "%d" C_0 "/" C_G "%d" C_0 ".\r\n",
-			    a_end, a_max_end, a_will, a_max_will );
+			    a_mana, a_max_mana, a_will, a_max_will );
+		  clientff( "NL:" C_G "%d" C_0 "/" C_G "100" C_0 ".\r\n",
+			    a_exp );
 	       }
 	  }
 	else if ( !strcmp( buf, "`mods" ) )
@@ -3523,9 +3415,9 @@ void process_client_line( char *buf )
 
 int process_client( void )
 {
+   static char *telsub_buffer, *telsub_p, *telsub_max;
    static char last_client_line[4096];
    static char iac_string[4];
-   static char sub_telnet[4096];
    static int last_client_pos = 0;
    static int in_iac;
    static int in_sb;
@@ -3536,31 +3428,27 @@ int process_client( void )
    
    mb_section = "Processing client data";
    
-   bytes = c_read( client->fd, raw_buf, 4095 );
+   bytes = c_read( client->fd, buf, 4095 );
    
    if ( bytes < 0 )
      {
 	debugf( "process_client: %s.", get_socket_error( NULL ) );
-	debugf( "Restarting." );
 	return 1;
      }
    else if ( bytes == 0 )
      {
 	debugf( "Client closed connection." );
+	if ( server )
+	  debugf( "Connection to server is still kept alive." );
 	return 1;
      }
    
    raw_buf[bytes] = '\0';
    
-   log_bytes( "c->m", raw_buf, bytes );
-   
-   memcpy( buf, raw_buf, 4096 );
-#if 0
-   client_telnet( raw_buf, buf, &bytes );
-#endif
-   
    crash_buffer = buf;
    crash_buffer_len = 4096;
+   
+   log_bytes( "c->m", raw_buf, bytes );
    
    for ( i = 0; i < bytes; i++ )
      {
@@ -3627,8 +3515,6 @@ int process_client( void )
 	       {
 		  in_sb = 0;
 		  
-		  sub_telnet[in_sb-1] = 0;
-		  
 		  /* Flush any text first. */
 		  if ( last_client_pos )
 		    {
@@ -3639,7 +3525,10 @@ int process_client( void )
 		    }
 		  
 		  /* Handle sub negotiation. For now, just send it. */
-		  clientff( "%s%s%s", iac_sb, sub_telnet, iac_se );
+		  send_to_server( (char *) iac_sb );
+		  send_to_server( telsub_buffer );
+		  send_to_server( (char *) iac_se );
+		  shrink_buffer( &telsub_buffer, &telsub_p, &telsub_max );
 		  continue;
 	       }
 	     
@@ -3660,7 +3549,11 @@ int process_client( void )
 	
 	if ( in_sb )
 	  {
-	     sub_telnet[in_sb++] = buf[i];
+	     static char s[2];
+	     
+	     s[0] = buf[i];
+	     
+	     add_buffer( s, &telsub_buffer, &telsub_p, &telsub_max );
 	     continue;
 	  }
 	
@@ -3706,6 +3599,15 @@ void empty_buffer( )
 
 /* Too repetitive. But performance is critical here, we can't make it a function. */
 #define SEND_BYTES_IN_BUFFER( source ) if ( (source) ) { s = (source); while ( *s ) { *(g_b++) = *(s++); if ( g_b == g_blimit ) empty_buffer( ); } }
+
+void print_buffer( char *src )
+{
+   char *s;
+   
+   SEND_BYTES_IN_BUFFER( src );
+}
+
+
 
 void print_line( LINE *line, int prompt )
 {
@@ -3847,12 +3749,16 @@ void clean_line( LINE *line )
 
 void process_buffer( char *raw_buf, int bytes )
 {
-   char buf[INPUT_BUF];
-//   char *ending;
+   static char *telsub_buffer, *telsub_p, *telsub_max;
+   static char iac_string[4];
+   static int in_iac;
+   static int in_sb;
+   char *buf = raw_buf;
    static LINE line;
    int i;
    struct timeval tvold, tvnew, tvold2, tvnew2;
    static time_t t1, t2, t3, t4;
+   int prompt_detected = 0;
    
    DEBUG( "process_buffer" );
    
@@ -3865,11 +3771,6 @@ void process_buffer( char *raw_buf, int bytes )
    bytes_uncompressed += bytes;
    
    log_bytes( "s->m", raw_buf, bytes );
-   
-   mb_section = "Looking for telnet negotations in buffer";
-   server_telnet( raw_buf, buf, &bytes );
-   mb_section = "Processing buffer";
-   crash_buffer = buf;
    
    if ( show_processing_time )
      gettimeofday( &tvold2, NULL );
@@ -3896,24 +3797,149 @@ void process_buffer( char *raw_buf, int bytes )
    /* Break it into the structure. */
    for ( i = 0; i < bytes; i++ )
      {
+	/* Interpret As Command! */
+	if ( buf[i] == (char) IAC )
+	  {
+	     in_iac = 1;
+	     
+	     iac_string[0] = buf[i];
+	     iac_string[1] = 0;
+	     iac_string[2] = 0;
+	     
+	     continue;
+	  }
+	
+	if ( in_iac )
+	  {
+	     iac_string[in_iac] = buf[i];
+	     
+	     /* These need another byte. Wait for one more... */
+	     if ( buf[i] == (char) WILL ||
+		  buf[i] == (char) WONT ||
+		  buf[i] == (char) DO ||
+		  buf[i] == (char) DONT )
+	       {
+		  in_iac = 2;
+		  continue;
+	       }
+	     
+	     iac_string[in_iac+1] = 0;
+	     in_iac = 0;
+	     
+	     /* We have everything? Let's see what, then. */
+	     if ( iac_string[1] == (char) WILL &&
+		  iac_string[2] == (char) TELOPT_COMPRESS2 )
+	       {
+#if !defined( DISABLE_MCCP )
+		  if ( !disable_mccp )
+		    {
+		       const char do_compress2[] =
+			 { IAC, DO, TELOPT_COMPRESS2, 0 };
+		       
+		       /* Send it for ourselves. */
+		       send_to_server( (char *) do_compress2 );
+		       
+		       debugf( "mccp: Sent IAC DO COMPRESS2." );
+		    }
+#else
+		  debugf( "mccp: Internally disabled, ignoring." );
+#endif
+		  continue;
+	       }
+	     
+	     else if ( iac_string[1] == (char) WILL &&
+		       iac_string[2] == (char) ATCP &&
+		       strcmp( atcp_login_as, "none" ) )
+	       {
+		  char buf[256];
+		  char do_atcp[] = { IAC, DO, ATCP, 0 };
+		  char sb_atcp[] = { IAC, SB, ATCP, 0 };
+		  
+		  /* Send it for ourselves. */
+		  send_to_server( do_atcp );
+		  
+		  debugf( "atcp: Sent IAC DO ATCP." );
+		  
+		  if ( !atcp_login_as[0] || !strcmp( atcp_login_as, "default" ) )
+		    sprintf( atcp_login_as, "MudBot %d.%d", main_version_major, main_version_minor );
+		  
+		  sprintf( buf, "%s" "hello %s\nauth 1\ncomposer 1\nchar_name 1\nchar_vitals 1\nroom_brief 0\nroom_exits 0" "%s",
+			   sb_atcp, atcp_login_as, iac_se );
+		  send_to_server( buf );
+		  
+		  if ( default_user[0] && default_pass[0] )
+		    {
+		       sprintf( buf, "%s" "login %s %s" "%s",
+				sb_atcp, default_user, default_pass, iac_se );
+		       send_to_server( buf );
+		       debugf( "atcp: Requested login with '%s'.", default_user );
+		    }
+		  continue;
+	       }
+	     
+	     else if ( iac_string[1] == (char) GA ||
+		       iac_string[1] == (char) EOR )
+	       {
+		  prompt_detected = iac_string[1];
+	       }
+	     
+	     else if ( iac_string[1] == (char) SB )
+	       {
+		  in_sb = 1;
+		  continue;
+	       }
+	     
+	     else if ( iac_string[1] == (char) SE && in_sb )
+	       {
+		  in_sb = 0;
+		  
+		  /* Check the contents, then MAYBE send it. */
+		  if ( !check_sub_telnet( telsub_buffer ) )
+		    {
+		       print_buffer( (char *) iac_sb );
+		       print_buffer( telsub_buffer );
+		       print_buffer( (char *) iac_se );
+		    }
+		  shrink_buffer( &telsub_buffer, &telsub_p, &telsub_max );
+		  
+		  continue;
+	       }
+	     
+	     /* Else, send it. */
+	     else
+	       {
+		  print_buffer( iac_string );
+		  continue;
+	       }
+	  }
+	
+	if ( in_sb )
+	  {
+	     static char s[2];
+	     
+	     s[0] = buf[i];
+	     
+	     add_buffer( s, &telsub_buffer, &telsub_p, &telsub_max );
+	     continue;
+	  }
+	
 	/* Check for the end. Either new line, prompt GA, or byte limit. */
-	if ( buf[i] == '\n' || buf[i] == (char) GA || buf[i] == (char) EOR ||
+	if ( buf[i] == '\n' || prompt_detected ||
 	     line.raw_len == INPUT_BUF - 1 )
 	  {
-	     int prompt;
+	     int prompt = prompt_detected;
+	     prompt_detected = 0;
 	     
 	     /* End of the line/prompt/limit? Good! Process it and show it! */
 	     
 	     ADD_TO( t1 );
 	     
-	     /* Remove the IAC byte... If there is one. */
-	     if ( ( buf[i] == (char) GA || buf[i] == (char) EOR ) && line.raw_len > 0 )
+	     if ( prompt )
 	       {
 		  line.ending[0] = (char) IAC;
-		  line.ending[1] = buf[i];
+		  line.ending[1] = prompt;
 		  line.ending[2] = 0;
 		  
-		  line.raw_len--;
 		  prompt = 1;
 	       }
 	     else
@@ -4379,7 +4405,7 @@ void crash_report( FILE *fl )
 	  }
 	fprintf( fl, "\"\n" );
 	if ( i == crash_buffer_len )
-	  fprintf( fl, "Going out of bounds!" );
+	  fprintf( fl, "Going out of bounds!\n" );
      }
    
    if ( crash_line )

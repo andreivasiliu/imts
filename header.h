@@ -185,8 +185,8 @@ struct line_data
    char ending[32];
    
    char raw[INPUT_BUF];
-   int raw_offset[INPUT_BUF];
-   char *rawp[INPUT_BUF];
+   int raw_offset[INPUT_BUF+1];
+   char *rawp[INPUT_BUF+1];
    
    int len;
    int raw_len;

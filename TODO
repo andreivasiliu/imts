@@ -7,11 +7,8 @@ OVERALL
 High Priority
 =============
 
-- do_before's and do_after's.
-- Logging bytes off client.
 - Add Davion's changes. Beware of writhing.
 - Check pcre.dll.
-- Link Mac version statically.
 
 
 
@@ -22,6 +19,7 @@ MUDBOT
 ======
 
 - Client-side telnet Sub-Negotiation left untested.
+- Logging bytes off client.
 
 IMPERIAN
 ========
@@ -50,6 +48,7 @@ IMAPPER
 - Undo.
 - New Exit warning.
 - Variable free/calloc max_x max_y
+- do_before's and do_after's.
 
 IOFFENSE
 ========

@@ -3229,6 +3229,8 @@ void imperian_process_server_line( LINE *l )
 {
    DEBUG( "imperian_process_server_line" );
    
+//   debugf( "[%s] [%d] [%d]", l->line, l->len, l->raw_len );
+   
    /* We've been sent an empty line? */
    if ( !l->len )
      return;
