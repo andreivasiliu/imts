@@ -33,7 +33,7 @@
 
 
 int offensive_version_major = 0;
-int offensive_version_minor = 4;
+int offensive_version_minor = 7;
 
 char *i_offense_id = I_OFFENSE_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 

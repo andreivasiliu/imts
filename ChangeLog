@@ -4,11 +4,12 @@ IMTS-unstable
 (MudBot:)
 - Completely rewritten the way lines/prompts are parsed and sent to the
   modules for processing.
-- Also rewritten the way client data is processed.
+- Also rewritten the way telnet subnegotiation is processed. MudBot is now
+  almost fully compatible with Nexus.
 - MXP made a tiny bit more compatible for MushClient.
 - MCCP starting on the same packet that stopped it, fixed. Editing journals
   or scrolls should no longer be buggy.
-- Crash logs have a bit more info.
+- Crash logs have more info on them.
 (Imperian:)
 - Rat/spider worth parsing is working again, also added caiman, serpents
   and locusts.
@@ -31,19 +32,14 @@ IMTS-unstable
 - Now possible to show two or more areas in a single 'map'.
 - With the above feature, the parts of the arenas were joined together.
 - Binary maps will no longer be generated if one doesn't already exist.
-- Mapper help system added. Check 'mhelp index'.
+- Mapper help system rewritten. Check 'mhelp index'. Still empty though.
 (IOffense:)
-- Script block/statement parser added, that supports, in order of creation...
-- C-like comments and spacing.
-- Local and Global string variables.
-- Functions and alias functions.
-- Argument passing to functions, and return values from functions or
-  statements.
-- Variable assignment using a statement's return value, the assignment itself
-  being a statement that can be assigned to yet another variable, etc.
-- Function call stack, allowing unlimited recursive calls.
-- Comparison and concatenating of variables/strings.
-- Negation, and's, and or's.
+- Pcre.dll added with the Windows package, and linked statically within
+  the module in the Linux/Mac packages.
+- Script block/statement parser added, that supports...
+- C-like comments and spacing, functions, local/global variables, argument
+  passing, return values, function call stack allowing recursivity,
+  comparison and concatenating of variables, if/else, and/or/negation.
 
 
 

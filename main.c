@@ -122,7 +122,7 @@ main_loop
 #endif
 
 int main_version_major = 2;
-int main_version_minor = 3;
+int main_version_minor = 4;
 
 
 
