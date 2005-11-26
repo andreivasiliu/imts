@@ -602,6 +602,7 @@ A "something"           n/a n/a n/a            no  no   n/a          "---"
 "You have writhed free of your entanglement by webs." special writhe webs cure
 "*webbing, which quickly entangles your limbs." special writhe webs give
 "*rendering you helpless." special writhe webs give
+"*web tattoo and cover you," special writhe webs give
 "*webbing at you, entrapping you within its web." special writhe webs give
 "Sticky strands of webbing prevent you from moving." special writhe webs give
 "mass of azure energy streams out from ^ palm and binds you." special writhe webs give
