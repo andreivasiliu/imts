@@ -32,7 +32,7 @@ i_offense.o: header.h module.h deps/pcre.h
 winmain.o: header.h winres.h
 
 clean:
-	rm -f *~ *.o *.res *.def $(BIN) *.dll
+	rm -f *~ *.o *.res *.def $(BIN) $(FILES)
 
 $(BIN): main.o winmain.o winres.res
 	@echo Making '$@' from '$^'...
