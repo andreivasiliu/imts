@@ -159,6 +159,7 @@ void send_to_server( char *string );
 void show_prompt( );
 void mxp( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
 int mxp_tag( int tag );
+int mxp_stag( int tag, char *dest );
 
 /* Utility */
 #if defined( FOR_WINDOWS )
@@ -451,6 +452,7 @@ void *get_function( char *name )
 	  { "show_prompt", show_prompt },
 	  { "mxp", mxp },
 	  { "mxp_tag", mxp_tag },
+	  { "mxp_stag", mxp_stag },
 	/* Utility */
 	  { "gettimeofday", gettimeofday },
 	  { "get_string", get_string },
@@ -3065,6 +3067,29 @@ int mxp_tag( int tag )
      return default_mxp_mode;
    
    clientff( "\33[%dz", tag );
+   return 1;
+}
+
+
+int mxp_stag( int tag, char *dest )
+{
+   *dest = 0;
+   
+   if ( !mxp_enabled )
+     return 0;
+   
+   if ( tag == TAG_DEFAULT )
+     {
+	if ( default_mxp_mode )
+	  tag = default_mxp_mode;
+	else
+	  tag = 7;
+     }
+   
+   if ( tag == TAG_NOTHING || tag < 0 )
+     return default_mxp_mode;
+   
+   sprintf( dest, "\33[%dz", tag );
    return 1;
 }
 

@@ -1,14 +1,14 @@
 /*
  * Copyright (c) 2004, 2005  Andrei Vasiliu
- * 
- * 
+ *
+ *
  * This file is part of MudBot.
- * 
+ *
  * MudBot is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * MudBot is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -67,6 +67,7 @@ void	(*send_to_server)( char *string );
 void	(*show_prompt)( );
 void	(*mxp)( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
 int	(*mxp_tag)( int tag );
+int	(*mxp_stag)( int tag, char *dest );
 
 /* Utility */
 #if defined( FOR_WINDOWS )
@@ -115,6 +116,7 @@ int	(*c_close)( int fd );
    show_prompt = self->get_func( "show_prompt" ); \
    mxp = self->get_func( "mxp" ); \
    mxp_tag = self->get_func( "mxp_tag" ); \
+   mxp_stag = self->get_func( "mxp_stag" ); \
    /* Utility */ \
    get_string = self->get_func( "get_string" ); \
    cmp = self->get_func( "cmp" ); \

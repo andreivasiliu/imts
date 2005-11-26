@@ -164,6 +164,7 @@ int disable_alertness;
 int disable_locating;
 int disable_areaname;
 int disable_mxp_title;
+int disable_mxp_exits;
 int disable_mxp_map;
 int disable_autolink;
 int disable_sewer_grates;
@@ -1241,12 +1242,20 @@ void parse_room( LINE *l )
 	     end_offset = ( eol - l->line ) + 1;
 	  }
 	
-//	if ( mxp_tag( TAG_TEMP_SECURE ) )
+	/* Disabled for now. Zmud is just really sucky. *
 	if ( !disable_mxp_title )
 	  {
-//	     insert( title_offset, "<RmTitle>" );
-//	     insert( l->len, "</RmTitle>" );
-	  }
+	     char tag[256];
+	     char buf[256];
+	     
+	     if ( mxp_stag( TAG_SECURE, tag ) && tag[0] )
+	       {
+		  sprintf( buf, "x%s<RmTitle>", tag );
+		  insert( title_offset, buf );
+		  sprintf( buf, "%s</RmTitle>x", tag );
+		  insert( end_offset ? end_offset : l->len, buf );
+	       }
+	  } */
 	
 //	debugf( "Room!" );
 	
@@ -1316,6 +1325,7 @@ void parse_room( LINE *l )
 	       }
 	  }
 	
+	/* Beginning of exits. */
 	if ( sub_stage == 2 )
 	  {
 	     if ( mode == CREATING )
@@ -1327,6 +1337,19 @@ void parse_room( LINE *l )
 	     
 	     sub_stage = 0;
 	     parsing_room = 3;
+	     
+	     /*
+	     if ( !disable_mxp_exits )
+	       {
+		  char tag[256];
+		  char buf[256];
+		  
+		  if ( mxp_stag( TAG_SECURE, tag ) && tag[0] )
+		    {
+		       sprintf( buf, "x%s<RmExits>", tag );
+		       insert( exit_offset, buf );
+		    }
+	       } */
 	  }
      }
    
@@ -1375,6 +1398,20 @@ void parse_room( LINE *l )
 	     if ( l->line[i] == '.' )
 	       {
 		  parsing_room = 0;
+		  
+		  /*
+		  if ( !disable_mxp_exits )
+		    {
+		       char tag[256];
+		       char buf[256];
+		       
+		       if ( mxp_stag( TAG_SECURE, tag ) && tag[0] )
+			 {
+			    sprintf( buf, "%s</RmExits>y", tag );
+			    insert( i, buf );
+			 }
+		    } */
+		  
 		  break;
 	       }
 	  }
@@ -2567,6 +2604,7 @@ int save_settings( char *file )
    fprintf( fl, "Disable-Locating %s\r\n", disable_locating ? "yes" : "no" );
    fprintf( fl, "Disable-AreaName %s\r\n", disable_areaname ? "yes" : "no" );
    fprintf( fl, "Disable-MXPTitle %s\r\n", disable_mxp_title ? "yes" : "no" );
+   fprintf( fl, "Disable-MXPExits %s\r\n", disable_mxp_exits ? "yes" : "no" );
    fprintf( fl, "Disable-MXPMap %s\r\n", disable_mxp_map ? "yes" : "no" );
    fprintf( fl, "Disable-AutoLink %s\r\n", disable_autolink ? "yes" : "no" );
    fprintf( fl, "Disable-SewerGrates %s\r\n", disable_sewer_grates ? "yes" : "no" );
@@ -2700,6 +2738,16 @@ int load_settings( char *file )
 	       disable_mxp_title = 1;
 	     else if ( !strcmp( value, "no" ) )
 	       disable_mxp_title = 0;
+	     else
+	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
+	  }
+	
+	else if ( !strcmp( option, "Disable-MXPExits" ) )
+	  {
+	     if ( !strcmp( value, "yes" ) )
+	       disable_mxp_exits = 1;
+	     else if ( !strcmp( value, "no" ) )
+	       disable_mxp_exits = 0;
 	     else
 	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
 	  }
@@ -3982,7 +4030,8 @@ void i_mapper_mxp_enabled( )
 	"hint=\"&r;|Vnum: &v;|Type: &t;\">' ATT='v r t'>" );
    mxp( "<!element mppers '<send \"map path &v;|room look &v;|who &p;\" "
 	"hint=\"&p; (&r;)|Vnum: &v;|Type: &t;|Player: &p;\">' ATT='v r t p'>" );
-   mxp( "<!element RmTitle TAG='RoomName'>" );
+//   mxp( "<!element RmTitle '<font color=red>' TAG='RoomName'>" );
+//   mxp( "<!element RmExits TAG='RoomExit'>" );
    mxp_tag( TAG_DEFAULT );
 }
 
@@ -6072,6 +6121,9 @@ void do_map_config( char *arg )
 	  { "title_mxp", &disable_mxp_title,
 	       "MXP tags will no longer be used to mark room titles.",
 	       "MXP tags will be used around room title." },
+	  { "exits_mxp", &disable_mxp_exits,
+	       "MXP tags will no longer be used to mark room exits.",
+	       "MXP tags will be used around room exits." },
 	  { "map_mxp", &disable_mxp_map,
 	       "MXP tags will no longer be used on a map.",
 	       "MXP tags will now be used on a map." },
@@ -6132,6 +6184,7 @@ void do_map_config( char *arg )
 	    " map config locate       - Append vnums to various locating abilities.\r\n"
 	    " map config showarea     - Show the current area after a room title.\r\n"
 	    " map config title_mxp    - Mark the room title with MXP tags.\r\n"
+	    " map config exits_mxp    - Mark the room exits with MXP tags.\r\n"
 	    " map config map_mxp      - Use MXP tags on map generation.\r\n"
 	    " map config autolink     - Link rooms automatically when mapping.\r\n"
 	    " map config sewer_grates - Toggle pathfinding through sewer grates.\r\n" );
