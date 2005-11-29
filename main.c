@@ -2977,6 +2977,7 @@ int mxp_stag( int tag, char *dest )
 
 void do_test( )
 { 
+   /*
    void process_buffer( char *buf, int bytes );
    char buf[4096*4096];
    int i;
@@ -2992,7 +2993,7 @@ void do_test( )
    buf[4096*2047-128] = IAC;
    buf[4096*2047-127] = SE;
    
-   process_buffer( buf, 4096*2048 );
+   process_buffer( buf, 4096*2048 );*/
 }
 
 
@@ -3445,6 +3446,7 @@ int process_client( void )
    
    raw_buf[bytes] = '\0';
    
+   /* In case something makes it crash, this lets us know where. */
    crash_buffer = buf;
    crash_buffer_len = 4096;
    
@@ -3558,10 +3560,14 @@ int process_client( void )
 	  }
 	
 	/* Anything usually gets dumped here. */
-	last_client_line[last_client_pos] = buf[i];
-	last_client_line[++last_client_pos] = 0;
+	/* Ignore \r's though. */
+	if ( buf[i] != '\r' )
+	  {
+	     last_client_line[last_client_pos] = buf[i];
+	     last_client_line[++last_client_pos] = 0;
+	  }
 	
-	if ( buf[i] == '\n' )
+	if ( buf[i] == '\n' || last_client_pos > 4096 - 4 )
 	  {
 	     last_client_line[last_client_pos] = '\r';
 	     last_client_line[++last_client_pos] = 0;
