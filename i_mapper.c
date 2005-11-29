@@ -1240,6 +1240,7 @@ void parse_room( LINE *l )
 	     ( eol = strstr( l->line, ". (" ) ) )
 	  {
 	     end_offset = ( eol - l->line ) + 1;
+	     end_offset -= title_offset;
 	  }
 	
 	/* Disabled for now. Zmud is just really sucky. *
@@ -5859,7 +5860,7 @@ void do_map_path( char *arg )
 	     
 	     for ( room = world; room; room = room->next_in_world )
 	       for ( tag = room->tags; tag; tag = tag->next )
-		 if ( !strcmp( buf, (char *) tag->p ) )
+		 if ( !case_strcmp( buf, (char *) tag->p ) )
 		   {
 		      if ( !neari )
 			init_openlist( room );
@@ -7459,6 +7460,8 @@ void do_room_tag( char *arg )
    else
      clientf( C_D "(none)" C_R );
    clientf( ".]\r\n" C_0 );
+   
+   save_settings( "config.mapper.txt" );
 }
 
 
