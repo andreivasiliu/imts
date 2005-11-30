@@ -3580,11 +3580,6 @@ int process_client( void )
 	     last_client_line[0] = 0;
 	     last_client_pos = 0;
 	  }
-	else if ( buf[i] == '\r' )
-	  {
-	     /* Ignore them. */
-	     last_client_line[--last_client_pos] = 0;
-	  }
      }
    
    crash_buffer = NULL;
