@@ -53,6 +53,10 @@ T: "Lake of Fire" bright-red 5 5 no no
 T: "ShallahTemple" bright-white 1 1 no no
 T: "Arcane Temple" cyan 1 1 no no
 T: "Docks" bright-cyan 1 1 no no
+T: "quarry" brown 1 1 no no
+T: "Temple" bright-white 1 1 no no
+T: "Tainted Underground" magenta 1 1 no no
+T: "garrison" dark 1 1 no no
 
 
 MESSAGES
@@ -638,6 +642,7 @@ EL: west 2
 ROOM v1075
 Name: By Bridge over the stream.
 Type: Forest
+E: north 9094
 E: east 1074
 EL: east 2
 E: south 1076
@@ -862,6 +867,7 @@ ROOM v1135
 Name: Upon the Waelin.
 Type: River
 E: northeast 931
+E: east 9102
 E: south 1136
 E: west 1495
 
@@ -3609,6 +3615,7 @@ ROOM v2182
 Name: On the edge of rock desert.
 Type: Desert
 E: north 2187
+E: southeast 8824
 E: southwest 2177
 EL: southwest 1
 E: west 2181
@@ -3756,6 +3763,7 @@ ES: southeast 1
 E: south 2166
 EL: south 1
 E: west 2167
+E: down 8947
 
 ROOM v2167
 Name: Nearing the deserts edge.
@@ -19934,6 +19942,8 @@ ROOM v7255
 Name: Within the dark reaches of the Threshold.
 Type: Natural underground
 E: north 1568
+E: northeast 8820
+ES: northeast 1
 E: south 1567
 
 ROOM v7256
@@ -20108,6 +20118,18 @@ ROOM v8645
 Name: A small hidden cave.
 Type: Natural underground
 E: east 8511
+
+ROOM v8820
+Name: A sheltered overhang.
+Type: Valley
+E: north 8821
+E: southwest 7255
+ES: southwest 1
+
+ROOM v8821
+Name: Open wilderness behind Phoenix Crest.
+Type: Valley
+E: south 8820
 
 
 
@@ -24057,7 +24079,10 @@ ROOM v3472
 Name: The base of the Treehouse.
 Type: Forest
 E: southeast 3471
+E: west 8822
+E: northwest 8823
 E: up 3473
+EL: up 1
 UE: up north
 
 ROOM v3473
@@ -24067,6 +24092,7 @@ E: west 3474
 E: up 3475
 UE: up north
 E: down 3472
+EL: down 1
 UE: down south
 
 ROOM v3474
@@ -24646,6 +24672,18 @@ ROOM v8774
 Name: Beyond the veil of dewy mist.
 Type: Forest
 E: east 8773
+
+ROOM v8822
+Name: A canopy-covered stable.
+Type: Forest
+E: north 8823
+E: east 3472
+
+ROOM v8823
+Name: A comfortable, flourishing kennel.
+Type: Forest
+E: southeast 3472
+E: south 8822
 
 
 
@@ -32415,6 +32453,7 @@ E: east 5059
 E: southeast 5060
 E: south 3282
 E: west 5058
+E: northwest 8876
 
 ROOM v3282
 Name: In the frozen shallows of Redcap Lake.
@@ -44372,6 +44411,7 @@ Type: Beach
 E: east 7101
 ES: east 1
 E: southeast 6531
+SPE: 9011 0 "buy passage to llus" "its departure."
 
 ROOM v6531
 Name: A sandy beach.
@@ -45353,6 +45393,10 @@ E: east 6533
 ES: east 1
 E: west 6532
 ES: west 1
+
+ROOM v9011
+Name: In a large rowboat.
+Type: Undefined
 
 
 
@@ -55452,7 +55496,7 @@ AREA
 Name: village of Kaln.
 
 ROOM v8563
-Name: A cragy shore along the rockface.
+Name: A craggy shore along the rockface.
 Type: Beach
 E: north 8566
 E: south 6407
@@ -56170,10 +56214,343 @@ E: east 8714
 E: southwest 8712
 
 ROOM v8714
-Name: Within the shadows of Skagdald.
+Name: Within the shadows of Skegdald.
 Type: Path
-DE: east
+E: east 8932
 E: west 8713
+
+ROOM v8932
+Name: A path leading to a look-out.
+Type: Path
+E: north 8933
+E: south 8939
+E: southwest 8937
+E: west 8714
+
+ROOM v8933
+Name: A sharp turn in the snowy pathway.
+Type: Path
+E: east 8934
+E: south 8932
+
+ROOM v8934
+Name: Before a long house.
+Type: Path
+E: north 9086
+E: southeast 8935
+E: west 8933
+
+ROOM v8935
+Name: In front of a raging campfire.
+Type: garrison
+E: northeast 9062
+DE: east
+E: southeast 9059
+E: south 8936
+E: southwest 9061
+E: northwest 8934
+
+ROOM v8936
+Name: Surrounded by tall buildings.
+Type: Path
+E: north 8935
+E: east 9059
+E: south 9090
+E: southwest 9093
+E: west 9061
+
+ROOM v8937
+Name: Beneath a lookout tower.
+Type: garrison
+E: northeast 8932
+E: up 8938
+
+ROOM v8938
+Name: Atop a lookout tower.
+E: down 8937
+
+ROOM v8939
+Name: A well-traversed route.
+Type: Path
+E: north 8932
+E: east 9061
+E: south 8940
+
+ROOM v8940
+Name: Nearing a frozen pond.
+Type: Path
+E: north 8939
+E: south 8941
+
+ROOM v8941
+Name: An ice-covered beach.
+Type: Beach
+E: north 8940
+E: southeast 8942
+
+ROOM v8942
+Name: The shallows of a frozen pond.
+Type: Freshwater
+E: east 8944
+E: southeast 8943
+E: northwest 8941
+
+ROOM v8943
+Name: The depths of a freezing lake.
+Type: Freshwater
+E: east 8946
+E: northwest 8942
+
+ROOM v8944
+Name: Along a deep crack in the ice.
+Type: Freshwater
+E: east 8945
+EL: east 1
+E: west 8942
+DE: down
+
+ROOM v8945
+Name: Standing on the surface of the ice.
+Type: Freshwater
+E: northeast 9055
+E: southwest 8946
+E: west 8944
+EL: west 1
+
+ROOM v8946
+Name: The edge of the small lake.
+Type: Freshwater
+E: northeast 8945
+E: west 8943
+
+ROOM v9055
+Name: A dense forest near a pond.
+Type: Dark Forest
+E: east 9056
+E: southwest 8945
+
+ROOM v9056
+Name: Within the tall pines.
+Type: Dark Forest
+E: northeast 9057
+E: west 9055
+
+ROOM v9057
+Name: Surrounded by black pine trees.
+Type: Dark Forest
+E: east 9075
+E: southeast 9081
+E: southwest 9056
+E: northwest 9058
+
+ROOM v9058
+Name: A dark pathway surrounded by trees.
+Type: Path
+DE: north
+E: northeast 9065
+E: east 9073
+E: southeast 9057
+E: west 9059
+ES: west 1
+
+ROOM v9059
+Name: Entrance to a training area.
+Type: garrison
+E: east 9058
+ES: east 1
+E: south 9064
+E: west 8936
+E: northwest 8935
+
+ROOM v9061
+Name: A pathway lined with small huts.
+Type: Path
+E: north 9089
+E: northeast 8935
+E: east 8936
+E: west 8939
+
+ROOM v9062
+Name: Along a beaten path.
+Type: Path
+E: east 9063
+E: southwest 8935
+
+ROOM v9063
+Name: In front of an officers quarters.
+Type: Path
+DE: north
+E: west 9062
+
+ROOM v9064
+Name: Within a cleared out training ring.
+Type: garrison
+E: north 9059
+
+ROOM v9065
+Name: Within a dense patch of trees.
+Type: Forest
+E: north 9066
+E: southwest 9058
+
+ROOM v9066
+Name: A shadowy path of trees.
+Type: Forest
+E: northeast 9067
+E: south 9065
+
+ROOM v9067
+Name: Deep within the Skegdald forest.
+Type: Forest
+E: southeast 9068
+E: southwest 9066
+
+ROOM v9068
+Name: Surrounded by snow-covered trees.
+Type: Forest
+E: east 9069
+E: northwest 9067
+
+ROOM v9069
+Name: A barren snow-covered forest.
+Type: Forest
+E: west 9068
+E: northwest 9070
+
+ROOM v9070
+Name: Surrounded by giant pines.
+Type: Forest
+E: northeast 9072
+E: east 9071
+E: southeast 9069
+
+ROOM v9071
+Name: A dark and shadowy forest.
+Type: Forest
+E: north 9072
+E: west 9070
+
+ROOM v9072
+Name: Deep within the forest.
+Type: Forest
+E: south 9071
+E: southwest 9070
+
+ROOM v9073
+Name: A dark lane.
+Type: Path
+E: northeast 9083
+E: east 9074
+E: west 9058
+
+ROOM v9074
+Name: The end of the road.
+Type: Path
+E: east 9076
+E: south 9075
+E: west 9073
+
+ROOM v9075
+Name: Deep within the forest.
+Type: Dark Forest
+E: north 9074
+E: east 9078
+E: southeast 9080
+E: west 9057
+
+ROOM v9076
+Name: A barren grove.
+Type: Dark Forest
+E: east 9077
+E: west 9074
+
+ROOM v9077
+Name: The edge of a dismal forest.
+Type: Dark Forest
+E: south 9079
+E: southwest 9078
+E: west 9076
+
+ROOM v9078
+Name: In the shadow of a giant pine.
+Type: Dark Forest
+E: northeast 9077
+E: east 9079
+E: west 9075
+
+ROOM v9079
+Name: Deep within the Skegdald forest.
+Type: Dark Forest
+E: north 9077
+E: west 9078
+
+ROOM v9080
+Name: Under the protection of an enormous tree.
+Type: Dark Forest
+E: west 9081
+E: northwest 9075
+
+ROOM v9081
+Name: Within the depths of a forest.
+Type: Dark Forest
+E: east 9080
+E: southwest 9082
+E: northwest 9057
+
+ROOM v9082
+Name: A shadowed alcove within the forest.
+Type: Dark Forest
+E: northeast 9081
+
+ROOM v9083
+Name: A messy Warden's office.
+Type: garrison
+E: east 9084
+E: southwest 9073
+
+ROOM v9084
+Name: Within a damp holding cell.
+Type: garrison
+E: west 9083
+E: down 9085
+
+ROOM v9085
+Name: A dark and disgusting room.
+Type: garrison
+E: up 9084
+
+ROOM v9086
+Name: A wide open wooden building.
+Type: garrison
+E: south 8934
+E: west 9087
+
+ROOM v9087
+Name: Within a dingy mess hall.
+Type: garrison
+E: east 9086
+E: west 9088
+
+ROOM v9088
+Name: A dark and dilapidated kitchen.
+Type: garrison
+E: east 9087
+
+ROOM v9089
+Name: Within a small thatched hut.
+Type: garrison
+E: south 9061
+
+ROOM v9090
+Name: A large stone smithy.
+Type: garrison
+E: north 8936
+
+ROOM v9093
+Name: Within a large armoury.
+Type: garrison
+E: northeast 8936
+DE: south
 
 
 
@@ -57212,6 +57589,1749 @@ Name: Meat locker.
 Type: Dark Forest
 E: up 5092
 UE: up north
+
+
+
+AREA
+Name: Bloodstone Quarry.
+
+ROOM v8824
+Name: A red-hued cart path.
+Type: quarry
+E: east 8825
+E: northwest 2182
+
+ROOM v8825
+Name: Approaching a blood-red quarry.
+Type: quarry
+E: east 8826
+E: west 8824
+
+ROOM v8826
+Name: Overlooking a vast quarry.
+Type: quarry
+E: northeast 8827
+E: west 8825
+
+ROOM v8827
+Name: Ascending a treacherous quarry path.
+Type: quarry
+E: northeast 8828
+E: southwest 8826
+
+ROOM v8828
+Name: A steeply curving quarry path.
+Type: quarry
+E: northeast 8829
+E: southwest 8827
+
+ROOM v8829
+Name: A level quarry path.
+Type: quarry
+E: east 8830
+E: southwest 8828
+
+ROOM v8830
+Name: A widened juncture.
+Type: quarry
+E: north 8868
+E: east 8831
+E: west 8829
+
+ROOM v8831
+Name: Beginning a long descent.
+Type: quarry
+E: east 8832
+E: west 8830
+
+ROOM v8832
+Name: Continued descent.
+Type: quarry
+E: east 8833
+E: west 8831
+
+ROOM v8833
+Name: A curve in the descent.
+Type: quarry
+E: southeast 8834
+E: west 8832
+
+ROOM v8834
+Name: A descending switchback.
+Type: quarry
+E: southwest 8835
+E: northwest 8833
+
+ROOM v8835
+Name: A westward quarry descent.
+Type: quarry
+E: northeast 8834
+E: west 8836
+
+ROOM v8836
+Name: Scrubland amidst the path.
+Type: quarry
+E: east 8835
+E: west 8837
+
+ROOM v8837
+Name: A lateral quarry path.
+Type: quarry
+E: east 8836
+E: west 8838
+
+ROOM v8838
+Name: Resuming the descent.
+Type: quarry
+E: east 8837
+E: west 8839
+
+ROOM v8839
+Name: A steep curve in the path.
+Type: quarry
+E: east 8838
+E: southwest 8840
+
+ROOM v8840
+Name: A dangerous switchback.
+Type: quarry
+E: northeast 8839
+E: southeast 8841
+
+ROOM v8841
+Name: The base of a switchback.
+Type: quarry
+E: east 8842
+E: northwest 8840
+
+ROOM v8842
+Name: A gradual decline.
+Type: quarry
+E: east 8843
+E: west 8841
+
+ROOM v8843
+Name: Approaching the quarry floor.
+Type: quarry
+E: east 8844
+E: west 8842
+
+ROOM v8844
+Name: The quarry floor.
+Type: quarry
+E: southeast 8845
+E: west 8843
+
+ROOM v8845
+Name: Along a drainage ditch.
+Type: quarry
+E: east 8846
+E: northwest 8844
+
+ROOM v8846
+Name: Drainage ditch nearing a basin.
+Type: quarry
+E: east 8847
+E: west 8845
+
+ROOM v8847
+Name: Skirting a blood-red basin.
+Type: quarry
+E: northeast 8869
+E: southeast 8848
+E: west 8846
+
+ROOM v8848
+Name: South of a putrid basin.
+Type: quarry
+E: northeast 8870
+E: south 8849
+E: northwest 8847
+
+ROOM v8849
+Name: Alongside a quarry cliff.
+Type: quarry
+E: north 8848
+E: west 8850
+
+ROOM v8850
+Name: Trail above the quarry floor.
+Type: quarry
+E: east 8849
+E: southwest 8851
+
+ROOM v8851
+Name: A bend in the quarry path.
+Type: quarry
+E: northeast 8850
+E: south 8852
+
+ROOM v8852
+Name: Path below a jutting crag.
+Type: quarry
+E: north 8851
+E: south 8855
+E: up 8853
+
+ROOM v8853
+Name: A precarious ledge.
+Type: quarry
+E: up 8854
+E: down 8852
+
+ROOM v8854
+Name: A sheer cliff.
+Type: quarry
+E: down 8853
+
+ROOM v8855
+Name: The base of a quarry crag.
+Type: quarry
+E: north 8852
+E: up 8856
+
+ROOM v8856
+Name: Ledge upon a red-hued crag.
+Type: quarry
+E: up 8857
+E: down 8855
+
+ROOM v8857
+Name: A narrow precipice.
+Type: quarry
+E: west 8858
+E: down 8856
+
+ROOM v8858
+Name: Summit of a blood-red crag.
+Type: quarry
+E: east 8857
+E: down 8859
+
+ROOM v8859
+Name: Plateau above the quarry.
+Type: quarry
+E: northwest 8860
+E: up 8858
+
+ROOM v8860
+Name: Descending the quarry crags.
+Type: quarry
+E: southeast 8859
+E: down 8861
+
+ROOM v8861
+Name: Entering a crimson valley.
+Type: quarry
+E: north 8862
+E: up 8860
+
+ROOM v8862
+Name: Along the sodden valley.
+Type: quarry
+E: south 8861
+E: northwest 8863
+
+ROOM v8863
+Name: Valley near a quarry.
+Type: quarry
+E: north 8866
+E: southeast 8862
+E: up 8864
+
+ROOM v8864
+Name: A red-hued mesa.
+Type: quarry
+E: southwest 8865
+E: down 8863
+
+ROOM v8865
+Name: Mesa overlooking the desert.
+Type: quarry
+E: northeast 8864
+
+ROOM v8866
+Name: A tapering valley.
+Type: quarry
+E: south 8863
+E: down 8867
+
+ROOM v8867
+Name: Cave within the pulsing stone.
+Type: Tainted Underground
+E: in 8826
+
+ROOM v8868
+Name: A quarry storeroom.
+Type: quarry
+E: south 8830
+
+ROOM v8869
+Name: Around a sickening basin.
+Type: quarry
+E: southeast 8870
+E: southwest 8847
+
+ROOM v8870
+Name: Betwixt basin and geyser.
+Type: quarry
+E: northeast 8871
+E: southeast 8873
+E: southwest 8848
+E: northwest 8869
+
+ROOM v8871
+Name: North of a gruesome geyser.
+Type: quarry
+E: southeast 8872
+E: southwest 8870
+
+ROOM v8872
+Name: Upon a chiselled pentagram.
+Type: quarry
+E: east 8874
+E: southwest 8873
+E: northwest 8871
+
+ROOM v8873
+Name: Around a spurting geyser.
+Type: quarry
+E: northeast 8872
+E: northwest 8870
+
+ROOM v8874
+Name: Before a crimson temple.
+Type: quarry
+E: west 8872
+E: in 8875
+
+ROOM v8875
+Name: Itzai's temple.
+Type: Temple
+E: out 8874
+
+
+
+AREA
+Name: Cinua Glade.
+
+ROOM v8876
+Name: Between foreboding oaks.
+Type: Dark Forest
+E: southeast 3283
+E: northwest 8877
+
+ROOM v8877
+Name: An old path between tall trees.
+Type: Dark Forest
+E: southeast 8876
+E: northwest 8878
+
+ROOM v8878
+Name: A quiet forest.
+Type: Dark Forest
+E: east 8879
+E: southeast 8877
+
+ROOM v8879
+Name: Bone littered pathway.
+Type: Dark Forest
+E: east 8880
+E: west 8878
+
+ROOM v8880
+Name: Blood stained forest track.
+Type: Dark Forest
+E: north 8881
+E: west 8879
+
+ROOM v8881
+Name: Gruesome oaks.
+Type: Dark Forest
+E: north 8882
+E: east 8886
+E: south 8880
+
+ROOM v8882
+Name: Deep within the dark forest.
+Type: Dark Forest
+E: south 8881
+E: southwest 8883
+
+ROOM v8883
+Name: Approaching a nymph glade.
+Type: Dark Forest
+E: northeast 8882
+E: northwest 8884
+
+ROOM v8884
+Name: Between two guard trees.
+Type: Dark Forest
+E: north 8885
+E: southeast 8883
+
+ROOM v8885
+Name: Entering a nymph glade.
+Type: Dark Forest
+E: north 8889
+E: northeast 8902
+EL: northeast 1
+E: south 8884
+E: west 8887
+EL: west 1
+
+ROOM v8886
+Name: A destroyed campsite.
+Type: Dark Forest
+E: west 8881
+
+ROOM v8887
+Name: Centre of a nymph glade.
+Type: Dark Forest
+E: northeast 8888
+E: east 8885
+EL: east 1
+E: south 8892
+E: west 8891
+E: in 8893
+
+ROOM v8888
+Name: A natural flower garden.
+Type: Dark Forest
+E: southwest 8887
+
+ROOM v8889
+Name: Beside a hollowed out tree.
+Type: Dark Forest
+E: south 8885
+E: in 8890
+
+ROOM v8890
+Name: Inside a training area.
+Type: Village
+E: east 8929
+E: southeast 8928
+E: south 8927
+E: out 8889
+
+ROOM v8891
+Name: Outside a nymph home.
+Type: Dark Forest
+E: north 8894
+E: east 8887
+E: west 8895
+E: in 8930
+
+ROOM v8892
+Name: Inside the home of Lahira.
+Type: Dark Forest
+E: north 8887
+
+ROOM v8893
+Name: Inside a nymph tree.
+Type: Dark Forest
+E: out 8887
+
+ROOM v8894
+Name: A tree nursery.
+Type: Dark Forest
+E: south 8891
+
+ROOM v8895
+Name: Before a fat oak.
+Type: Dark Forest
+E: east 8891
+E: northwest 8896
+E: down 8897
+DEL: in
+
+ROOM v8896
+Name: A mushroom circle.
+Type: Dark Forest
+E: north 8913
+E: southeast 8895
+
+ROOM v8897
+Name: Inside a natural crevice.
+Type: Natural underground
+E: up 8895
+E: down 8898
+
+ROOM v8898
+Name: Surrounded by frozen dirt.
+Type: Natural underground
+E: up 8897
+E: down 8899
+
+ROOM v8899
+Name: Surrounded by frozen dirt.
+Type: Natural underground
+E: west 8900
+E: up 8898
+
+ROOM v8900
+Name: At the entrance to an excavation.
+Type: Natural underground
+E: east 8899
+E: southwest 8901
+
+ROOM v8901
+Name: A frozen excavation.
+Type: Constructed underground
+E: northeast 8900
+E: southwest 8924
+E: northwest 8921
+
+ROOM v8902
+Name: Approaching a mighty oak.
+Type: Dark Forest
+E: east 8920
+E: southwest 8885
+EL: southwest 1
+E: northwest 8903
+
+ROOM v8903
+Name: Quiet clearing in the frozen forest.
+Type: Dark Forest
+E: east 8919
+E: southeast 8902
+E: southwest 8904
+E: west 8908
+E: northwest 8909
+
+ROOM v8904
+Name: Between a glade and a claustrophobic forest.
+Type: Dark Forest
+E: northeast 8903
+E: west 8905
+
+ROOM v8905
+Name: Skirting a frozen glade.
+Type: Dark Forest
+E: east 8904
+E: northwest 8906
+
+ROOM v8906
+Name: Entrance to a clearing.
+Type: Dark Forest
+E: northeast 8910
+E: east 8907
+E: southeast 8905
+E: west 8911
+
+ROOM v8907
+Name: In a small meadow.
+Type: Dark Forest
+E: east 8908
+E: west 8906
+
+ROOM v8908
+Name: In the frozen grass.
+Type: Dark Forest
+E: east 8903
+E: west 8907
+
+ROOM v8909
+Name: Corner of a frozen glade.
+Type: Dark Forest
+E: southeast 8903
+E: west 8910
+
+ROOM v8910
+Name: Outskirts of a frozen glade.
+Type: Dark Forest
+E: northeast 8915
+E: east 8909
+E: southwest 8906
+
+ROOM v8911
+Name: Before a frosty clearing.
+Type: Dark Forest
+E: east 8906
+E: west 8912
+EL: west 1
+
+ROOM v8912
+Name: Near a collapsed pine.
+Type: Dark Forest
+E: east 8911
+EL: east 1
+E: south 8913
+
+ROOM v8913
+Name: A felled tree.
+Type: Dark Forest
+E: north 8912
+E: south 8896
+
+ROOM v8915
+Name: Shadowed by the dark pines.
+Type: Dark Forest
+E: northeast 8917
+E: east 8916
+E: southwest 8910
+
+ROOM v8916
+Name: A new growth of the forest.
+Type: Dark Forest
+E: east 8918
+E: west 8915
+
+ROOM v8917
+Name: A large monolith.
+Type: Dark Forest
+E: southeast 8918
+E: southwest 8915
+
+ROOM v8918
+Name: Amongst the saplings.
+Type: Dark Forest
+E: west 8916
+E: northwest 8917
+
+ROOM v8919
+Name: On a bubbling pool.
+Type: Tainted Water
+E: west 8903
+
+ROOM v8920
+Name: Outside the mother.
+Type: Dark Forest
+E: west 8902
+
+ROOM v8921
+Name: A dark chamber beneath the earth.
+Type: Constructed underground
+E: southeast 8901
+
+ROOM v8924
+Name: A large oval chamber.
+Type: Constructed underground
+E: northeast 8901
+E: south 8926
+E: northwest 8925
+
+ROOM v8925
+Name: The slave pens.
+Type: Constructed underground
+E: southeast 8924
+
+ROOM v8926
+Name: A throne room.
+Type: Constructed underground
+E: north 8924
+
+ROOM v8927
+Name: A nymph infirmary.
+Type: Village
+E: north 8890
+
+ROOM v8928
+Name: A quiet study.
+Type: Village
+E: northwest 8890
+
+ROOM v8929
+Name: A trophy room.
+Type: Village
+E: west 8890
+
+ROOM v8930
+Name: Inside a nymph tree.
+Type: Dark Forest
+E: out 8891
+
+
+
+AREA
+Name: Arkaskarr, the Akrabi burrows.
+
+ROOM v8947
+Name: A crumbling tunnel.
+Type: Natural underground
+E: east 8948
+E: up 2168
+
+ROOM v8948
+Name: Gate to the Akrabi burrows.
+Type: Natural underground
+E: west 8947
+E: down 8949
+
+ROOM v8949
+Name: Into the burrows.
+Type: Natural underground
+E: east 8950
+E: up 8948
+
+ROOM v8950
+Name: Above a junction of tunnels.
+Type: Natural underground
+E: west 8949
+E: down 8951
+
+ROOM v8951
+Name: A junction of tunnels.
+Type: Natural underground
+E: northeast 8952
+E: southeast 8964
+E: up 8950
+E: down 8995
+
+ROOM v8952
+Name: Through a sandy passage.
+Type: Natural underground
+E: north 8953
+E: southwest 8951
+
+ROOM v8953
+Name: A dark, dry corridor.
+Type: Natural underground
+E: northeast 8954
+E: south 8952
+
+ROOM v8954
+Name: In a sandy tunnel.
+Type: Natural underground
+E: east 8955
+E: southwest 8953
+E: up 8981
+
+ROOM v8955
+Name: A bridge over a sloping tunnel.
+Type: Natural underground
+E: east 8956
+E: west 8954
+E: down 8989
+
+ROOM v8956
+Name: A tunnel through the sands.
+Type: Natural underground
+E: southeast 8957
+E: west 8955
+
+ROOM v8957
+Name: A well travelled desert tunnel.
+Type: Natural underground
+E: south 8958
+E: northwest 8956
+
+ROOM v8958
+Name: An intersection in the sand tunnels.
+Type: Natural underground
+E: north 8957
+E: east 9000
+E: south 8959
+
+ROOM v8959
+Name: A sand tunnel.
+Type: Natural underground
+E: north 8958
+E: south 8960
+
+ROOM v8960
+Name: In the Akrabi tunnels.
+Type: Natural underground
+E: north 8959
+E: southwest 8961
+
+ROOM v8961
+Name: In the desert burrows.
+Type: Natural underground
+E: northeast 8960
+E: west 8962
+
+ROOM v8962
+Name: A winding tunnel through the sand.
+Type: Natural underground
+E: east 8961
+E: west 8963
+
+ROOM v8963
+Name: A fork in the burrow tunnel.
+Type: Natural underground
+E: east 8962
+E: west 8965
+E: northwest 8964
+
+ROOM v8964
+Name: Approaching a junction.
+Type: Natural underground
+E: southeast 8963
+E: northwest 8951
+
+ROOM v8965
+Name: The scorpion nest.
+Type: Natural underground
+E: east 8963
+E: southwest 8975
+EL: southwest 1
+E: west 8969
+EL: west 2
+E: northwest 8966
+
+ROOM v8966
+Name: A warm, dry chamber.
+Type: Natural underground
+E: southeast 8965
+E: south 8977
+EL: south 2
+E: southwest 8970
+EL: southwest 1
+E: west 8973
+
+ROOM v8969
+Name: The Akrabi living area.
+Type: Natural underground
+E: northeast 8973
+E: east 8965
+EL: east 2
+E: southeast 8977
+EL: southeast 1
+E: south 8970
+
+ROOM v8970
+Name: A cavern lined with soft sand.
+Type: Natural underground
+E: north 8969
+E: northeast 8966
+EL: northeast 1
+E: east 8980
+EL: east 2
+E: southeast 8975
+
+ROOM v8973
+Name: A large den.
+Type: Natural underground
+E: east 8966
+E: southeast 8980
+EL: southeast 1
+E: south 8975
+EL: south 2
+E: southwest 8969
+
+ROOM v8975
+Name: A spacious living hall.
+Type: Natural underground
+E: north 8973
+EL: north 2
+E: northeast 8965
+EL: northeast 1
+E: east 8977
+E: northwest 8970
+
+ROOM v8977
+Name: In the Akrabi burrows.
+Type: Natural underground
+E: north 8966
+EL: north 2
+E: northeast 8980
+E: west 8975
+E: northwest 8969
+EL: northwest 1
+
+ROOM v8980
+Name: A nesting chamber.
+Type: Natural underground
+E: southwest 8977
+E: west 8970
+EL: west 2
+E: northwest 8973
+EL: northwest 1
+
+ROOM v8981
+Name: In the training grounds.
+Type: Natural underground
+E: north 8988
+E: southwest 8982
+E: west 8984
+EL: west 2
+E: northwest 8986
+EL: northwest 1
+E: down 8954
+
+ROOM v8982
+Name: A flat cavern lined with stones.
+Type: Natural underground
+E: north 8987
+EL: north 2
+E: northeast 8981
+E: west 8983
+E: northwest 8985
+EL: northwest 1
+
+ROOM v8983
+Name: In the Akrabi training cave.
+Type: Natural underground
+E: north 8986
+EL: north 2
+E: northeast 8988
+EL: northeast 1
+E: east 8982
+E: northwest 8984
+
+ROOM v8984
+Name: A cavern of swept sand.
+Type: Natural underground
+E: north 8985
+E: northeast 8987
+EL: northeast 1
+E: east 8981
+EL: east 2
+E: southeast 8983
+
+ROOM v8985
+Name: The battleground.
+Type: Natural underground
+E: northeast 8986
+E: east 8988
+EL: east 2
+E: southeast 8982
+EL: southeast 1
+E: south 8984
+
+ROOM v8986
+Name: The Arkaskarr battlegrounds.
+Type: Natural underground
+E: east 8987
+E: southeast 8981
+EL: southeast 1
+E: south 8983
+EL: south 2
+E: southwest 8985
+
+ROOM v8987
+Name: In the training area.
+Type: Natural underground
+E: southeast 8988
+E: south 8982
+EL: south 2
+E: southwest 8984
+EL: southwest 1
+E: west 8986
+
+ROOM v8988
+Name: A spacious cavern ringed with stone.
+Type: Natural underground
+E: south 8981
+E: southwest 8983
+EL: southwest 1
+E: west 8985
+EL: west 2
+E: northwest 8987
+
+ROOM v8989
+Name: The Akrabi sukh.
+Type: Natural underground
+E: east 8991
+E: southeast 8992
+E: south 8990
+E: up 8955
+E: in 8997
+
+ROOM v8990
+Name: Among traders' stalls.
+Type: Natural underground
+E: north 8989
+E: southwest 8995
+E: west 8994
+
+ROOM v8991
+Name: Arkaskarr Provisions.
+Type: Natural underground
+E: west 8989
+
+ROOM v8992
+Name: A subterranean marketplace.
+Type: Natural underground
+E: south 8993
+E: northwest 8989
+
+ROOM v8993
+Name: Amidst the sandy market.
+Type: Natural underground
+E: north 8992
+E: southwest 8996
+E: west 8995
+EL: west 1
+
+ROOM v8994
+Name: A dusty post office.
+Type: Natural underground
+E: east 8990
+
+ROOM v8995
+Name: In the Akrabi sukh.
+Type: Natural underground
+E: northeast 8990
+E: east 8993
+EL: east 1
+E: south 8999
+E: up 8951
+
+ROOM v8996
+Name: The Scorpion's Wares.
+Type: Natural underground
+E: northeast 8993
+
+ROOM v8997
+Name: The Arkaskarr assembly tent.
+Type: Natural underground
+E: out 8989
+
+ROOM v8999
+Name: Arkaskarr public news.
+Type: Natural underground
+E: north 8995
+
+ROOM v9000
+Name: Entering the village temple.
+Type: Natural underground
+E: northeast 9002
+E: southeast 9005
+E: south 9001
+E: west 8958
+
+ROOM v9001
+Name: A dry and sterile cave.
+Type: Natural underground
+E: north 9000
+E: down 9010
+
+ROOM v9002
+Name: A library of stone.
+Type: Natural underground
+E: southeast 9003
+E: southwest 9000
+
+ROOM v9003
+Name: A prayer hall.
+Type: Natural underground
+E: south 9004
+EL: south 1
+E: southwest 9005
+E: northwest 9002
+
+ROOM v9004
+Name: Entry hall to the main temple.
+Type: Natural underground
+E: north 9003
+EL: north 1
+E: southwest 9009
+
+ROOM v9005
+Name: In the Akrabi temple.
+Type: Natural underground
+E: northeast 9003
+E: south 9006
+E: southwest 9008
+E: northwest 9000
+
+ROOM v9006
+Name: Food storage.
+Type: Natural underground
+E: north 9005
+E: southwest 9007
+
+ROOM v9007
+Name: In a cold and well-stocked larder.
+Type: Natural underground
+E: north 9008
+E: northeast 9006
+
+ROOM v9008
+Name: A cold stone storage chamber.
+Type: Natural underground
+E: northeast 9005
+E: south 9007
+
+ROOM v9009
+Name: The Temple of the Suns.
+Type: Natural underground
+E: northeast 9004
+
+ROOM v9010
+Name: In the golden chamber.
+Type: Natural underground
+E: up 9001
+
+
+
+AREA
+Name: Isle of Llus.
+
+ROOM v9012
+Name: A subterranean dock.
+Type: Underground Lake
+E: northeast 9013
+
+ROOM v9013
+Name: A subterranean passage through water.
+Type: Underground Lake
+E: northeast 9014
+E: southwest 9012
+
+ROOM v9014
+Name: Pleasant beach path before the jungle.
+Type: Beach
+E: north 9021
+ES: north 1
+E: northeast 9016
+E: southeast 9017
+E: south 9015
+E: southwest 9013
+
+ROOM v9015
+Name: A thinning path along the beach.
+Type: Beach
+E: north 9014
+
+ROOM v9016
+Name: The borders of the Llusian Jungle.
+Type: Jungle
+E: north 9023
+ES: north 1
+E: east 9019
+EL: east 1
+E: southeast 9018
+EL: southeast 1
+E: south 9017
+EL: south 1
+E: southwest 9014
+
+ROOM v9017
+Name: The borders of the Llusian Jungle.
+Type: Jungle
+E: north 9016
+EL: north 1
+E: northeast 9019
+EL: northeast 1
+E: east 9018
+EL: east 1
+E: northwest 9014
+
+ROOM v9018
+Name: Amidst thick undergrowth.
+Type: Jungle
+E: north 9019
+EL: north 1
+E: west 9017
+EL: west 1
+E: northwest 9016
+EL: northwest 1
+
+ROOM v9019
+Name: A dark, dense web of trees.
+Type: Jungle
+E: east 9020
+E: southeast 9024
+E: south 9018
+EL: south 1
+E: southwest 9017
+EL: southwest 1
+E: west 9016
+EL: west 1
+
+ROOM v9020
+Name: Impassable thicket before a cave.
+Type: Jungle
+E: north 9025
+E: west 9019
+
+ROOM v9021
+Name: A thin strip of sand.
+Type: Beach
+E: northeast 9022
+E: south 9014
+ES: south 1
+
+ROOM v9022
+Name: End of a coastal path near rocks.
+Type: Beach
+E: southwest 9021
+E: west 9054
+
+ROOM v9023
+Name: The borders of the Llusian Jungle.
+Type: Jungle
+E: northeast 9030
+E: east 9029
+EL: east 1
+E: southeast 9027
+E: south 9016
+ES: south 1
+
+ROOM v9024
+Name: A mossy path.
+Type: Jungle
+E: east 9026
+E: northwest 9019
+
+ROOM v9025
+Name: A small observation hut.
+Type: Jungle
+E: south 9020
+
+ROOM v9026
+Name: Surrounded by primeval jungle darkness.
+Type: Jungle
+E: northeast 9041
+E: southeast 9040
+E: west 9024
+
+ROOM v9027
+Name: Within the Llusian Jungle.
+Type: Jungle
+E: east 9028
+E: northwest 9023
+
+ROOM v9028
+Name: An eerily-quiet copse.
+Type: Jungle
+E: north 9029
+E: northeast 9044
+E: east 9031
+E: west 9027
+
+ROOM v9029
+Name: Lost in the jungle.
+Type: Jungle
+E: north 9037
+ES: north 1
+E: east 9044
+E: southeast 9031
+E: south 9028
+E: west 9023
+EL: west 1
+E: northwest 9030
+
+ROOM v9030
+Name: A tangle of trees.
+Type: Jungle
+E: north 9032
+E: northeast 9036
+E: southeast 9029
+E: southwest 9023
+
+ROOM v9031
+Name: Surrounded by hanging trees.
+Type: Jungle
+E: north 9044
+E: southeast 9043
+ES: southeast 1
+E: west 9028
+E: northwest 9029
+
+ROOM v9032
+Name: Crossing a fallen tree above a rushing stream.
+Type: Jungle
+E: north 9033
+E: south 9030
+
+ROOM v9033
+Name: Lost in the Llusian jungle.
+Type: Jungle
+E: south 9032
+E: northwest 9034
+
+ROOM v9034
+Name: Lost in the Llusian jungle.
+Type: Jungle
+DE: north
+DE: northeast
+DE: east
+E: southeast 9033
+E: south 9035
+DE: west
+DE: northwest
+
+ROOM v9035
+Name: Lost in the Llusian jungle.
+Type: Jungle
+E: north 9034
+DE: east
+DE: southeast
+DE: west
+
+ROOM v9036
+Name: Outside a fenced-in enclosure.
+Type: Jungle
+E: southeast 9037
+ES: southeast 1
+E: southwest 9030
+
+ROOM v9037
+Name: Murky waters.
+Type: Freshwater
+E: east 9045
+E: south 9029
+EL: south 1
+ES: south 1
+E: northwest 9036
+ES: northwest 1
+
+ROOM v9040
+Name: Darkening chaparral.
+Type: Jungle
+E: north 9041
+EL: north 1
+E: northeast 9042
+E: northwest 9026
+
+ROOM v9041
+Name: A labyrinth of ancient trees.
+Type: Jungle
+E: southeast 9042
+E: south 9040
+EL: south 1
+E: southwest 9026
+
+ROOM v9042
+Name: Deep within the Llusian Jungle.
+Type: Jungle
+E: northeast 9043
+E: southwest 9040
+E: northwest 9041
+
+ROOM v9043
+Name: Deep within the Llusian Jungle.
+Type: Jungle
+E: southwest 9042
+E: northwest 9031
+ES: northwest 1
+
+ROOM v9044
+Name: A path choked by undergrowth.
+Type: Jungle
+E: south 9031
+E: southwest 9028
+E: west 9029
+E: northwest 9045
+ES: northwest 1
+
+ROOM v9045
+Name: A flooded stream bed.
+Type: Freshwater
+E: northeast 9048
+E: southeast 9044
+ES: southeast 1
+E: west 9037
+E: northwest 9046
+
+ROOM v9046
+Name: In view of a strange building.
+Type: Freshwater
+E: northeast 9047
+E: southeast 9045
+
+ROOM v9047
+Name: A gated perimeter fence.
+Type: Jungle
+E: southwest 9046
+DE: northwest
+
+ROOM v9048
+Name: Bordering a small embankment.
+Type: Freshwater
+E: north 9049
+E: northeast 9051
+E: southeast 9052
+E: southwest 9045
+
+ROOM v9049
+Name: Restful spot overlooking the stream.
+Type: Jungle
+E: south 9048
+E: down 9050
+
+ROOM v9050
+Name: A quiet burrow.
+Type: Jungle
+E: up 9049
+
+ROOM v9051
+Name: A tepid pool.
+Type: Freshwater
+E: south 9052
+EL: south 1
+E: southwest 9048
+
+ROOM v9052
+Name: A tepid pool.
+Type: Freshwater
+E: north 9051
+EL: north 1
+E: northwest 9048
+
+ROOM v9054
+Name: A deserted supply boat.
+Type: Beach
+E: east 9022
+
+
+
+AREA
+Name: Waelin Bog.
+
+ROOM v9094
+Name: Approaching the bog.
+Type: Swamp
+E: north 9095
+E: south 1075
+
+ROOM v9095
+Name: Approaching the bog.
+Type: Swamp
+E: north 9096
+E: east 9110
+E: south 9094
+
+ROOM v9096
+Name: Deep within the Waelin Bog.
+Type: Swamp
+E: north 9099
+E: south 9095
+E: west 9097
+
+ROOM v9097
+Name: A dense thicket in the bog.
+Type: Swamp
+E: north 9098
+E: east 9096
+
+ROOM v9098
+Name: By a sickly copse of trees.
+Type: Swamp
+E: north 9100
+E: east 9099
+E: south 9097
+E: west 9148
+
+ROOM v9099
+Name: Deep within the Waelin Bog.
+Type: Swamp
+E: north 9107
+E: east 9108
+E: south 9096
+E: west 9098
+
+ROOM v9100
+Name: A sickly copse of trees.
+Type: Swamp
+E: south 9098
+E: west 9101
+
+ROOM v9101
+Name: Within the bog.
+Type: Swamp
+E: east 9100
+E: south 9148
+E: northwest 9102
+
+ROOM v9102
+Name: Approaching the bog.
+Type: Swamp
+E: northeast 9103
+E: southeast 9101
+E: west 1135
+
+ROOM v9103
+Name: Within the bog.
+Type: Swamp
+E: north 9146
+E: east 9104
+E: southwest 9102
+
+ROOM v9104
+Name: Near a snake's nest.
+Type: Swamp
+E: north 9145
+E: east 9105
+E: west 9103
+
+ROOM v9105
+Name: Dense thicket within the bog.
+Type: Swamp
+E: north 9132
+E: east 9131
+E: south 9106
+E: west 9104
+
+ROOM v9106
+Name: Within the bog.
+Type: Swamp
+E: north 9105
+E: south 9107
+
+ROOM v9107
+Name: By a sickly willow tree.
+Type: Swamp
+E: north 9106
+E: south 9099
+
+ROOM v9108
+Name: In the darkness of the bog.
+Type: Swamp
+E: east 9112
+E: south 9109
+E: west 9099
+
+ROOM v9109
+Name: A darkened area.
+Type: Swamp
+E: north 9108
+E: east 9111
+E: south 9110
+
+ROOM v9110
+Name: Under a sickly tree.
+Type: Swamp
+E: north 9109
+E: west 9095
+
+ROOM v9111
+Name: Amongst sickly weeds.
+Type: Tainted Water
+E: north 9112
+E: east 9122
+E: south 9124
+E: west 9109
+
+ROOM v9112
+Name: Along the Huria river.
+Type: Tainted Water
+E: north 9113
+E: east 9121
+E: south 9111
+E: west 9108
+
+ROOM v9113
+Name: Huria river by a small embankment.
+Type: Tainted Water
+E: north 9114
+E: east 9120
+E: south 9112
+
+ROOM v9114
+Name: Along the Huria river.
+Type: Tainted Water
+E: north 9115
+E: south 9113
+
+ROOM v9115
+Name: Huria river by an embankment.
+Type: Tainted Water
+E: north 9116
+E: east 9119
+E: south 9114
+
+ROOM v9116
+Name: Huria river by an embankment.
+Type: Tainted Water
+E: north 9117
+E: east 9126
+E: south 9115
+E: west 9118
+
+ROOM v9117
+Name: Huria river by an embankment.
+Type: Tainted Water
+E: north 9129
+E: east 9127
+E: south 9116
+
+ROOM v9118
+Name: Nearing the Huria river.
+Type: Swamp
+E: north 9133
+E: east 9116
+E: south 9131
+E: west 9132
+
+ROOM v9119
+Name: A shallow pool in the bog.
+Type: Swamp
+E: north 9126
+E: west 9115
+
+ROOM v9120
+Name: Nearing the Huria.
+Type: Swamp
+E: south 9121
+E: west 9113
+
+ROOM v9121
+Name: A small path through the bog.
+Type: Swamp
+E: north 9120
+E: east 9123
+E: south 9122
+E: west 9112
+
+ROOM v9122
+Name: Near the Huria.
+Type: Swamp
+E: north 9121
+E: west 9111
+
+ROOM v9123
+Name: Approaching a shack.
+Type: Swamp
+E: west 9121
+
+ROOM v9124
+Name: Nearing the mouth of the Huria.
+Type: Tainted Water
+E: north 9111
+E: south 9125
+
+ROOM v9125
+Name: The mouth of the Huria.
+Type: Tainted Water
+E: north 9124
+
+ROOM v9126
+Name: A faint path in the bog.
+Type: Swamp
+E: north 9127
+E: east 9128
+E: south 9119
+E: west 9116
+
+ROOM v9127
+Name: By a stagnant pool in the bog.
+Type: Swamp
+E: south 9126
+E: west 9117
+
+ROOM v9128
+Name: Outside of a lean-to in the bog.
+Type: Swamp
+E: west 9126
+
+ROOM v9129
+Name: Along the Huria river.
+Type: Tainted Water
+E: north 9130
+E: south 9117
+
+ROOM v9130
+Name: The source of the Huria river.
+Type: Tainted Water
+E: south 9129
+
+ROOM v9131
+Name: A dark corner in the bog.
+Type: Swamp
+E: north 9118
+E: west 9105
+
+ROOM v9132
+Name: A dark copse in the bog.
+Type: Swamp
+E: north 9134
+E: east 9118
+E: south 9105
+E: west 9145
+
+ROOM v9133
+Name: Alligator nesting grounds.
+Type: Swamp
+E: south 9118
+E: west 9134
+
+ROOM v9134
+Name: A dark copse in the bog.
+Type: Swamp
+E: north 9135
+E: east 9133
+E: south 9132
+E: west 9144
+
+ROOM v9135
+Name: Nearing a parting of ways.
+Type: Swamp
+E: north 9136
+E: south 9134
+
+ROOM v9136
+Name: A fork in the bog.
+Type: Swamp
+E: northeast 9137
+E: south 9135
+
+ROOM v9137
+Name: In the northeastern portion of the bog.
+Type: Swamp
+E: north 9141
+E: east 9138
+E: southwest 9136
+
+ROOM v9138
+Name: By a rat's nest.
+Type: Swamp
+E: north 9140
+E: northeast 9138
+ES: northeast 1
+E: southwest 9138
+ES: southwest 1
+E: west 9137
+
+ROOM v9140
+Name: By a rotted out stump.
+Type: Swamp
+E: north 9143
+E: south 9138
+E: west 9141
+
+ROOM v9141
+Name: Lost in the bog.
+Type: Swamp
+E: north 9142
+E: northeast 9141
+ES: northeast 1
+E: east 9140
+E: south 9137
+E: southwest 9141
+ES: southwest 1
+
+ROOM v9142
+Name: Lost in the bog.
+Type: Swamp
+E: east 9143
+E: south 9141
+
+ROOM v9143
+Name: The northeastern corner of the bog.
+Type: Swamp
+E: south 9140
+E: west 9142
+
+ROOM v9144
+Name: Northwestern part of the bog.
+Type: Swamp
+E: east 9134
+E: south 9145
+
+ROOM v9145
+Name: In the darkness of the bog.
+Type: Swamp
+E: north 9144
+E: east 9132
+E: south 9104
+E: west 9146
+
+ROOM v9146
+Name: Near a hollow tree.
+Type: Swamp
+E: east 9145
+E: south 9103
+
+ROOM v9148
+Name: Approaching a sickly copse of trees.
+Type: Swamp
+E: north 9101
+E: east 9098
 
 
 
