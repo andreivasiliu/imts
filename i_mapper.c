@@ -142,6 +142,7 @@ int pear_defence;
 int sense_message;
 int scout_list;
 int evstatus_list;
+int pet_list;
 int destroying_world;
 int door_closed;
 int door_locked;
@@ -4776,6 +4777,88 @@ void parse_eventstatus( char *line )
 
 
 
+void parse_petlist( LINE *line )
+{
+   ROOM_DATA *room = NULL, *r;
+   char *roomname, *place = NULL;
+   int len, more = 0;
+   /*
+    * 18742  a mysterious winged, black ten* A well-swept, comfortable ke
+    */
+   
+   if ( !cmp( "Your Pets in the Land", line->line ) )
+     {
+	pet_list = 1;
+	return;
+     }
+   
+   if ( !pet_list )
+     return;
+   
+   /* Usually begins with the pet's number. */
+   if ( line->line[0] < '0' || line->line[0] > '9' )
+     return;
+   
+   /* And the room name starts at pos 37. */
+   if ( line->len < 39 )
+     return;
+   roomname = line->line + 37;
+   if ( roomname[0] == '*' )
+     roomname += 2;
+   len = strlen( roomname );
+   
+   debugf( "(%d) '%s'", len, roomname );
+   
+   for ( r = world; r; r = r->next_in_world )
+     if ( !strncmp( roomname, r->name, len ) )
+       {
+	  if ( !room )
+	    room = r;
+	  else
+	    {
+	       more = 1;
+	       break;
+	    }
+       }
+   
+   if ( !room )
+     return;
+   
+   clientff( " " C_D "(" C_G "%d" C_D "%s)" C_0,
+	     room->vnum, more ? C_D "," C_G "..." C_D : "" );
+   
+   roomname -= 2;
+   
+   if ( !strcmp( roomname, "* A well-swept, comfortable ke" ) ||
+	!strcmp( roomname, "* Within a large, well-kept st" ) )
+     place = "Ki";
+   
+   if ( !strcmp( roomname, "* The Scuderia Animale." ) ||
+	!strcmp( roomname, "* The Scuderia Equus." ) )
+     place = "S";
+   
+   if ( !strcmp( roomname, "* A dusty kennel." ) ||
+	!strcmp( roomname, "* A clean, brightly lit stable" ) )
+     place = "A";
+   
+   if ( !strcmp( roomname, "* A comfortable, flourishing k" ) ||
+	!strcmp( roomname, "* A canopy-covered stable." ) )
+     place = "Kh";
+   
+   if ( !strcmp( roomname, "* Open wilderness behind Phoen" ) ||
+	!strcmp( roomname, "* A sheltered overhang." ) )
+     place = "C";
+   
+   if ( !strcmp( roomname, "* An eerie kennel." ) ||
+	!strcmp( roomname, "* An unnaturally quiet stable." ) )
+     place = "I";
+   
+   if ( place )
+     clientff( " " C_D "(" C_R "%s" C_D ")" C_0, place );
+}
+
+
+
 void parse_who( LINE *line )
 {
    static int first_time = 1, len1, len2;
@@ -5311,6 +5394,7 @@ void i_mapper_process_server_line( LINE *l )
 	parse_view( l->line );
 	parse_pursue( l->line );
 	parse_eventstatus( l->line );
+	parse_petlist( l );
 	
 	/* Is this a fullsense command? */
 	parse_fullsense( l->line );
@@ -5416,6 +5500,9 @@ void i_mapper_process_server_prompt( LINE *l )
    
    if ( evstatus_list )
      evstatus_list = 0;
+   
+   if ( pet_list )
+     pet_list = 0;
    
    if ( get_unlost_exits )
      {
