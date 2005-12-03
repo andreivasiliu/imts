@@ -57,6 +57,9 @@ T: "quarry" brown 1 1 no no
 T: "Temple" bright-white 1 1 no no
 T: "Tainted Underground" magenta 1 1 no no
 T: "garrison" dark 1 1 no no
+T: "a sheltered dell" dark 1 1 no no
+T: "cliffs" brown 1 1 no no
+T: "within a tent" cyan 1 1 no no
 
 
 MESSAGES
@@ -32328,6 +32331,8 @@ E: west 5055
 ROOM v5052
 Name: Lost within the iced forest.
 Type: Dark Forest
+E: north 9149
+ES: north 1
 E: south 5050
 
 ROOM v5051
@@ -32793,6 +32798,19 @@ ROOM v8707
 Name: An empty room.
 Type: Urban
 E: southwest 7118
+
+ROOM v9149
+Name: Snowy trail through an icy forest.
+Type: Dark Forest
+E: north 9150
+E: south 5052
+ES: south 1
+
+ROOM v9150
+Name: On the edge of an icy dell.
+Type: Dark Forest
+E: south 9149
+E: down 9151
 
 
 
@@ -59332,6 +59350,156 @@ Name: Approaching a sickly copse of trees.
 Type: Swamp
 E: north 9101
 E: east 9098
+
+
+
+AREA
+Name: Settlement of Kadar.
+
+ROOM v9151
+Name: A treacherous descent into the dell.
+Type: cliffs
+E: northeast 9152
+E: up 9150
+
+ROOM v9152
+Name: A twisting ledge.
+Type: cliffs
+E: southwest 9151
+E: down 9153
+E: in 9167
+
+ROOM v9153
+Name: The edge of a snowy dell.
+Type: a sheltered dell
+E: northeast 9154
+E: northwest 9155
+E: up 9152
+
+ROOM v9154
+Name: An icy path.
+Type: a sheltered dell
+E: north 9156
+E: southwest 9153
+
+ROOM v9155
+Name: A rock-filled path before an elevated ledge.
+Type: a sheltered dell
+E: north 9158
+E: southeast 9153
+E: up 9166
+
+ROOM v9156
+Name: Within a primitive camp.
+Type: a sheltered dell
+E: south 9154
+E: west 9157
+ES: west 1
+E: northwest 9159
+
+ROOM v9157
+Name: A snowy path through a camp.
+Type: a sheltered dell
+E: north 9168
+E: east 9156
+ES: east 1
+E: southwest 9160
+
+ROOM v9158
+Name: A winding path through the snow.
+Type: a sheltered dell
+E: south 9155
+E: in 9174
+
+ROOM v9159
+Name: A tent of skin and bones.
+Type: within a tent
+E: southeast 9156
+
+ROOM v9160
+Name: A slippery path among ragged tents.
+Type: a sheltered dell
+E: north 9162
+E: northeast 9157
+E: west 9161
+
+ROOM v9161
+Name: A rudimentary tent.
+Type: within a tent
+E: east 9160
+
+ROOM v9162
+Name: A wide path of packed snow.
+Type: a sheltered dell
+E: north 9163
+E: south 9160
+
+ROOM v9163
+Name: Within sight of a great monolith.
+Type: a sheltered dell
+E: north 9164
+E: south 9162
+
+ROOM v9164
+Name: At the foot of the Rock of Gathering.
+Type: a sheltered dell
+E: south 9163
+E: up 9165
+
+ROOM v9165
+Name: Atop a gigantic rock.
+Type: cliffs
+E: down 9164
+E: in 9170
+
+ROOM v9166
+Name: The trading rock.
+Type: cliffs
+E: down 9155
+
+ROOM v9167
+Name: A glittering cavern of ice and stones.
+Type: Natural underground
+E: out 9152
+
+ROOM v9168
+Name: A frozen fire pit.
+Type: a sheltered dell
+E: north 9169
+E: south 9157
+
+ROOM v9169
+Name: A gigantic tent made of ice and bones.
+Type: within a tent
+E: south 9168
+
+ROOM v9170
+Name: A frozen tunnel.
+Type: Natural underground
+E: north 9171
+E: out 9165
+
+ROOM v9171
+Name: A wide tunnel through a wolven lair.
+Type: Natural underground
+E: east 9172
+E: south 9170
+E: west 9173
+
+ROOM v9172
+Name: A shadowed cavern.
+Type: Natural underground
+E: west 9171
+
+ROOM v9173
+Name: A dark lair.
+Type: Natural underground
+E: east 9171
+
+ROOM v9174
+Name: A crack in the frozen stone.
+Type: Natural underground
+E: out 9158
 
 
 
