@@ -8272,6 +8272,8 @@ void print_mhelp_line( char *line )
 	     c = "\33[0;36m"; break;
 	   case 'w':
 	     c = "\33[0;37m"; break;
+	   case 'D':
+	     c = "\33[1;30m"; break;
 	   case 'R':
 	     c = "\33[1;31m"; break;
 	   case 'G':
