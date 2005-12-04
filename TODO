@@ -7,9 +7,7 @@ OVERALL
 High Priority
 =============
 
-- Add Davion's changes. Beware of writhing.
-- Check pcre.dll.
-
+- Nothing
 
 
 Low Priority
@@ -18,7 +16,6 @@ Low Priority
 MUDBOT
 ======
 
-- Client-side telnet Sub-Negotiation left untested.
 - Logging bytes off client.
 
 IMPERIAN
@@ -44,7 +41,6 @@ IMAPPER
 
 - Customizable colors.
 - Personal rooms, stored in a personal map file.
-- Vnums on real map.
 - Undo.
 - New Exit warning.
 - Variable free/calloc max_x max_y
