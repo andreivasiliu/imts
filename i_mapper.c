@@ -1003,7 +1003,10 @@ int parse_title( const char *line )
 		       if ( !unidirectional_exit )
 			 {
 			    if ( !new_room->exits[reverse_exit[q]] )
-			      new_room->exits[reverse_exit[q]] = current_room;
+			      {
+				 new_room->exits[reverse_exit[q]] = current_room;
+				 set_reverse( new_room, reverse_exit[q], current_room );
+			      }
 			    else
 			      {
 				 current_room->exits[q] = NULL;
@@ -1981,15 +1984,6 @@ void show_map_new( ROOM_DATA *room )
    get_timer( );
 //   debugf( "--map new--" );
    
-   /* Clear it up. */
-   for ( a = areas; a; a = a->next )
-     if ( a->needs_cleaning )
-       {
-	  for ( r = a->rooms; r; r = r->next_in_area )
-	    r->mapped = 0;
-	  a->needs_cleaning = 0;
-       }
-   
    for ( x = 0; x < MAP_X; x++ )
      for ( y = 0; y < MAP_Y; y++ )
        memset( &map_new[x][y], 0, sizeof( MAP_ELEMENT ) );
@@ -2245,6 +2239,15 @@ void show_map_new( ROOM_DATA *room )
    while( *s )
      *(p++) = *(s++);
    *p = 0;
+   
+   /* Clear up our mess. */
+   for ( a = areas; a; a = a->next )
+     if ( a->needs_cleaning )
+       {
+	  for ( r = a->rooms; r; r = r->next_in_area )
+	    r->mapped = 0;
+	  a->needs_cleaning = 0;
+       }
    
 //   debugf( "3: %d", get_timer( ) );
    
@@ -7274,7 +7277,7 @@ void do_room_types( char *arg )
 
 void do_room_merge( char *arg )
 {
-   ROOM_DATA *r;
+   ROOM_DATA *r, *old_room, *new_room;
    char buf[4096];
    int found;
    int i;
@@ -7389,6 +7392,8 @@ void do_room_merge( char *arg )
      {
 	int vnum;
 	
+	old_room = current_room;
+	
 	if ( mode != CREATING )
 	  {
 	     clientfr( "Turn mapping on, first." );
@@ -7396,36 +7401,36 @@ void do_room_merge( char *arg )
 	  }
 	
 	vnum = atoi( arg );
-	if ( !vnum || !( r = get_room( vnum ) ) )
+	if ( !vnum || !( new_room = get_room( vnum ) ) )
 	  {
 	     clientfr( "Merge with which vnum?" );
 	     return;
 	  }
 	
-	if ( r == current_room )
+	if ( new_room == old_room )
 	  {
 	     clientfr( "You silly thing... What's the point in merging with the same room?" );
 	     return;
 	  }
 	
-	if ( strcmp( r->name, current_room->name ) )
+	if ( strcmp( new_room->name, old_room->name ) )
 	  {
 	     clientfr( "That room doesn't even have the same name!" );
 	     return;
 	  }
 	
-	/* Check for exits. */
+	/* Check for exits leading to other places. */
 	for ( i = 1; dir_name[i]; i++ )
 	  {
-	     if ( r->exits[i] && current_room->exits[i] &&
-		  r->exits[i] != current_room->exits[i] )
+	     if ( new_room->exits[i] && old_room->exits[i] &&
+		  new_room->exits[i] != old_room->exits[i] )
 	       {
 		  clientff( C_R "[Problem with the %s exits; they lead to different places.]\r\n", dir_name[i] );
 		  return;
 	       }
 	     
-	     if ( ( r->exits[i] || r->detected_exits[i] ) !=
-		  ( current_room->exits[i] || current_room->detected_exits[i] ) )
+	     if ( ( new_room->exits[i] || new_room->detected_exits[i] ) !=
+		  ( old_room->exits[i] || old_room->detected_exits[i] ) )
 	       {
 		  clientff( C_R "[Problem with the %s exits; one room has it, the other doesn't.]\r\n", dir_name[i] );
 		  return;
@@ -7435,50 +7440,70 @@ void do_room_merge( char *arg )
 	/* Start merging. */
 	for ( i = 1; dir_name[i]; i++ )
 	  {  
-	     if ( !r->exits[i] )
+	     if ( !new_room->exits[i] )
 	       {
-		  r->exits[i] = current_room->exits[i];
-		  if ( current_room->exits[i] )
-		    r->reverse_exits[i] = current_room->reverse_exits[i];
-		  if ( current_room->exits[i] )
-		    r->more_reverse_exits[i] |= current_room->more_reverse_exits[i];
-		  r->detected_exits[i] |= current_room->detected_exits[i];
-		  r->locked_exits[i] |= current_room->locked_exits[i];
-		  if ( !r->exit_length[i] )
-		    r->exit_length[i] = current_room->exit_length[i];
-		  if ( !r->use_exit_instead[i] )
-		    r->use_exit_instead[i] = current_room->use_exit_instead[i];
-		  r->exit_stops_mapping[i] = current_room->exit_stops_mapping[i];
+		  new_room->exits[i] = old_room->exits[i];
+		  new_room->detected_exits[i] |= old_room->detected_exits[i];
+		  new_room->locked_exits[i] |= old_room->locked_exits[i];
+		  if ( !new_room->exit_length[i] )
+		    new_room->exit_length[i] = old_room->exit_length[i];
+		  if ( !new_room->use_exit_instead[i] )
+		    new_room->use_exit_instead[i] = old_room->use_exit_instead[i];
+		  new_room->exit_stops_mapping[i] = old_room->exit_stops_mapping[i];
 	       }
 	  }
-	r->underwater |= current_room->underwater;
+	
+	/* All rooms that once pointed to the old one, should point to the new. */
+	for ( r = world; r; r = r->next_in_world )
+	  {
+	     for ( i = 1; dir_name[i]; i++ )
+	       {
+		  if ( r->exits[i] == old_room )
+		    {
+		       r->exits[i] = new_room;
+		       
+		       if ( !new_room->reverse_exits[i] )
+			 {
+			    new_room->reverse_exits[i] = r;
+			    new_room->more_reverse_exits[i] = 0;
+			 }
+		       else
+			 {
+			    new_room->more_reverse_exits[i] = 1;
+			 }
+		    }
+	       }
+	  }
+	
+	new_room->underwater |= old_room->underwater;
 	
 	/* Add all missing tags. */
-	while ( current_room->tags )
+	while ( old_room->tags )
 	  {
 	     ELEMENT *tag;
 	     
 	     /* Look if it already exists. */
-	     for ( tag = r->tags; tag; tag = tag->next )
-	       if ( !strcmp( (char *) current_room->tags->p, (char *) tag->p ) )
+	     for ( tag = new_room->tags; tag; tag = tag->next )
+	       if ( !strcmp( (char *) old_room->tags->p, (char *) tag->p ) )
 		 break;
 	     if ( !tag )
 	       {
 		  tag = calloc( 1, sizeof( ELEMENT ) );
-		  tag->p = current_room->tags->p;
-		  link_element( tag, &r->tags );
+		  tag->p = old_room->tags->p;
+		  link_element( tag, &new_room->tags );
 	       }
 	     else
-	       free( current_room->tags->p );
+	       free( old_room->tags->p );
 	     
-	     unlink_element( current_room->tags );
+	     unlink_element( old_room->tags );
 	  }
 	
 	clientff( C_R "[Rooms " C_G "%d" C_R " and " C_G "%d" C_R " merged into " C_G "%d" C_R ".]\r\n" C_0,
-		  r->vnum, current_room->vnum, r->vnum );
-	destroy_room( current_room );
-	current_room = r;
-	current_area = r->area;
+		  new_room->vnum, old_room->vnum, new_room->vnum );
+	destroy_room( old_room );
+	
+	current_room = new_room;
+	current_area = new_room->area;
      }
 }
 
