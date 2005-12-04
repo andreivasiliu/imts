@@ -2678,11 +2678,11 @@ void handle_atcp( char *msg )
    char act[256];
    char opt[256];
    char *body;
+   int we_control_it;
    
    DEBUG( "handle_atcp" );
    
-   if ( !strcmp( atcp_login_as, "none" ) )
-     return;
+   we_control_it = strcmp( atcp_login_as, "none" );
    
    body = strchr( msg, '\n' );
    
@@ -2691,7 +2691,7 @@ void handle_atcp( char *msg )
    
    msg = get_string( msg, act, 256 );
    
-   if ( !strcmp( act, "Auth.Request" ) )
+   if ( !strcmp( act, "Auth.Request" ) && we_control_it )
      {
 	msg = get_string( msg, opt, 256 );
 	
@@ -2759,7 +2759,7 @@ void handle_atcp( char *msg )
 	strcpy( a_title, body );
      }
    
-   else if ( !strncmp( act, "Client.Compose", 15 ) )
+   else if ( !strncmp( act, "Client.Compose", 15 ) && we_control_it )
      {
 #if defined( FOR_WINDOWS )
 	void win_composer_contents( char *string );
@@ -2867,7 +2867,8 @@ int check_sub_telnet( char *sub )
    if ( sub[0] == (char) ATCP )
      {
 	handle_atcp( sub+1 );
-	return a_on;
+	/* Either it's on, or we'll want it on. */
+	return a_on || strcmp( atcp_login_as, "none" );
      }
    else
      debugf( "Unknown IAC/SB IAC/SE sequence." );
