@@ -2266,15 +2266,13 @@ ROOM_DATA *get_room_at( int dir, int length )
 {
    const int xi[] = { 2, 0, 1, 1, 1, 0, -1, -1, -1, 2, 2, 2, 2, 2 };
    const int yi[] = { 2, -1, -1, 0, 1, 1, 1, 0, -1, 2, 2, 2, 2, 2 };
+   AREA_DATA *a;
    ROOM_DATA *r;
    int x, y;
    
    if ( !current_room )
      return NULL;
    
-   /* Clear it up. */
-   for ( r = current_room->area->rooms; r; r = r->next_in_area )
-     r->mapped = 0;
    for ( x = 0; x < MAP_X; x++ )
      for ( y = 0; y < MAP_Y; y++ )
        memset( &map_new[x][y], 0, sizeof( MAP_ELEMENT ) );
@@ -2293,6 +2291,15 @@ ROOM_DATA *get_room_at( int dir, int length )
      return NULL;
    
    fill_map_new( current_room, MAP_X / 2, MAP_Y / 2 );
+   
+   /* Clear up our mess. */
+   for ( a = areas; a; a = a->next )
+     if ( a->needs_cleaning )
+       {
+	  for ( r = a->rooms; r; r = r->next_in_area )
+	    r->mapped = 0;
+	  a->needs_cleaning = 0;
+       }
    
    return map_new[x][y].room;
 }
@@ -5525,8 +5532,10 @@ void i_mapper_process_server_prompt( LINE *l )
 		  
 		  for ( i = 1; dir_name[i]; i++ )
 		    {
-		       if ( ( r->exits[i] && !get_unlost_detected_exits[i] ) ||
-			    ( !r->exits[i] && get_unlost_detected_exits[i] ) )
+		       if ( ( ( r->exits[i] || r->detected_exits[i] )
+			      && !get_unlost_detected_exits[i] ) ||
+			    ( !( r->exits[i] || r->detected_exits ) &&
+			      get_unlost_detected_exits[i] ) )
 			 {
 			    good = 0;
 			    break;
