@@ -3271,9 +3271,10 @@ void process_client_line( char *buf )
 		       
 		       p++;
 		    }
+		  *(b++) = '\n';
 		  *b = 0;
 		  
-		  clientfb( "Processing line.." );
+		  clientfb( "Processing buffer.." );
 		  process_buffer( buf2, strlen( buf2 ) );
 	       }
 	  }
