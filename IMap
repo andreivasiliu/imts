@@ -17700,6 +17700,7 @@ Name: Heavily forested steep mountain side.
 Type: Mountains
 E: northeast 1372
 E: southwest 1374
+E: up 9240
 
 ROOM v1372
 Name: Narrow gash in mountains.
@@ -20115,6 +20116,8 @@ ROOM v8515
 Name: The Plaza gardens.
 Type: Natural underground
 E: east 8514
+E: southwest 9175
+ES: southwest 1
 E: west 3336
 
 ROOM v8645
@@ -20133,6 +20136,24 @@ ROOM v8821
 Name: Open wilderness behind Phoenix Crest.
 Type: Valley
 E: south 8820
+
+ROOM v9175
+Name: Little Critters Nursery.
+Type: Natural underground
+E: northeast 8515
+ES: northeast 1
+E: east 9176
+E: west 9177
+
+ROOM v9176
+Name: Jumpin' Joeys Playground.
+Type: Natural underground
+E: west 9175
+
+ROOM v9177
+Name: Quiet Cub Den.
+Type: Natural underground
+E: east 9175
 
 
 
@@ -21869,8 +21890,9 @@ ROOM v1753
 Name: Wooden landing upon an expansive river.
 Type: Underworld
 E: up 1712
-SPE: 5165 0 "" "await its departure."
+SPE: 5165 0 "" "step upon the ferry to await its departure."
 SPE: 5165 0 "" "its departure."
+SPE: -1 0 "" ""
 
 ROOM v1752
 Name: Open gate to an ethereal garden.
@@ -45415,6 +45437,7 @@ ES: west 1
 ROOM v9011
 Name: In a large rowboat.
 Type: Undefined
+SPE: 9012 0 "" "The ferry arrives at A subterranean dock and you disembark."
 
 
 
@@ -58754,6 +58777,8 @@ ROOM v9020
 Name: Impassable thicket before a cave.
 Type: Jungle
 E: north 9025
+E: east 9231
+ES: east 1
 E: west 9019
 
 ROOM v9021
@@ -58855,21 +58880,27 @@ E: northwest 9034
 ROOM v9034
 Name: Lost in the Llusian jungle.
 Type: Jungle
-DE: north
-DE: northeast
-DE: east
+E: north 9229
+ES: north 1
+E: northeast 9230
+E: east 9229
+ES: east 1
 E: southeast 9033
 E: south 9035
-DE: west
-DE: northwest
+ES: south 1
+E: west 9035
+E: northwest 9230
+ES: northwest 1
 
 ROOM v9035
 Name: Lost in the Llusian jungle.
 Type: Jungle
 E: north 9034
-DE: east
-DE: southeast
-DE: west
+ES: north 1
+E: east 9034
+E: southeast 9229
+ES: southeast 1
+E: west 9228
 
 ROOM v9036
 Name: Outside a fenced-in enclosure.
@@ -58946,7 +58977,8 @@ ROOM v9047
 Name: A gated perimeter fence.
 Type: Jungle
 E: southwest 9046
-DE: northwest
+E: northwest 9232
+ES: northwest 1
 
 ROOM v9048
 Name: Bordering a small embankment.
@@ -58985,6 +59017,103 @@ ROOM v9054
 Name: A deserted supply boat.
 Type: Beach
 E: east 9022
+
+ROOM v9228
+Name: Lost in the Llusian jungle.
+Type: Jungle
+E: east 9035
+E: southeast 9230
+ES: southeast 1
+E: south 9230
+ES: south 1
+E: west 9229
+E: northwest 9229
+ES: northwest 1
+
+ROOM v9229
+Name: Lost in the Llusian jungle.
+Type: Jungle
+E: north 9230
+ES: north 1
+E: east 9228
+E: southeast 9228
+ES: southeast 1
+E: south 9034
+ES: south 1
+E: west 9034
+ES: west 1
+E: northwest 9035
+ES: northwest 1
+
+ROOM v9230
+Name: Lost in the Llusian jungle.
+Type: Jungle
+E: north 9228
+ES: north 1
+E: southeast 9034
+ES: southeast 1
+E: south 9229
+ES: south 1
+E: southwest 9034
+E: northwest 9228
+ES: northwest 1
+
+ROOM v9231
+Name: A shallow cave.
+Type: Natural underground
+E: west 9020
+ES: west 1
+
+ROOM v9232
+Name: Wide clearing before a destroyed building.
+Type: Jungle
+E: north 9233
+E: southeast 9047
+ES: southeast 1
+
+ROOM v9233
+Name: Before the Llusian laboratory.
+Type: Jungle
+E: south 9232
+E: west 9234
+DE: in
+
+ROOM v9234
+Name: Path around lab.
+Type: Jungle
+E: east 9233
+E: west 9235
+
+ROOM v9235
+Name: Curved path.
+Type: Jungle
+E: east 9234
+E: northwest 9236
+
+ROOM v9236
+Name: Path around lab.
+Type: Jungle
+E: north 9237
+E: northeast 9239
+E: east 9238
+E: southeast 9235
+
+ROOM v9237
+Name: A large disposal pit.
+Type: Jungle
+E: south 9236
+
+ROOM v9238
+Name: Before a collapsed wall.
+Type: Jungle
+E: west 9236
+
+ROOM v9239
+Name: Shaded juncture.
+Type: Jungle
+DE: north
+DE: east
+E: southwest 9236
 
 
 
@@ -59500,6 +59629,531 @@ ROOM v9174
 Name: A crack in the frozen stone.
 Type: Natural underground
 E: out 9158
+
+
+
+AREA
+Name: Sands of Aetherius.
+
+ROOM v9178
+Name: A surging ocean of sand.
+Type: Desert
+E: northeast 9218
+E: east 9214
+EL: east 1
+E: west 9179
+
+ROOM v9179
+Name: A balmy, white-sand beach.
+Type: Beach
+E: north 9181
+EL: north 1
+EJ: north 1
+E: east 9178
+E: west 9180
+
+ROOM v9180
+Name: Upon the open sea.
+Type: Ocean
+E: east 9179
+
+ROOM v9188
+Name: Rolling, patchwork hills.
+Type: Grasslands
+E: northeast 9190
+E: east 9215
+EL: east 1
+E: south 9218
+E: northwest 9187
+EJ: northwest 1
+
+ROOM v9190
+Name: A swampy, moss-laden glade.
+Type: Swamp
+E: north 9191
+EJ: north 1
+E: southeast 9215
+E: southwest 9188
+E: northwest 9189
+
+ROOM v9213
+Name: An airy, tree-encircled clearing.
+Type: Forest
+E: north 9211
+EJ: north 1
+E: southwest 9214
+EL: southwest 1
+E: west 9215
+
+ROOM v9214
+Name: A rugged, sandy garden.
+Type: Desert
+E: northeast 9213
+EL: northeast 1
+E: west 9178
+EL: west 1
+E: northwest 9218
+E: down 9220
+DEL: in
+
+ROOM v9215
+Name: Bountiful flowering fields.
+Type: Grasslands
+E: east 9213
+E: west 9188
+EL: west 1
+E: northwest 9190
+
+ROOM v9218
+Name: Rocky fringes of a desert.
+Type: Desert
+E: north 9188
+E: southeast 9214
+E: southwest 9178
+
+ROOM v9220
+Name: A tortuous stone passageway.
+Type: Constructed underground
+E: north 9221
+EJ: north 1
+E: up 9214
+
+
+
+AREA
+Name: Redwood's Domain.
+
+ROOM v9181
+Name: Overlooking the leafy forests.
+Type: Mountains
+E: north 9186
+EL: north 1
+E: northeast 9187
+E: south 9179
+EL: south 1
+EJ: south 1
+E: west 9182
+
+ROOM v9182
+Name: In the shadow of a mountain.
+Type: Forest
+E: north 9184
+EL: north 1
+E: east 9181
+E: northwest 9183
+
+ROOM v9183
+Name: An exposed stretch of beach.
+Type: Beach
+E: northeast 9184
+E: southeast 9182
+
+ROOM v9184
+Name: Amidst a redwood grove.
+Type: Forest
+E: north 9193
+E: east 9186
+E: south 9182
+EL: south 1
+E: southwest 9183
+E: down 9223
+
+ROOM v9186
+Name: Above the tree line.
+Type: Mountains
+E: northeast 9192
+E: southeast 9187
+E: south 9181
+EL: south 1
+E: west 9184
+E: northwest 9193
+
+ROOM v9187
+Name: Edge of a misty forest.
+Type: Forest
+E: northeast 9189
+E: southeast 9188
+EJ: southeast 1
+E: southwest 9181
+E: northwest 9186
+
+ROOM v9189
+Name: In the midst of a lake.
+Type: Freshwater
+E: southeast 9190
+E: southwest 9187
+E: northwest 9192
+
+ROOM v9192
+Name: Beneath a forest canopy.
+Type: Forest
+E: east 9191
+E: southeast 9189
+E: southwest 9186
+E: west 9193
+EL: west 1
+
+ROOM v9193
+Name: In the depths of an immense jungle.
+Type: Jungle
+E: east 9192
+EL: east 1
+E: southeast 9186
+E: south 9184
+
+ROOM v9223
+Name: Rocky tunnel beneath the ground.
+Type: Constructed underground
+E: east 9221
+EJ: east 1
+E: up 9184
+
+
+
+AREA
+Name: Tranquil Mires.
+
+ROOM v9191
+Name: Inside a grand cavern.
+Type: Natural underground
+E: north 9197
+E: northeast 9198
+E: east 9196
+E: south 9190
+EJ: south 1
+E: west 9192
+
+ROOM v9196
+Name: A gently sloping, wooded valley.
+Type: Forest
+E: north 9198
+E: east 9202
+EL: east 1
+EJ: east 1
+E: southeast 9211
+EJ: southeast 1
+E: west 9191
+E: northwest 9197
+
+ROOM v9197
+Name: Copse of silvery birch.
+Type: Forest
+E: north 9199
+EL: north 1
+E: east 9198
+E: southeast 9196
+E: south 9191
+E: northwest 9225
+
+ROOM v9198
+Name: A fertile deciduous forest.
+Type: Forest
+E: east 9209
+EL: east 1
+EJ: east 1
+E: south 9196
+E: southwest 9191
+E: west 9197
+
+ROOM v9199
+Name: Shallows of a murky lake.
+Type: Freshwater
+E: south 9197
+EL: south 1
+E: southwest 9225
+E: west 9200
+EL: west 1
+
+ROOM v9200
+Name: A verdant, forested swamp.
+Type: Swamp
+E: east 9199
+EL: east 1
+E: southeast 9225
+E: down 9224
+
+ROOM v9221
+Name: Cramped cavern far beneath the surface.
+Type: Natural underground
+E: northeast 9222
+EJ: northeast 1
+E: south 9220
+EJ: south 1
+E: west 9223
+EJ: west 1
+E: northwest 9224
+
+ROOM v9224
+Name: A jagged underpass through rock.
+Type: Constructed underground
+E: southeast 9221
+E: up 9200
+
+ROOM v9225
+Name: A sodden bog teeming with life.
+Type: Swamp
+E: northeast 9199
+E: southeast 9197
+E: northwest 9200
+
+
+
+AREA
+Name: Frozen Reaches.
+
+ROOM v9202
+Name: An expansive sea of grass.
+Type: Grasslands
+E: north 9209
+E: northeast 9203
+E: east 9208
+E: southeast 9210
+E: southwest 9211
+E: west 9196
+EL: west 1
+EJ: west 1
+
+ROOM v9203
+Name: A precarious mountain alcove.
+Type: Mountains
+E: north 9207
+E: northeast 9204
+E: south 9208
+E: southwest 9202
+E: west 9209
+
+ROOM v9204
+Name: A wind-whipped tundra.
+Type: Tundra
+E: northeast 9205
+E: southeast 9206
+E: southwest 9203
+E: west 9207
+
+ROOM v9205
+Name: A dark forest touched by snow.
+Type: Dark Forest
+E: south 9206
+EL: south 1
+E: southwest 9204
+E: down 9222
+
+ROOM v9206
+Name: Beneath the black pines.
+Type: Dark Forest
+E: north 9205
+EL: north 1
+E: northwest 9204
+
+ROOM v9207
+Name: Woodland blanketed with ivy.
+Type: Forest
+E: east 9204
+E: south 9203
+
+ROOM v9208
+Name: Sprawling flatland dotted with lakes.
+Type: Freshwater
+E: north 9203
+E: south 9210
+E: west 9202
+E: northwest 9209
+
+ROOM v9209
+Name: Enclosed within stony ruins.
+Type: Grasslands
+E: east 9203
+E: southeast 9208
+E: south 9202
+E: west 9198
+EL: west 1
+EJ: west 1
+
+ROOM v9210
+Name: A dark pine thicket.
+Type: Forest
+E: north 9208
+E: west 9211
+EL: west 1
+E: northwest 9202
+
+ROOM v9211
+Name: In the shadow of black mountains.
+Type: Mountains
+E: northeast 9202
+E: east 9210
+EL: east 1
+E: south 9213
+EJ: south 1
+E: northwest 9196
+EJ: northwest 1
+
+ROOM v9222
+Name: A downward slanted granite shaft.
+Type: Constructed underground
+E: southwest 9221
+EJ: southwest 1
+E: up 9205
+
+
+
+AREA
+Name: Kipos Commune.
+
+ROOM v9240
+Name: Inside the base of a tower.
+Type: Mountains
+E: southeast 9243
+E: south 9250
+E: southwest 9245
+E: up 9241
+E: down 1373
+E: in 9248
+
+ROOM v9241
+Name: A simply furnished chamber.
+Type: Mountains
+E: up 9242
+E: down 9240
+
+ROOM v9242
+Name: Atop a lookout tower.
+Type: Mountains
+E: down 9241
+
+ROOM v9243
+Name: A pebbled path.
+Type: Mountains
+E: east 9244
+E: northwest 9240
+
+ROOM v9244
+Name: Inside a small hut.
+Type: Mountains
+E: southeast 9249
+E: west 9243
+
+ROOM v9245
+Name: A path of pebbles.
+Type: Mountains
+E: northeast 9240
+E: west 9246
+
+ROOM v9246
+Name: A sparsely furnished dwelling.
+Type: Mountains
+E: east 9245
+E: southwest 9247
+
+ROOM v9247
+Name: A garden of flowers and herbs.
+Type: Garden
+E: northeast 9246
+
+ROOM v9248
+Name: An underground storage room.
+Type: Mountains
+E: out 9240
+
+ROOM v9249
+Name: Beside a water garden.
+Type: Garden
+E: northwest 9244
+
+ROOM v9250
+Name: A square of descending terraces.
+Type: Mountains
+E: north 9240
+E: south 9251
+E: down 9265
+
+ROOM v9251
+Name: Inside the hut of the Master Gardener.
+Type: Mountains
+E: north 9250
+E: southeast 9254
+E: south 9252
+
+ROOM v9252
+Name: A path of loose stones.
+Type: Garden
+E: north 9251
+E: southeast 9253
+
+ROOM v9253
+Name: A gazebo of mossy timber.
+Type: Garden
+E: northwest 9252
+
+ROOM v9254
+Name: A pebbled path before a bridge.
+Type: Garden
+E: southeast 9255
+E: northwest 9251
+E: down 9264
+
+ROOM v9255
+Name: Atop a stone bridge.
+Type: Garden
+E: east 9256
+E: northwest 9254
+
+ROOM v9256
+Name: Among the irises.
+Type: Garden
+E: southeast 9257
+E: west 9255
+
+ROOM v9257
+Name: Beside a lantern of mossy stone.
+Type: Garden
+E: southwest 9258
+E: northwest 9256
+
+ROOM v9258
+Name: By a quiet pond.
+Type: Garden
+E: northeast 9257
+E: south 9260
+E: northwest 9259
+
+ROOM v9259
+Name: Amid the calm waters of a small pond.
+Type: Freshwater
+E: southeast 9258
+
+ROOM v9260
+Name: A garden of arranged stone and greens.
+Type: Garden
+E: north 9258
+E: up 9261
+
+ROOM v9261
+Name: An ascending mountain path.
+Type: Garden
+E: up 9262
+E: down 9260
+
+ROOM v9262
+Name: Nearing a hot spring.
+Type: Garden
+E: east 9263
+E: down 9261
+
+ROOM v9263
+Name: Amid the waters of a hot spring.
+Type: Freshwater
+E: west 9262
+
+ROOM v9264
+Name: Beside a winding brook.
+Type: Garden
+E: up 9254
+
+ROOM v9265
+Name: A cave beneath the commune.
+Type: Natural underground
+E: up 9250
 
 
 
