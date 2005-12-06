@@ -22,8 +22,512 @@ All empty lines at the beginning and end of the file are removed completely.
 For information on how to use colours, type "mhelp colours".
 
 : "Help Index" index
+#^WTable of Contents
+#=================^x
 
-This is the index! Or will be.
+^C Introduction^x
+^C IMTS^x
+^C Installing^x
+^C MudBot ^x
+^c   MudBot Concepts^x
+^c   Commands^x
+^c   Editor^x
+^C IMapper^x
+^c   Mapper Concepts^x
+^c   Command Abbreviation^x
+^c   Map Commands^x
+^c   Room Commands^x
+^c   Area Commands^x
+^c   Exit Commands^x
+^c   Automapping^x
+^C Voter^x
+^c   Voting^x
+^c   Advanced Options^x
+^C Healer^x
+^c   Trigger Level^x
+
+: "IMapper > Mapper Concepts" "mapper concepts" mapperconcepts "imapper concepts"
+#^WTable of Contents
+#=================^x
+
+^C IMapper^x
+^c   Mapper Concepts^x
+^m     Description
+     Current room
+     Virtual numbers
+     Map generator
+     Pathfinder
+     Speedwalker
+     Automapper^x
+
+: "Introduction"
+
+^C Introduction^x
+^c--------------^x
+
+The MHELP system should be easy enough to use. Just know that file names are
+case insensitive, don't bother with uppercase letters.
+
+Note that the mhelp files aren't even began, let alone finished. Everything
+here is just old stuff I found. I dumped everything here. Not anything useful
+yet, sorry!
+
+Thanks, hugs, and smooches for setting this up go to Gelf. :)
+
+: "IMTS"
+
+^C IMTS^x
+^c------^x
+
+IMTS stands for Imperian Modularized Trigger System. MudBot together with all
+modules, form IMTS.
+
+The current parts of IMTS are as follow:
+
+^CMudBot^x (Files: ^cmb-core.exe^x, ^cconfig.txt^x)
+The only executable, MudBot is the core engine that handles all networking,
+and is responsible for loading/unloading modules and passing information to
+or from them. MudBot by itself, without any modules, simply acts as a proxy.
+
+^CIMapper^x (Files: ^ci_mapper.dll^x, ^cIMap^x, ^cconfig.mapper.txt^x)
+Text-based automapper, pathfinder and speedwalker. Main usage, it will walk
+for you whereever you wish, and ease locating players, rooms, or areas.
+
+^CVoter^x (Files: ^cvoter.dll^x)
+It simply does all the hassle in a single command.
+
+^CMMChat^x (Files: ^cmmchat.dll^x)
+Client for the MudMaster Chat protocol. Useless for Windows users, they have
+zChat or Mm2k, but Linux users like me have nothing.
+
+^CImperian^x (Files: ^cimperian.dll^x, ^cdata^x, ^coptions^x)
+^WMy^x system that ^WI^x built for ^Wme^x. If you can figure it out by yourself, you're
+free to use and even expand it.
+
+^CIOffense^x (Files: ^ci_offense.dll^x, ^ccharacters^x, ^c*.is^x)
+My personal playground for various things that only I use. Mostly has
+monk-specific stuff in it, though I'm turning it into a script parser, with
+my own C-like scripting language. Nothing here is finished.
+
+: "mhelp installing" Installing
+
+^C Installing^x
+^c------------^x
+
+Installing another module:
+
+- Copy all its files in the same directory as MudBot.
+- Open config.txt, and uncomment or add the module.
+- If MudBot is already running, use `load file_name.dll to load it.
+
+Note: To comment/uncomment either add or delete # from the beginning of the 
+line. Every line this begins with # will be completely ignored.
+
+: "MudBot""
+
+^C MudBot^x
+^c--------^x
+
+^D(file not finished)^x
+
+: "MudBot > Concepts" "mudbot concepts" MudbotConcepts
+
+^C Concepts^x
+^c----------^x
+
+The core, named MudBot, begins listening for connections on port 123. Once a MUD 
+client is connected, it will ask the client where to connect to, and once the 
+client sends the 'connect' command, MudBot will connect to the MUD server. This 
+allows MudBot to be the "man-in-the-middle", a proxy that intercepts, examines 
+and may modify the connection data that passes through.
+
+To support MCCP, the Mud Client Compression Protocol, MudBot hides the 
+compression request sequence that comes from the server, and handles the 
+negotiation with the server itself. The server will then send compressed data, 
+MudBot will decompress it, proceed to examine/modify it, and then send it 
+uncompressed to the client. Compressed data -must- be uncompressed by MudBot, 
+otherwise it won't understand anything from it, nor would it be able to send data 
+to the client.
+
+To support ATCP, the Achaea Telnet Communication Protocol, MudBot will handle the 
+negotiation itself, logging in as either MudBot or JavaClient. Once logged in, 
+the server will send various extra information, such as character's name and 
+title, current and maximum health/mana/end/will values, the contents of a scroll 
+when editing it, etc.
+
+MudBot is able to load and unload modules on the fly, at the user's request. The 
+'modules.txt' or 'config.txt' file contains modules that will be loaded each time 
+MudBot starts. Right after being loaded, MudBot will request information on what 
+functions the core should call from the module. If this fails, the module will be 
+unloaded.
+
+A module, once loaded, will be able to add text before or after a line/prompt is 
+displayed, to gag a line or prompt, to replace the prompt, to prevent client 
+commands from being sent to the MUD server, and to send its own commands.
+
+: "MudBot > Commands" commands "mudbot commands"
+
+^C MB Commands^x
+^c-------------^x
+
+All commands need to be sent through the MUD client, once it’s connected to 
+MudBot, and MudBot successfully connected to a MUD server. All commands begin 
+with the ` character (not ', the one most likely below your esc key).
+
+^c`help^x - Will send a brief description of each command in MudBot to the client.
+
+^c`reboot^x - Available only on UNIX systems, this will restart the 
+ application while keeping all connections alive. Useful mainly for developers, to 
+ load the changes without closing MudBot, and also in case MudBot crashes and the 
+ connection was successfully kept alive after the crash.
+
+^c`disconnect^x - Closes the connection to the MUD server. Once disconnected, MudBot 
+ will not understand any commands except "connect <hostname> <port>".
+
+^c`mccp start^x - Requires zlib.dll present and MCCP support enabled. This will 
+ attempt to begin data compression with the MUD server. If successful, data sent 
+ by the MUD server will be compressed, and MudBot will decompress it. Saves 
+ bandwidth traffic, at the expense of more CPU usage.
+
+^c`mccp stop^x - Send the 'IAC DONT COMPRESS2' sequence to the MUD server. If 
+ compression was started, the server will cleanly close it, and data will be sent 
+ normally.
+
+^c`atcp^x - Displays some information gathered through the Achaea Telnet 
+ Communication Protocol, if it successfully logged in.
+
+^c`mods^x - Lists all loaded or built-in modules and their version.
+
+^c`load^x - Attempts to load a module. Syntax: `load file_name. (Example: ^c`load 
+ ./my_module.dll^x)
+
+^c`unload^x - Unload a module. This is impossible if the module is built in. This 
+ will also allow the file to be moved/replaced on Windows systems. Syntax: `unload 
+ module_name. (Example: ^c`unload MyModule^x)
+
+^c`reload^x - Unload and load module. This will completely reset the module. Useful 
+ on non-Windows systems, to quickly load the changes after replacing the file. On 
+ Windows, the module must first be unloaded before it can be replaced, making this 
+ command useless.
+
+^c`timers^x - List the names of all registered timers that have not yet fired, and 
+ how many seconds are left until they fire.
+
+^c`descriptors^x - List all registered TCP/IP connections, and what flags they have 
+ set. In: The module will be notified each time data is received. Out: The module 
+ will be notified when the connection was successful if it was made non-blocking, 
+ then each time data can be sent. Exc: Notifies the module each time an error 
+ occurs (Exception Raised), and the connection must be forced to close.
+
+^c`status^x - Show some MCCP/ATCP/etc information.
+
+^c`echo^x - Process a line as if it came from the MUD server, passing it through all 
+ the loaded modules. The '$' symbol will be turned into a new line. Syntax: `echo
+ text. (Example: ^c`echo Your body stiffens rapidly with paralysis.^x)
+
+^c`edit^x - (Windows only) Open the Editor window, mainly useful for writing scrolls 
+ before opening the MUD's editor. (Once having entered editor you may `edit which 
+ brings up the editor window. From there you may copy/paste text and simply go to 
+ 'send' and then 'To MUDS's Composer', which will send all information in that 
+ window over onto the editor. From there you can clear and close it for a clean 
+ window when next entering it.)
+
+^c`license^x - Show the GNU General Public License notice.
+
+^c`quit^x - Closes all connections, and exit MudBot for good.
+
+: "Editor" "mudbot editor"
+
+MudBot's scroll editor is an idea taken from JavaClient/Nexus.
+
+Type `edit to bring it up, and experiment with the menus.
+
+Send -> As User Commands - Will send the text to Imperian as if the user typed each
+line in the input box.
+
+Send -> To MUD's Composer - Will send the text through ATCP to Imperian's internal
+editor. This has no effect if you're not editing a letter, orghelp scroll, etc.
+
+^D(file not finished)^x
+
+: "IMapper" mapper
+
+See ^cIMapper Concepts^x.
+
+^D(file not finished)^x
+
+: "IMapper > Mapper Concepts > Description" Description
+
+^C Description^x
+^c-------------^x
+
+^D(file not finished)^x
+
+: "IMapper > Mapper Concepts > Current room" "current room" Currentroom
+
+^C Current Room^x
+^c--------------^x
+
+The mapper always needs to know where the user is. When the user sends a 'look' 
+or movement command, that command is added in the mapper's command queue. If the 
+command queue is not empty, and a line of a corresponding colour is received, 
+the mapper will treat it as a Room Title. If the mapper already knows where the 
+user is, it will attempt to match the current room with the new Room Title, and 
+if that fails, it sends "(lost)" to the client and enters the "get unlost" mode. 
+In this mode, the client will attempt to match the Room Title with all rooms in 
+its database. If more rooms of that name are found, it will use the room's exits 
+to narrow down the choices. If it successfully found itself, the area name will
+be shown to the user.
+
+: "IMapper > Mapper Concepts > Virtual numbers" "virtual numbers" virtualnumbers
+
+^C Virtual Numbers^x
+^c-----------------^x
+
+A virtual number, commonly known among MUDs as a 'vnum', is a unique number 
+assigned to a room, to allow the user a way to specify a room. The numbers have 
+nothing to do with the way the room database is stored, they can even be random 
+numbers. In IMapper's case, it numbers the rooms in an ascending order as they 
+were mapped.
+
+: "IMapper > Mapper Concepts > Map Generator" "map generator" mapgenerator
+
+^C Map Generator^x
+^c---------------^x
+
+The map generator will "draw" a map of the current area (or however much fits) 
+from the current room. The mapper does not store absolute positions of the rooms 
+(this room is at pos. 242x123), but instead stores relative positions (this room 
+is east of this room), therefore a map must be generated each time the user 
+requests one.
+
+- Room colours represent the environment type (^DUrban^x, ^gForest^x, etc) from Survey.
+
+- ^WBright white^x exits lead to a different area.
+- ^RRed^x exits have something behind them, but the user chose to hide it because
+  it may not fit on a generated map. ("exit stop")
+- ^BBlue^x exits show the path to the destination set via "map path".
+- ^DDark^x exits are unlinked, and need to be mapped.
+- Longer exits mean nothing. They're longer just so rooms won't overlap on a   
+   generated map. ("exit length <nr>")
+
+: "IMapper > Mapper Concepts > Pathfinder" "path finder" pathfinder
+
+^C Pathfinder^x
+^c------------^x
+
+Most pathfinders will try to find the shortest route from a source to a 
+destination. Contrary to popular belief, the IMapper will instead build paths 
+from the destination, in reverse, to every other room in the world. This is a 
+much slower algorithm, but once the directions are built, the destination does 
+not need to be set again, as the source is always irrelevant to this pathfinder.
+
+Multiple vnums can be used with the path finder. This will make the speedwalker 
+go to the nearest vnum from the current room.
+
+: "IMapper > Mapper Concepts > Speedwalker" "speed walker" speedwalker
+
+^C Speedwalker^x
+^c-------------^x
+
+Once the pathfinder is called, each room in the world will contain the direction 
+that leads the user a bit closer to the destination, if such a direction exists. 
+
+The speedwalker, once enabled, will attempt to go in this direction each time the 
+Current Room changes. It does not wait. This makes you receive a lot of 'Don't be 
+so hasty' messages, but it speedwalks at the highest possible speed that your 
+skills and Internet connection can provide. All 'Don't be so hasty' messages are 
+gagged if and only if speedwalking is enabled.
+
+Because the Current Room is always irrelevant to the pathfinder, it never needs 
+to be re-called on the same destination, even if the user moves (or is moved) 
+manually to a completely different place. Simply start speedwalking again, from 
+wherever you are.
+
+If the user has the ability 'dash' or 'sprint', the speedwalker can make use of 
+them. The commands are "go dash" and "go sprint" instead of "go".
+
+The "stop" command, which stops the speedwalker, will override the MUD's "stop" 
+command only if speedwalking is enabled. Otherwise, the command will be sent to 
+the MUD server.
+
+: "IMapper > Mapper Concepts > Automapper" automapper
+
+^C Automapper^x
+^c------------^x
+
+The mapper can be in three modes: Disabled, Following, or Mapping. In the default 
+mode, Following, the mapper will always try to find itself on the map. If Mapping 
+mode, any look or movement commands will change/update the map, and all mapping 
+commands are enabled. To create a room, mapping must be enabled, and the user 
+needs to simply walk in a direction. To update an existing room's name, such as a 
+shop, the user must simply walk in it while mapping is on. To link a room to 
+another existing room, the destination room's vnum must be specified, then the 
+user has to walk into that room. Therefore, if the user cannot move, the user 
+cannot map.
+
+: "IMapper > Command Abbreviation" "command abbreviation" commandabbreviation
+
+^C General^x
+^c---------^x
+
+With very few exceptions, all mapper commands begin with one of the four base 
+commands: "map", "area", "room" or "exit". Each base command has the "help" 
+subcommand, which lists all other available subcommands ("map help", "area help", 
+etc).
+
+The base command can be abbreviated using its first letter in uppercase, or its 
+first letter in lowercase followed by a space. The subcommand can be abbreviated 
+using its first few letters in lowercase. As an example, valid ways to use the 
+
+"map path 103" command can be:
+ - "map path 103"
+ - "m path 103"
+ - "m pat 103"
+ - "m p 103"
+ - "Mpat 103"
+ - "Mp 103"
+
+As an exception, the "exit link 103" command can be abbreviated to "E103" (and 
+NOT "E 103" or "El 103").
+
+: "IMapper > Map Commands" "map commands" Mapcommands
+
+^C Map Commands^x
+^c--------------^x
+
+ map load           - Loads the map from when you'd last saved it.
+ map save           - Saves your current map.
+ map none           - Disables following or mapping.
+ map follow         - Enables following.
+ map create         - Enables mapping.
+ map remake         - Remakes vnums.
+ map path #         - Builds directions to desired destination.
+ map status         - Shows general information about the map.
+ map color          - Changes the color of the room title.
+ map file           - Sets the file for the map load and map save options.
+ map teleport       - Manages global special exits.
+ map queue          - Shows the command queue.
+ map queue clear    - Clears the command queue.
+ map config         - Configures the mapper.
+ map window         - Opens a floating MXP-based window.
+ map                - Generates a map, from the current room.
+ map #              - Generates a map centered on vnum #.
+ landmarks          - Shows all the landmarks in the world.
+ go/stop            - Begins or stops speedwalking.
+
+^D(file not finished - more details needed)^x
+
+: "IMapper > Room Commands" "room commands" Roomcommands
+
+^C Room Commands^x
+^c---------------^x
+
+ room switch        - Switches current room to another vnum.
+ room create        - Creates a new room and switches to it.
+ room look          - Shows info on the room you're standing in.
+ room info          - Lists all rooms that weren't properly mapped.
+ room find          - Finds rooms that contain a particular word of your                                                       choosing.
+ room destroy       - Unlinks and destroys a room.
+ room list          - Lists all rooms in the current area.
+ room underw        - Sets the room as Underwater.
+ room mark          - Sets or clears a landmark on a vnum, or current room.
+ room types         - Lists all known room types.
+ room merge         - Combines two identical rooms into one.
+
+^D(file not finished - more details needed)^x
+
+: "IMapper > Area Commands" "area commands" Areacommands
+
+^C Area commands^x
+^c---------------^x
+
+ area create        - Create a new area, and switch to it.
+ area list          - Lists all areas.
+ area switch        - Switches the area of the current room.
+ area update        - Updates current area's name.
+ area info          - Shows information about current area.
+ area off           - Disables pathfinding in the current area.
+ area orig          - Checks the originality of the area.
+
+^D(file not finished - more details needed)^x
+
+: "IMapper > Exit Commands" "exit commands" Exitcommands
+
+^C Exit Commands^x
+^c---------------^x
+
+ exit link          - Links room # to your current one.
+ exit stop          - Stop mapping from this exit.
+ exit length        - Increases the exit length by #.
+ exit map           - Maps the next exit elsewhere.
+ exit lock          - Sets all unlinked exits in current room as locked.
+ exit unilink       - Links, but does not create a reverse link.
+ exit destroy       - Destroys an exit, and its reverse.
+ exit special       - Creates/lists/modifies special exits.
+
+^D(file not finished - more details needed)^x
+
+: "IMapper > Mapper Concepts > Automapping" Automapping
+
+^C Automapping^x
+^c-------------^x
+
+To map a new area you must first stand in the room BEFORE the new area, a room
+that the mapper recognises. Once there, "map create" will enable mapping. Move
+forward into the area. Be sure though before you start mapping to walk through
+the area looking for looping rooms and other such hassles. Whilst mapping, type
+'survey' so it picks up the environment type and area name. Use "exit stop" and
+"exit length" to prevent overlapping rooms. Use "exit link <vnum>" or "E<vnum>"
+to link the current room to another, instead of creating a new room in that
+direction.
+
+In case of a mistake, you can go back and "room destroy" the room, or "exit
+destroy" a link. In mapping mode, it will not try to find itself. Use "room
+switch <vnum>" if the current room is invalid. "area info" and "room info"
+will inform you of anything left unmapped.
+
+To disable automapping, type "map follow". If everything looks right, "map
+save" will make the changes permanent. If it doesn't, "map load" will revert
+to the previous save. Save/load often during mapping.
+
+^D(file not finished)^x
+
+: "Voter"
+
+^D(file not finished)^x
+
+: "Voter > Voting" voting
+
+Type "vote". Often.
+
+^D(file not finished)^x
+
+: "Voter > Advanced Options" "advanced options" advancedoptions
+
+"vote help" and "vote extrahelp".
+
+^D(file not finished)^x
+
+: "Healer"
+
+Edit the 'options' and 'data' files. Also read over `help.
+
+Figure it out yourself, if you wish to use it.
+
+^D(file not finished)^x
+
+: "Healer > Trigger Level" "Trigger Level" triggerlevel
+
+The trigger level is switched with the `s<nr> command.
+
+^c`s0^x - All curing disabled.
+
+^c`s1^x - Only commands that don't have a 3rd person message are sent.
+
+^c`s2^x - ^WDefault level^x. Sends only commands that don't waste herbs/elixirs.
+
+^c`s3^x - Full autocuring.
 
 : "Colours" colors colour color
 
@@ -49,8 +553,10 @@ Bright:
   ^^M = ^MMagenta^x
   ^^C = ^CCyan^x
   ^^W = ^WWhite^x
+  ^^D = ^DDark^x
 
   ^^x = Reset back to normal
   ^^^^ = ^^
+
 
 : end
