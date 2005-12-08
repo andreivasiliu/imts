@@ -1,4 +1,4 @@
-IMTS-unstable
+IMTS-6
 =============
 
 (MudBot:)
@@ -36,7 +36,7 @@ IMTS-unstable
 (IOffense:)
 - Pcre.dll added with the Windows package, and linked statically within
   the module in the Linux/Mac packages.
-- Script block/statement parser added, that supports...
+- Script block/statement parser added, that so far supports...
 - C-like comments and spacing, functions, local/global variables, argument
   passing, return values, function call stack allowing recursivity,
   comparison and concatenating of variables, if/else, and/or/negation.
