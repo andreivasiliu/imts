@@ -1332,6 +1332,7 @@ ROOM v1457
 Name: Deep in the Elmwood.
 Type: Forest
 E: north 1456
+E: northeast 9266
 E: east 1474
 E: west 1453
 
@@ -58239,6 +58240,7 @@ ROOM v8920
 Name: Outside the mother.
 Type: Dark Forest
 E: west 8902
+SPE: 9303 0 "say lira" "and into the interior of the tree."
 
 ROOM v8921
 Name: A dark chamber beneath the earth.
@@ -58281,6 +58283,78 @@ ROOM v8930
 Name: Inside a nymph tree.
 Type: Dark Forest
 E: out 8891
+
+ROOM v9303
+Name: Inside the Mother of Ithaqua.
+Type: Village
+E: west 8920
+E: up 9304
+
+ROOM v9304
+Name: A stairway inside the Mother.
+Type: Village
+E: up 9305
+E: down 9303
+
+ROOM v9305
+Name: A stairway inside the Mother.
+Type: Village
+E: up 9306
+E: down 9304
+
+ROOM v9306
+Name: A living bole.
+Type: Village
+E: east 9307
+E: down 9305
+
+ROOM v9307
+Name: A carved chamber of wood.
+Type: Village
+E: east 9308
+E: west 9306
+E: up 9309
+
+ROOM v9308
+Name: Balcony overlooking the Ithaqua.
+Type: Village
+E: west 9307
+
+ROOM v9309
+Name: A guarded stair.
+Type: Village
+E: up 9310
+E: down 9307
+
+ROOM v9310
+Name: A living foyer.
+Type: Village
+E: west 9311
+E: down 9309
+
+ROOM v9311
+Name: A meditation room.
+Type: Village
+E: east 9310
+E: up 9312
+
+ROOM v9312
+Name: A rope ladder inside a tree.
+Type: Village
+E: up 9313
+E: down 9311
+
+ROOM v9313
+Name: Before a sanctuary inside the Mother.
+Type: Village
+E: east 9314
+E: down 9312
+DEL: in
+
+ROOM v9314
+Name: The sanctity chamber.
+Type: Village
+E: west 9313
 
 
 
@@ -60154,6 +60228,246 @@ ROOM v9265
 Name: A cave beneath the commune.
 Type: Natural underground
 E: up 9250
+
+
+
+AREA
+Name: Valley of Dakker.
+
+ROOM v9266
+Name: Along a path beside a fell tree.
+Type: Village
+E: north 9277
+E: northeast 9275
+E: east 9267
+E: southwest 1457
+
+ROOM v9267
+Name: A path around the village square.
+Type: Village
+E: east 9268
+E: west 9266
+
+ROOM v9268
+Name: A simple path around the village square.
+Type: Village
+E: north 9269
+E: west 9267
+E: northwest 9275
+
+ROOM v9269
+Name: A well-trodden path lined with footstones.
+Type: Village
+E: north 9270
+E: northeast 9271
+E: south 9268
+
+ROOM v9270
+Name: Just south of the valley fields.
+Type: Village
+E: north 9272
+E: east 9271
+E: south 9269
+E: southwest 9275
+E: west 9274
+
+ROOM v9271
+Name: A nondescript path by the village jail.
+Type: Village
+E: southwest 9269
+E: west 9270
+E: in 9294
+
+ROOM v9272
+Name: A cultivated plot of land.
+Type: Farmland
+E: north 9291
+E: south 9270
+E: west 9273
+
+ROOM v9273
+Name: Amidst the fields of Dakker.
+Type: Farmland
+E: north 9290
+E: northeast 9291
+E: east 9272
+E: south 9274
+E: west 9288
+E: northwest 9289
+
+ROOM v9274
+Name: Nearing the community fields.
+Type: Village
+E: north 9273
+E: east 9270
+E: west 9276
+
+ROOM v9275
+Name: The village square.
+Type: Village
+E: northeast 9270
+E: southeast 9268
+E: southwest 9266
+E: northwest 9276
+
+ROOM v9276
+Name: Near a compost hole off the path.
+Type: Village
+E: north 9288
+E: east 9274
+E: southeast 9275
+E: south 9277
+E: down 9302
+
+ROOM v9277
+Name: Before a weathered cairn stone.
+Type: Village
+E: north 9276
+E: south 9266
+E: west 9278
+
+ROOM v9278
+Name: Strolling a garden path.
+Type: Village
+E: north 9284
+E: east 9277
+E: south 9279
+E: west 9281
+
+ROOM v9279
+Name: A community garden.
+Type: Village
+E: north 9278
+E: west 9280
+
+ROOM v9280
+Name: A cozy abode of mud and stone.
+Type: Village
+E: east 9279
+E: down 9287
+E: out 9281
+
+ROOM v9281
+Name: Amidst the village abodes.
+Type: Village
+E: east 9278
+E: down 9282
+E: in 9280
+
+ROOM v9282
+Name: A small but well-lit front room.
+Type: Village
+E: up 9281
+E: down 9283
+E: out 9284
+
+ROOM v9283
+Name: A cramped bedroom.
+Type: Village
+E: up 9282
+
+ROOM v9284
+Name: A community garden.
+Type: Village
+E: south 9278
+E: in 9282
+
+ROOM v9287
+Name: An earthen bedroom.
+Type: Village
+E: up 9280
+
+ROOM v9288
+Name: Looking out over a stretch of farmland.
+Type: Farmland
+E: north 9289
+E: east 9273
+E: south 9276
+
+ROOM v9289
+Name: A far corner of farmland.
+Type: Farmland
+E: east 9290
+E: southeast 9273
+E: south 9288
+
+ROOM v9290
+Name: Near a scarecrow in the fields.
+Type: Farmland
+E: east 9291
+E: south 9273
+E: west 9289
+
+ROOM v9291
+Name: Wandering the fields in the northern valley.
+Type: Farmland
+E: south 9272
+E: southwest 9273
+E: west 9290
+E: in 9292
+
+ROOM v9292
+Name: The storehouse off the fields.
+Type: Village
+E: down 9293
+E: out 9291
+
+ROOM v9293
+Name: A room full of barrels and drying crops.
+Type: Village
+E: up 9292
+
+ROOM v9294
+Name: A quiet anteroom.
+Type: Village
+E: north 9295
+E: south 9300
+E: out 9271
+
+ROOM v9295
+Name: A dimly-lit hall.
+Type: Village
+E: north 9296
+E: south 9294
+
+ROOM v9296
+Name: At the end of a dim hallway.
+Type: Village
+E: northeast 9298
+E: east 9297
+E: south 9295
+E: down 9299
+
+ROOM v9297
+Name: Within a paper cluttered room lined with stalls.
+Type: Village
+E: west 9296
+
+ROOM v9298
+Name: The office of the Chieftain.
+Type: Village
+E: southwest 9296
+
+ROOM v9299
+Name: Within a scribe's antechambers.
+Type: Village
+E: up 9296
+
+ROOM v9300
+Name: Main room of the Dakker village jail.
+Type: Village
+E: north 9294
+E: in 9301
+
+ROOM v9301
+Name: A cramped jail cell.
+Type: Village
+E: out 9300
+
+ROOM v9302
+Name: A foul smelling compost hole.
+Type: Village
+E: up 9276
 
 
 
