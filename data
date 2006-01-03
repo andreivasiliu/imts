@@ -941,6 +941,8 @@ A "something"           n/a n/a n/a            no  no   n/a          "---"
 # Defences.
 #D defence "blindness" X needherb takeherb A "eat hyssop" L 3
 #D defence "deafness" X needherb takeherb A "eat juniper" L 3
+D defence "affinity" X needy takebalance A "bond wyvern;embrace spirit" L 2
+D defence "barkskin" X needy takebalance standing A "barkskin" L 2
 D defence "blindness" X A "blind" notimer
 D defence "deafness" X A "deaf" notimer
 D defence "breakfall" X needy standing
@@ -948,12 +950,12 @@ D defence "weathering" X
 D defence "toughness" X
 D defence "vitality" X needy takebalance L 2
 D defence "cloak" X needy takebalance A "touch cloak" L 3
-#D defence "third eye" X needherb A "eat primrose" L 3
-D defence "third eye" X A "thirdeye" L 1
+D defence "third eye" X needherb A "eat primrose" L 3
+#D defence "third eye" X A "thirdeye" L 1
 D defence "heightened speed" X A "drink speed" L 3 notimer
 D defence "regeneration" X A "regeneration on"
-#D defence "insomnia" X needherb A "eat violet" L 3
-D defence "insomnia" X L 2
+D defence "insomnia" X needherb A "eat violet" L 3
+#D defence "insomnia" X L 2
 D defence "owl" X takebalance A "touch owl" L 3
 D defence "quince" X needherb A "eat quince" L 3
 D defence "fenugreek" X A "apply fenugreek" L 3 notimer
@@ -973,7 +975,8 @@ D defence "selfishness" X needy takebalance L 2
 D defence "body block" X needy takebalance A "bdb"
 D defence "evading" X needy takebalance A "evb"
 D defence "pinch block" X needy takebalance A "pnb"
-D defence "deathsight" X takebalance needy L 2
+#D defence "deathsight" X takebalance needy L 2
+D defence "deathsight" X needherb A "eat linseed" L 3
 D defence "splitting" X needy takebalance A "split mind" L 1
 D defence "fitness" X needy takebalance L 2
 D defence "resistance" X
@@ -1008,6 +1011,14 @@ D defence "hypersight" X needy takebalance A "hypersight on" L 2
 
 
 # Defence triggers.
+
+# Barkskin.
+"You concentrate for a moment, and your skin becomes rough and thick like tree " special defense barkskin give
+"Your skin is hard and tough like the bark of an oak tree." special defence barkskin give X C
+
+# Affinity.
+"You embrace the spirit that dwells within you and are overcome with the joy of " special defence affinity give
+"You have a great affinity with your spirit form." special defence affinity give X C
 
 # Blindness.
 "You are blind." special defence blindness give X C
