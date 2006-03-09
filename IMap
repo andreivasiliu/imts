@@ -2755,7 +2755,7 @@ Name: A dark cool cave.
 Type: Undefined
 E: out 705
 UE: out west
-SPE: 707 11 "hug statue" "You are engulfed in a cloud of Taekyon energies."
+SPE: 707 11 "taekyonbow statue" "You are engulfed in a cloud of Taekyon energies."
 
 ROOM v705
 Name: Ibex walkway.
@@ -8192,8 +8192,8 @@ E: west 1266
 E: northwest 1267
 
 ROOM v1267
-Name: Deep Valley.
-Type: Valley
+Name: A deep valley road.
+Type: Road
 E: northeast 1269
 E: east 8157
 E: southeast 1268
@@ -8264,8 +8264,8 @@ E: southwest 1257
 E: west 1260
 
 ROOM v1258
-Name: Modin Plains.
-Type: Valley
+Name: A narrow stretch of road through the plains.
+Type: Road
 E: north 1259
 E: east 1267
 E: southwest 1261
@@ -8273,8 +8273,8 @@ E: west 1257
 E: northwest 1260
 
 ROOM v1257
-Name: Modin Plains.
-Type: Valley
+Name: A fork in the road.
+Type: Road
 E: north 1260
 E: northeast 1259
 E: east 1258
@@ -8290,15 +8290,15 @@ E: east 1257
 E: southeast 1261
 
 ROOM v1255
-Name: Modin Plains.
+Name: An open road cutting through the plains.
 Type: Valley
 E: north 1254
 E: southeast 1257
 E: south 1256
 
 ROOM v1254
-Name: Modin valley meadow.
-Type: Valley
+Name: A shadowed valley roadway.
+Type: Road
 E: north 858
 E: south 1255
 E: west 1253
@@ -8418,16 +8418,16 @@ E: southwest 867
 E: northwest 862
 
 ROOM v860
-Name: Meadows east of Ederith.
-Type: Valley
+Name: A meadow road east of the Ederith.
+Type: Road
 E: north 249
 EL: north 1
 E: south 859
 E: west 861
 
 ROOM v859
-Name: Modin valley meadow.
-Type: Valley
+Name: Meandering road within Modin Valley.
+Type: Road
 E: north 860
 E: east 858
 E: southeast 1254
@@ -17354,8 +17354,8 @@ E: west 237
 E: in 2819
 
 ROOM v1379
-Name: Windy peak.
-Type: Mountains
+Name: A road cut deep into a windy peak.
+Type: Road
 E: north 3149
 ES: north 1
 E: northeast 1381
@@ -17441,8 +17441,8 @@ E: out 3146
 UE: out west
 
 ROOM v3146
-Name: Ledge with a panoramic view.
-Type: Mountains
+Name: Panoramic view alongside a road.
+Type: Road
 E: north 3145
 E: northeast 3144
 E: down 1362
@@ -17450,8 +17450,8 @@ E: in 3147
 UE: in east
 
 ROOM v3145
-Name: A desecrated campsite.
-Type: Mountains
+Name: A road cut into the stone.
+Type: Road
 E: northeast 3137
 ES: northeast 1
 E: east 3144
@@ -17501,8 +17501,8 @@ E: south 3139
 E: northwest 3137
 
 ROOM v3137
-Name: Overgrown cave entrance.
-Type: Mountains
+Name: Road near an old cave entrance.
+Type: Road
 E: east 3121
 ES: east 1
 E: southeast 3138
@@ -17612,8 +17612,8 @@ E: east 3123
 E: northwest 3121
 
 ROOM v3121
-Name: Forked trail.
-Type: Mountains
+Name: A road off a forked trail.
+Type: Road
 E: southeast 3122
 E: south 3124
 E: west 3137
@@ -17623,8 +17623,8 @@ EL: down 1
 UE: down east
 
 ROOM v3120
-Name: Grassy mountainside slope.
-Type: Mountains
+Name: A mountain road.
+Type: Road
 E: east 1382
 E: up 3121
 EL: up 1
@@ -17646,15 +17646,15 @@ E: north 430
 E: up 1382
 
 ROOM v1382
-Name: A steep mountain path.
-Type: Mountains
+Name: A steep mountain road.
+Type: Road
 E: southeast 1381
 E: west 3120
 E: down 1383
 
 ROOM v1381
-Name: Narrow ledge on mountain slope.
-Type: Mountains
+Name: A narrow road on a mountain slope.
+Type: Road
 E: southwest 1379
 E: northwest 1382
 E: in 5821
@@ -17771,15 +17771,15 @@ E: southwest 1362
 E: down 3135
 
 ROOM v1362
-Name: West face of lone peak.
-Type: Mountains
+Name: Road winding along a lone peak.
+Type: Road
 E: northeast 1363
 E: southeast 1361
 E: up 3146
 
 ROOM v1361
-Name: Southern edge of isolated crater.
-Type: Mountains
+Name: Southern road near a crater.
+Type: Road
 E: northeast 1364
 E: southeast 244
 ES: southeast 1
@@ -27837,29 +27837,29 @@ E: north 3576
 E: south 3573
 
 ROOM v3574
-Name: Wide open plains.
-Type: Grasslands
+Name: Rutted path through the plains.
+Type: Path
 E: southeast 6594
 E: west 7500
 E: northwest 3573
 
 ROOM v3573
-Name: Wide open plains.
-Type: Grasslands
+Name: Path through wide open plains.
+Type: Path
 E: north 3575
 E: southeast 3574
 E: west 3571
 EL: west 1
 
 ROOM v3572
-Name: Wide open plains.
-Type: Grasslands
+Name: Path through wide open plains.
+Type: Path
 E: east 3571
 E: west 3569
 
 ROOM v3571
-Name: Wide open plains.
-Type: Grasslands
+Name: Path through wide open plains.
+Type: Path
 E: east 3573
 EL: east 1
 E: southwest 3570
@@ -27873,8 +27873,8 @@ E: southeast 6617
 E: northwest 3569
 
 ROOM v3569
-Name: Wide open plains.
-Type: Grasslands
+Name: Path through wide open plains.
+Type: Path
 E: northeast 3594
 E: east 3572
 E: southeast 3570
@@ -27882,8 +27882,8 @@ E: west 3568
 EL: west 1
 
 ROOM v3568
-Name: Wide open plains.
-Type: Grasslands
+Name: Path through wide open plains.
+Type: Path
 E: east 3569
 EL: east 1
 E: west 3263
@@ -34748,6 +34748,7 @@ ES: northeast 1
 E: southeast 4193
 EL: southeast 1
 E: southwest 4210
+E: northwest 9315
 
 ROOM v4216
 Name: Upon the lakeshore.
@@ -46156,8 +46157,6 @@ E: northwest 6761
 ROOM v6757
 Name: On the calmly rolling waters.
 Type: Freshwater
-E: east 6739
-EL: east 1
 E: south 6756
 E: southwest 6761
 E: west 8777
@@ -46296,17 +46295,18 @@ EL: east 1
 E: northwest 6640
 
 ROOM v6739
-Name: Wandering in the Basin.
-Type: Grasslands
+Name: Meandering path through the Basin.
+Type: Path
 E: north 6752
 E: southeast 6738
-E: west 6757
+E: west 9351
 EL: west 1
+ES: west 1
 E: northwest 6753
 
 ROOM v6738
-Name: In the flatlands of the Basin.
-Type: Grasslands
+Name: Along a path through the Basin.
+Type: Path
 E: east 6651
 ES: east 1
 E: southeast 6737
@@ -46867,8 +46867,8 @@ E: northwest 6598
 ES: northwest 1
 
 ROOM v6600
-Name: The fertile valley.
-Type: Grasslands
+Name: A meandering valley path.
+Type: Path
 E: northeast 6610
 ES: northeast 1
 E: southeast 6649
@@ -46900,8 +46900,8 @@ Type: Grasslands
 E: south 6596
 
 ROOM v6596
-Name: Among thick grassy fields.
-Type: Grasslands
+Name: Path through grassy fields.
+Type: Path
 E: north 6597
 E: northeast 6598
 EL: northeast 1
@@ -46909,14 +46909,14 @@ E: east 6600
 E: west 6595
 
 ROOM v6595
-Name: In the flatlands of the Basin.
-Type: Grasslands
+Name: Along an overgrown flatlands path.
+Type: Path
 E: east 6596
 E: northwest 6594
 
 ROOM v6594
-Name: Seven Lakes fields.
-Type: Grasslands
+Name: Muddy path through the basin.
+Type: Path
 E: northeast 6817
 ES: northeast 1
 E: southeast 6595
@@ -46994,20 +46994,20 @@ E: west 6646
 E: northwest 6749
 
 ROOM v6649
-Name: A broad clearing.
-Type: Grasslands
+Name: Path through a clearing.
+Type: Path
 E: southwest 6650
 E: northwest 6600
 
 ROOM v6650
-Name: Seven Lakes fields.
-Type: Grasslands
+Name: Path through lush fields.
+Type: Path
 E: northeast 6649
 E: southeast 6651
 
 ROOM v6651
-Name: Sprawling lakelands.
-Type: Grasslands
+Name: Upon a wandering lakeland path.
+Type: Path
 E: east 6652
 E: west 6738
 ES: west 1
@@ -47368,6 +47368,13 @@ ROOM v6701
 Name: On the cold and stinking water.
 Type: Tainted Water
 E: southwest 6699
+
+ROOM v9351
+Name: Over a sturdy plank bridge.
+Type: Path
+E: east 6739
+ES: east 1
+E: west 8779
 
 
 
@@ -55656,6 +55663,7 @@ Type: Constructed underground
 E: north 8578
 E: east 8585
 E: south 8580
+SPE: 6752 0 "touch tapestry" "artwork in a disorienting whirl of color and sound."
 
 ROOM v8580
 Name: A breezy antechamber.
@@ -56870,13 +56878,14 @@ ROOM v8778
 Name: A rickety dock.
 Type: Docks
 E: east 8777
-E: west 8779
+E: southwest 8779
 
 ROOM v8779
 Name: A thin strip of beach before the dock.
 Type: Beach
 E: north 8780
-E: east 8778
+E: northeast 8778
+E: east 9351
 E: west 8783
 
 ROOM v8780
@@ -60468,6 +60477,230 @@ ROOM v9302
 Name: A foul smelling compost hole.
 Type: Village
 E: up 9276
+
+
+
+AREA
+Name: Towne of Pabin'Aquinumi.
+
+ROOM v9315
+Name: Near the lake's shore.
+Type: Undefined
+E: north 9316
+E: southeast 4217
+
+ROOM v9316
+Name: Upon a wooden walkway.
+Type: Undefined
+E: north 9326
+EL: north 2
+E: east 9317
+E: south 9315
+E: west 9323
+
+ROOM v9317
+Name: A floating wooden platform.
+Type: Undefined
+E: east 9318
+E: west 9316
+E: in 9322
+
+ROOM v9318
+Name: Rounding a bend.
+Type: Undefined
+E: north 9319
+E: west 9317
+
+ROOM v9319
+Name: A wooden walkway.
+Type: Undefined
+E: north 9320
+E: south 9318
+
+ROOM v9320
+Name: A slippery platform.
+Type: Undefined
+E: south 9319
+E: in 9321
+
+ROOM v9321
+Name: A reeking lodge.
+Type: Undefined
+E: out 9320
+
+ROOM v9322
+Name: A spacious house.
+Type: Undefined
+E: out 9317
+
+ROOM v9323
+Name: A leaf-strewn wooden walkway.
+Type: Undefined
+E: north 9324
+E: east 9316
+
+ROOM v9324
+Name: Before an entwined doorway..
+Type: Undefined
+E: south 9323
+E: in 9325
+
+ROOM v9325
+Name: A warm lodge.
+Type: Undefined
+E: out 9324
+
+ROOM v9326
+Name: An intersection upon the walkways.
+Type: Undefined
+E: north 9327
+EL: north 1
+E: east 9328
+E: south 9316
+EL: south 2
+E: west 9329
+EL: west 1
+E: northwest 9331
+
+ROOM v9327
+Name: A worn-out walkway.
+Type: Undefined
+E: north 9333
+E: south 9326
+EL: south 1
+E: southwest 9331
+E: west 9332
+EL: west 1
+
+ROOM v9328
+Name: A rocking wooden walkway.
+Type: Undefined
+E: east 9344
+E: west 9326
+
+ROOM v9329
+Name: A rotten walkway.
+Type: Undefined
+E: northeast 9331
+E: east 9326
+EL: east 1
+
+ROOM v9331
+Name: An open-air market.
+Type: Undefined
+E: northeast 9327
+E: southeast 9326
+E: southwest 9329
+E: northwest 9332
+
+ROOM v9332
+Name: Close to a large platform.
+Type: Undefined
+E: east 9327
+EL: east 1
+E: southeast 9331
+E: west 9339
+
+ROOM v9333
+Name: A brightly-lit platform.
+Type: Undefined
+E: east 9336
+E: south 9327
+E: west 9334
+E: in 9338
+
+ROOM v9334
+Name: Between two platforms.
+Type: Docks
+E: north 9335
+E: east 9333
+
+ROOM v9335
+Name: A large wooden platform.
+Type: Docks
+E: south 9334
+DE: in
+
+ROOM v9336
+Name: An icy walkway.
+Type: Docks
+E: east 9337
+E: west 9333
+
+ROOM v9337
+Name: An ice-covered platform.
+Type: Docks
+E: west 9336
+DEL: in
+
+ROOM v9338
+Name: A wooden, circular lodge.
+Type: Docks
+E: out 9333
+
+ROOM v9339
+Name: A dirty walkway.
+Type: Undefined
+E: east 9332
+E: south 9342
+E: west 9340
+
+ROOM v9340
+Name: A rocking platform.
+Type: Undefined
+E: east 9339
+E: in 9341
+
+ROOM v9341
+Name: A dark and cramped armoury.
+Type: Undefined
+E: out 9340
+
+ROOM v9342
+Name: Before a cylindrical building.
+Type: Docks
+E: north 9339
+E: in 9343
+
+ROOM v9343
+Name: Within a storage chamber.
+Type: Docks
+E: out 9342
+
+ROOM v9344
+Name: A slightly-submerged walkway.
+Type: Undefined
+E: north 9346
+E: east 9345
+E: west 9328
+
+ROOM v9345
+Name: Upon a walkway covered with reeds.
+Type: Undefined
+E: south 9348
+E: west 9344
+
+ROOM v9346
+Name: A slippery platform.
+Type: Undefined
+E: south 9344
+E: in 9347
+
+ROOM v9347
+Name: A modest house.
+Type: Undefined
+E: out 9346
+
+ROOM v9348
+Name: A creaking walkway.
+Type: Undefined
+E: north 9345
+E: east 9349
+
+ROOM v9349
+Name: Upon a submerged walkway.
+Type: Undefined
+E: west 9348
 
 
 
