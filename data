@@ -681,8 +681,9 @@ A "something"           n/a n/a n/a            no  no   n/a          "---"
 # Strangle.
 "You begin to struggle against the haft of the weapon that's choking you." special writhe strangle begin
 "You have successful wrenched your neck free of the grip that was choking*" special writhe strangle cure
-"^ quickly wraps the haft of a truesilver glaive around your*" special writhe strangle give
+"^ quickly wraps the haft of a ^ glaive around your*" special writhe strangle give
 "You are being strangled and must first writhe free of your captor." special writhe strangle give
+"^ tightens ^ grip around a *, slowly choking the life " special writhe strangle give
 
 # Bolts.
 "You struggle against the massive bolt which has impaled you." special writhe bolt begin
@@ -950,12 +951,12 @@ D defence "weathering" X
 D defence "toughness" X
 D defence "vitality" X needy takebalance L 2
 D defence "cloak" X needy takebalance A "touch cloak" L 3
-D defence "third eye" X needherb A "eat primrose" L 3
-#D defence "third eye" X A "thirdeye" L 1
+#D defence "third eye" X needherb A "eat primrose" L 3
+D defence "third eye" X A "thirdeye" L 1
 D defence "heightened speed" X A "drink speed" L 3 notimer
 D defence "regeneration" X A "regeneration on"
-D defence "insomnia" X needherb A "eat violet" L 3
-#D defence "insomnia" X L 2
+#D defence "insomnia" X needherb A "eat violet" L 3
+D defence "insomnia" X L 2
 D defence "owl" X takebalance A "touch owl" L 3
 D defence "quince" X needherb A "eat quince" L 3
 D defence "fenugreek" X A "apply fenugreek" L 3 notimer
@@ -975,8 +976,8 @@ D defence "selfishness" X needy takebalance L 2
 D defence "body block" X needy takebalance A "bdb"
 D defence "evading" X needy takebalance A "evb"
 D defence "pinch block" X needy takebalance A "pnb"
-#D defence "deathsight" X takebalance needy L 2
-D defence "deathsight" X needherb A "eat linseed" L 3
+D defence "deathsight" X takebalance needy L 2
+#D defence "deathsight" X needherb A "eat linseed" L 3
 D defence "splitting" X needy takebalance A "split mind" L 1
 D defence "fitness" X needy takebalance L 2
 D defence "resistance" X
@@ -1013,7 +1014,7 @@ D defence "hypersight" X needy takebalance A "hypersight on" L 2
 # Defence triggers.
 
 # Barkskin.
-"You concentrate for a moment, and your skin becomes rough and thick like tree " special defense barkskin give
+"You concentrate for a moment, and your skin becomes rough and thick like tree " special defence barkskin give
 "Your skin is hard and tough like the bark of an oak tree." special defence barkskin give X C
 
 # Affinity.
@@ -1168,7 +1169,7 @@ D defence "hypersight" X needy takebalance A "hypersight on" L 2
 "You must have balance to increase your fitness." special defence fitness take
 
 # Resistance.
-"You are resisting magical damage." special defence resistance give X C
+"You are resisting magickal damage." special defence resistance give X C
 "You call aloud and feel an aura of resistance shroud itself silently about you." special defence resistance give
 
 # Constitution.
