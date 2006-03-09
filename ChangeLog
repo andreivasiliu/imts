@@ -1,3 +1,18 @@
+IMTS-unstable
+=============
+
+(MudBot:)
+- Added limited shared/synchronized memory zone support.
+(IMapper:)
+- Fixed the 'go' command: resets dash/sprint status, and lets unknown 'go'
+  commands go to Imperian. Builders rejoyce.
+(IOffense:)
+- Stripped the iScript out of here, into its own module.
+(IScript:)
+- Complete rewrite of the iScript parser.
+
+
+
 IMTS-6
 =============
 
