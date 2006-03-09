@@ -3181,6 +3181,9 @@ int load_binary_map( char *file )
 	
 	add_room_type( type.name, type.color, type.cost_in, type.cost_out,
 		       type.must_swim, type.underwater );
+	if ( type.name )
+	  free( type.name );
+	/* Don't free color. */
      }
    
    /* Global Special Exits. */
@@ -8249,30 +8252,6 @@ void do_landmarks( char *arg )
 
 
 
-void do_go( char *arg )
-{
-   if ( q_top )
-     {
-	clientfr( "Command queue isn't empty, clear it first." );
-	return;
-     }
-   
-   if ( !strcmp( arg, "dash" ) )
-     dash_command = "dash ";
-   else if ( !strcmp( arg, "sprint" ) )
-     dash_command = "sprint ";
-   else if ( arg[0] )
-     {
-	clientfr( "Usage: go [dash/sprint]" );
-	return;
-     }
-   
-   go_next( );
-   clientf( "\r\n" );
-}
-
-
-
 void print_mhelp_line( char *line )
 {
    char buf[8096];
@@ -8588,7 +8567,6 @@ FUNC_DATA cmd_table[] =
      { "map",		do_map,		CMD_NONE },
      { "landmarks",	do_landmarks,	CMD_NONE },
      { "mhelp",		do_mhelp,	CMD_NONE },
-     { "go",		do_go,		CMD_NONE },
    
      { NULL, NULL, 0 }
 };
@@ -8646,6 +8624,29 @@ int i_mapper_process_client_aliases( char *line )
 	       add_queue( i );
 	     return 0;
 	  }
+     }
+   
+   /* Go? */
+   if ( !strcmp( line, "go" ) || !strcmp( line, "go sprint" ) || !strcmp( line, "go dash" ) )
+     {
+	if ( q_top )
+	  {
+	     clientfr( "Command queue isn't empty, clear it first." );
+	     show_prompt( );
+	     return 1;
+	  }
+	
+	if ( !strcmp( line, "go dash" ) )
+	  dash_command = "dash ";
+	else if ( !strcmp( line, "go sprint" ) )
+	  dash_command = "sprint ";
+	else
+	  dash_command = NULL;
+	
+	/* Go! */
+	go_next( );
+	clientf( "\r\n" );
+	return 1;
      }
    
    if ( !strcmp( line, "stop" ) )
