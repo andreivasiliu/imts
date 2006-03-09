@@ -2,91 +2,93 @@
 
 script "Monkish Aliases";
 
-// Variables: $t = target
-//            $T = $1 if not null, or else target
-//            $1 - $9 = argument
-//            $* = all arguments
+/* This script looked a lot better on the old parser... But eh,
+ * accessing variables by their name during runtime is no longer
+ * possible. Oh well. */
 
-//alias clear
+// Return the first argument is there is one, otherwise the 'target'.
+function tg( )
+{
+   global target;
+   
+   if ( arg(1) != "" )
+     return arg(1);
+   
+   return target;
+}
 
 // Misc
-alias ice { send "point ring47309 $1"; }
-alias fire { send "point ring13771 at $T"; }
-alias oeat { send "outr $1;eat $1"; }
-alias ms { send "mind sense $T"; }
-//alias - get { send "$T"; }
-//alias = get { send "5 $T"; }
-alias spr { send "outr primrose;eat primrose;search;who here"; }
-alias tbow { send "taekyonbow $1"; }
-alias pnod { send "politenod $1"; }
+alias ice { send "point ring47309 " + arg(1); }
+alias fire { send "point ring13771 at " + tg(); }
+alias oeat { send "outr " + arg(1); send "eat " + arg(1); }
+alias ms { send "mind sense " + tg(); }
+alias spr { send "outr primrose"; send "eat primrose"; send "search"; send "who here"; }
+alias tbow { send "taekyonbow " + arg(1); }
+alias pnod { send "politenod " + arg(1); }
 //alias lure { send "land;drop bottle;say Phasma phasmatis;get bottle;sk"; }
 //alias salt { send "land;get saltpetre;sk"; }
-alias flint { send "wield flintlock;wield flintlock"; }
-alias load1 { send "outr shot;outr blackpowder;load 152344"; }
-alias load2 { send "outr shot;outr blackpowder;load 152667"; }
-alias unw { send "unwield left;unwield right"; }
-alias key1_n { send "get key102502 from pouch;unlock door n;open door n;n;close door s;lock door s;put 102502 in pouch"; }
-alias key1_s { send "get key102502 from pouch;unlock door s;open door s;s;close door n;lock door n;put 102502 in pouch"; }
-alias key2_ne { send "get key104250 from pouch;unlock door ne;open door ne;ne;close door sw;lock door sw;put 104250 in pouch"; }
-alias key2_sw { send "get key104250 from pouch;unlock door sw;open door sw;sw;close door ne;lock door ne;put 104250 in pouch"; }
+alias flint { send "wield flintlock"; send "wield flintlock"; }
+alias load1 { send "outr shot"; send "outr blackpowder"; send "load 152344"; }
+alias load2 { send "outr shot"; send "outr blackpowder"; send "load 152667"; }
+alias unw { send "unwield left"; send "unwield right"; }
 
 // Taekate
-alias sl { send "spp $T left"; }
-alias hl { send "hfp $T left"; }
-alias sr { send "spp $T right"; }
-alias hr { send "hfp $T right"; }
-alias lleg { send "hfp $T left;hfp $T left;hfp $T left;hfp $T left"; }
-alias rleg { send "hfp $T right;hfp $T right;hfp $T right;hfp $T right"; }
-alias larm { send "spp $T left;spp $T left;spp $T left;spp $T left"; }
-alias rarm { send "spp $T right;spp $T right;spp $T right;spp $T right"; }
-alias legs { send "hfp $T left;hfp $T right;hfp $T left;hfp $T right"; }
-alias arms { send "spp $T left;spp $T right;spp $T left;spp $T right"; }
-alias head { send "ucp $T;ucp $T;ucp $T;ucp $T"; }
-alias k { send "ucp $T;ucp $T;ucp $T;ucp $T"; }
-alias bk { send "brs;ucp $T;ucp $T"; }
-alias torso { send "hkp $T;hkp $T;hkp $T;hkp $T"; }
-alias all { send "hfp $T left;hfp $T right;spp $T left;spp $T right"; }
-alias f { send "feint $T torso"; }
-alias hunt { send "sdk $T;ucp $T;ucp $T"; }
-alias shunt { send "scs;ucp $T;ucp $T"; }
+alias sl { send "spp " + tg() + " left"; }
+alias hl { send "hfp " + tg() + " left"; }
+alias sr { send "spp " + tg() + " right"; }
+alias hr { send "hfp " + tg() + " right"; }
+alias lleg { send "hfp " + tg() + " left"; send "hfp " + tg() + " left"; send "hfp " + tg() + " left"; send "hfp " + tg() + " left"; }
+alias rleg { send "hfp " + tg() + " right"; send "hfp " + tg() + " right"; send "hfp " + tg() + " right"; send "hfp " + tg() + " right"; }
+alias larm { send "spp " + tg() + " left"; send "spp " + tg() + " left"; send "spp " + tg() + " left"; send "spp " + tg() + " left"; }
+alias rarm { send "spp " + tg() + " right"; send "spp " + tg() + " right"; send "spp " + tg() + " right"; send "spp " + tg() + " right"; }
+alias legs { send "hfp " + tg() + " left"; send "hfp " + tg() + " right"; send "hfp " + tg() + " left"; send "hfp " + tg() + " right"; }
+alias arms { send "spp " + tg() + " left"; send "spp " + tg() + " right"; send "spp " + tg() + " left"; send "spp " + tg() + " right"; }
+alias head { send "ucp " + tg(); send "ucp " + tg(); send "ucp " + tg(); send "ucp " + tg(); }
+alias k { send "ucp " + tg(); send "ucp " + tg(); send "ucp " + tg(); send "ucp " + tg(); }
+alias bk { send "brs"; send "ucp " + tg(); send "ucp " + tg(); }
+alias torso { send "hkp " + tg(); send "hkp " + tg(); send "hkp " + tg(); send "hkp " + tg(); }
+alias all { send "hfp " + tg() + " left"; send "hfp " + tg() + " right"; send "spp " + tg() + " left"; send "spp " + tg() + " right"; }
+alias f { send "feint " + tg() + " torso"; }
+alias hunt { send "sdk " + tg(); send "ucp " + tg(); send "ucp " + tg(); }
+alias shunt { send "scs"; send "ucp " + tg(); send "ucp " + tg(); }
 
-alias jaa { send "jpk $T;swk $T;spp $T left;spp $T right"; }
-alias jll { send "jpk $T;swk $T;hfp $T left;hfp $T right"; }
-alias sll { send "swk $T;hfp $T left;hfp $T right"; }
-alias saa { send "swk $T;spp $T left;spp $T right"; }
-alias kaicombo { send "slt $T;pmp $T;pmp $T"; }
-alias selfkaicombo { send "kon;slt $T;pmp $T;pmp $T;koff"; }
-alias bbt { send "bbt $T"; }
-alias bbtc { send "bbt $T;mind command apply restoration to head"; }
-alias cc { send "swk $T;jpk $T;feint $T torso;trueassess $T;hfp $T right;trueassess $T"; }
+alias jaa { send "jpk " + tg(); send "swk " + tg(); send "spp " + tg() + " left"; send "spp " + tg() + " right"; }
+alias jll { send "jpk " + tg(); send "swk " + tg(); send "hfp " + tg() + " left"; send "hfp " + tg() + " right"; }
+alias sll { send "swk " + tg(); send "hfp " + tg() + " left"; send "hfp " + tg() + " right"; }
+alias saa { send "swk " + tg(); send "spp " + tg() + " left"; send "spp " + tg() + " right"; }
+alias kaicombo { send "slt " + tg(); send "pmp " + tg(); send "pmp " + tg(); }
+alias selfkaicombo { send "kon"; send "slt " + tg(); send "pmp " + tg(); send "pmp " + tg(); send "koff"; }
+alias bbt { send "bbt " + tg(); }
+alias bbtc { send "bbt " + tg(); send "mind command apply restoration to head"; }
+alias cc { send "swk " + tg(); send "jpk " + tg(); send "feint " + tg() + " torso"; send "trueassess " + tg(); send "hfp " + tg() + " right"; send "trueassess " + tg(); }
 
 // Telepathy.
-alias ml { send "mind lock $T"; }
-alias mdl { send "mind deadening $T;mind lock $T"; }
-alias prl { send "mind paralyse $T"; }
-alias conf { send "mind confuse $T"; }
-alias drain { send "mind drain $T"; }
-alias epil { send "mind epilepsy $T"; }
-alias stp { send "mind stupidity $T"; }
-alias stup { send "mind stupidity $T"; }
-alias pacif { send "mind pacify $T"; }
-alias amn { send "mind amnesia $T"; }
-alias batter { send "mind batter $T"; }
-alias dis { send "mind disrupt $T"; }
-alias div { send "mind divine $T"; }
+alias ml { send "mind lock " + tg(); }
+alias mdl { send "mind deadening " + tg(); send "mind lock " + tg(); }
+alias prl { send "mind paralyse " + tg(); }
+alias conf { send "mind confuse " + tg(); }
+alias drain { send "mind drain " + tg(); }
+alias epil { send "mind epilepsy " + tg(); }
+alias stp { send "mind stupidity " + tg(); }
+alias stup { send "mind stupidity " + tg(); }
+alias pacif { send "mind pacify " + tg(); }
+alias amn { send "mind amnesia " + tg(); }
+alias batter { send "mind batter " + tg(); }
+alias dis { send "mind disrupt " + tg(); }
+alias div { send "mind divine " + tg(); }
 alias mr { send "mind radiance"; }
-alias mc { send "mind command $*"; }
-alias md { send "mind deadening $T"; }
-alias cr { send "mind crush $T"; }
-alias strip { send "mind strip $T"; }
+alias mc { send "mind command " + arg("1+"); }
+alias md { send "mind deadening " + tg(); }
+alias cr { send "mind crush " + tg(); }
+alias strip { send "mind strip " + tg(); }
 alias b { send "mind blackout"; }
 
 // Kaido
-alias kc { send "kai choke $T"; }
-alias kcr { send "kai cripple $T"; }
-alias kb { send "kai banish $T"; }
-alias kl { send "kai strike $T left leg"; }
-alias kr { send "kai strike $T right leg"; }
-alias ki { send "kai immolate $T"; }
-alias ke { send "kai enfeeble $T"; }
+alias kc { send "kai choke " + tg(); }
+alias kcr { send "kai cripple " + tg(); }
+alias kb { send "kai banish " + tg(); }
+alias kl { send "kai strike " + tg() + " left leg"; }
+alias kr { send "kai strike " + tg() + " right leg"; }
+alias ki { send "kai immolate " + tg(); }
+alias ke { send "kai enfeeble " + tg(); }
 

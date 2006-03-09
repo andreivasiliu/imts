@@ -2,6 +2,27 @@
 
 script "Utility iScript";
 
+alias showt
+{
+   echo "Args 2-4: '" + args(2,4) + "'";
+   echo "Args 0-1: '" + args(0,1) + "'";
+   echo "Args 1-0: '" + args(1,0) + "'";
+   echo "Args 0-0: '" + args(0,0) + "'";
+   echo "Args 2-1: '" + args(2,1) + "'";
+   show_prompt;
+}
+
+alias sett
+{
+   global target;
+   target = arg "1";
+   echo "Target1: " + target;
+   if ( !target )
+     target = "really none";
+   echo "Target: " + target;
+   show_prompt;
+}
+
 
 /* Pets, and everything about pets. */
 
@@ -11,16 +32,21 @@ trigger regex "^\"[a-zA-Z]+(\\d+)\" +a fluffy jambaali$" { pet_nr = arg "1"; }
 // From PETLIST.
 trigger "Your Pets in the Land" { pet_list = "yes"; }
 trigger prompt * { if ( pet_list ) { pet_list = ""; pet_nr = ""; } }
-trigger regex "^(\\d+)  [^*]+$" { if ( pet_list ) { pet_list = ""; pet_nr = arg "1"; } }
+trigger regex "^(\\d+) +[^*]+$" { if ( pet_list ) { pet_list = ""; pet_nr = arg "1"; } }
 
 alias pet
 {
-   cmd = arg "1";
-
+   local cmd = arg 1;
+   
+   echo "arg0: " + arg 0;
+   echo "arg1: " + arg 1;
+   echo "arg2: " + arg 2;
+   echo "arg3: " + arg 3;
+   
    if ( !pet_nr )
      {
 	echo "Umm... I don't know of any pets yet, type PETLIST.";
-	show_prompt;
+	show_prompt( );
 	return;
      }
    
@@ -30,7 +56,7 @@ alias pet
      }
    else if ( cmd == "train" )
      {
-	send "train " + pet_nr + " " + "$2 $3 $4";
+	send "train " + pet_nr + " " + arg 2 + arg 3 + arg 4;
 	return;
      }
    else if ( cmd == "skills" )
@@ -50,12 +76,12 @@ alias pet
      }
    else
      {
-	send "order " + pet_nr + " $1 $2 $3 $4 $5 $6";
-	echo "- order " + pet_nr + " $1 $2 $3 $4 $5 $6";
+	send "order " + pet_nr + arg 1 + arg 2 + arg 3 + arg 4;
+	echo "- order " + pet_nr + arg 1 + arg 2 + arg 3 + arg 4;
 	return;
      }
    
-   show_prompt;
+   show_prompt( );
 }
 
 
@@ -102,31 +128,65 @@ function opposite_of( dir )
    if ( ( dir == "out" ) )
      return "in";
    
+   echo "Warning: Unknown direction '" + dir + "'.";
+   
    return;
+}
+
+
+function func_two( )
+{
+   local bsd, csd;
+   
+   debug( );
+   
+   sample( "asd" );
+}
+
+
+function sample( test )
+{
+   local asd;
+   
+   asd = "dsa";
+   
+   echo "Yay!";
+   
+     debug( );
+   
+//   debug( ); */
 }
 
 
 alias key
 {
-   /* $1 holds the key name, $2 holds the direction. */
-   
-   keyname = get_key( arg "1" );
-   dir = arg "2";
-   opp = opposite_of( dir );
+   local keyname = get_key( arg "1" );
+   local dir = arg "2";
+   local opp = opposite_of( dir );
+   local reason;
    
    if ( !keyname || !opp )
      {
-	echo "Huh?";
+	if ( !keyname && !opp )
+	  reason = "What key and what direction?";
+	else if ( !keyname )
+	  reason = "What key?";
+	else if ( !opp )
+	  reason = "What direction?";
+	else
+	  reason = "Impossible error.";
+	
+	echo "Huh? " + reason;
 	show_prompt;
 	return;
      }
    
-   send "get $keyname from pouch";
-   send "unlock door $dir";
-   send "open door $dir";
+   send "get " + keyname + " from pouch";
+   send "unlock door " + dir;
+   send "open door " + dir;
    send dir;
-   send "close door $opp";
-   send "lock door $opp";
-   send "put $keyname in pouch";
+   send "close door " + opp;
+   send "lock door " + opp;
+   send "put " + keyname + " in pouch";
 }
 
