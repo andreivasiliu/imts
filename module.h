@@ -68,6 +68,8 @@ void	(*show_prompt)( );
 void	(*mxp)( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
 int	(*mxp_tag)( int tag );
 int	(*mxp_stag)( int tag, char *dest );
+void	(*share_memory)( char *name, void *pointer, int size );
+void	(*shared_memory_is_pointer_to_string)( char *name );
 
 /* Utility */
 #if defined( FOR_WINDOWS )
@@ -117,6 +119,8 @@ int	(*c_close)( int fd );
    mxp = self->get_func( "mxp" ); \
    mxp_tag = self->get_func( "mxp_tag" ); \
    mxp_stag = self->get_func( "mxp_stag" ); \
+   share_memory = self->get_func( "share_memory" ); \
+   shared_memory_is_pointer_to_string = self->get_func( "shared_memory_is_pointer_to_string" ); \
    /* Utility */ \
    get_string = self->get_func( "get_string" ); \
    cmp = self->get_func( "cmp" ); \

@@ -122,7 +122,7 @@ main_loop
 #endif
 
 int main_version_major = 2;
-int main_version_minor = 4;
+int main_version_minor = 5;
 
 
 
@@ -311,6 +311,27 @@ void clientfb( char *string );
 void remove_timer( TIMER *timer );
 
 
+/* Shared memory. */
+
+void share_memory( char *name, void *pointer, int size );
+void shared_memory_is_pointer_to_string( char *name );
+void update_shared_memory( MODULE *module );
+void remove_shared_memory_by_module( MODULE *module );
+
+struct shared_memory_data
+{
+   char *name;
+   char *pointer;
+   int size;
+   
+   short pointer_to_string;
+   
+   MODULE *module;
+   
+   struct shared_memory_data *next;
+} *shared_memory_table;
+
+
 /* Contains the name of the currently running function. */
 char *debug[6];
 
@@ -454,6 +475,8 @@ void *get_function( char *name )
 	  { "mxp", mxp },
 	  { "mxp_tag", mxp_tag },
 	  { "mxp_stag", mxp_stag },
+	  { "share_memory", share_memory },
+	  { "shared_memory_is_pointer_to_string", shared_memory_is_pointer_to_string },
 	/* Utility */
 	  { "gettimeofday", gettimeofday },
 	  { "get_string", get_string },
@@ -717,6 +740,7 @@ void generate_config( char *file_name )
    write_mod( "i_offense", type, fl );
    write_mod( "mmchat", type, fl );
    write_mod( "voter", type, fl );
+   write_mod( "i_script", type, fl );
    
    fprintf( fl, "\n" );
    
@@ -1015,6 +1039,7 @@ void unload_module( MODULE *module )
 	break;
      }
    
+   /* Make sure no timer linked to it exists anymore. */
    while ( 1 )
      {
 	for ( t = timers; t; t = t->next )
@@ -1025,6 +1050,9 @@ void unload_module( MODULE *module )
 	    }
 	break;
      }
+   
+   /* Destroy all shared memory references from the table. */
+   remove_shared_memory_by_module( module );
    
    /* Unlink it for good. */
 #if !defined( FOR_WINDOWS )
@@ -1161,6 +1189,8 @@ void load_module( char *name )
    
 #endif
    
+   current_mod = module;
+   
    clientfb( "Gathering data.." );
    
    module->get_func = get_function;
@@ -1231,9 +1261,14 @@ void modules_register( )
    
    for ( mod = modules; mod; mod = mod->next )
      {
+	/* The name was probably "unregistered". */
+	if ( mod->name )
+	  free( mod->name );
+	
 	current_mod = mod;
 	mod->get_func = get_function;
 	(mod->register_module)( mod );
+	update_shared_memory( mod );
      }
    
    mod_section = NULL;
@@ -1317,6 +1352,7 @@ void module_init_data( )
 	current_mod = mod;
 	if ( mod->init_data )
 	  (mod->init_data)( );
+	update_shared_memory( mod );
      }
    mod_section = NULL;
 }
@@ -1374,6 +1410,7 @@ void module_mxp_enabled( )
 	current_mod = module;
 	if ( module->mxp_enabled )
 	  (module->mxp_enabled)( );
+	update_shared_memory( module );
      }
    mod_section = NULL;
 }
@@ -1432,6 +1469,7 @@ void module_process_server_line( LINE *line )
 	current_mod = module;
 	if ( module->process_server_line )
 	  (module->process_server_line)( line );
+	update_shared_memory( module );
      }
    mod_section = NULL;
    
@@ -1461,6 +1499,7 @@ void module_process_server_prompt( LINE *line )
 	current_mod = module;
 	if ( module->process_server_prompt )
 	  (module->process_server_prompt)( line );
+	update_shared_memory( module );
      }
    mod_section = NULL;
    
@@ -1485,6 +1524,7 @@ int module_process_client_command( char *rawcmd )
 	if ( module->process_client_command )
 	  if ( !(module->process_client_command)( cmd ) )
 	    return 0;
+	update_shared_memory( module );
      }
    mod_section = NULL;
    
@@ -1513,6 +1553,7 @@ int module_process_client_aliases( char *line )
 	current_mod = module;
 	if ( module->process_client_aliases )
 	  used = (module->process_client_aliases)( cmd ) || used;
+	update_shared_memory( module );
      }
    mod_section = NULL;
    
@@ -1541,6 +1582,7 @@ char *module_build_custom_prompt( )
 	     if ( prompt )
 	       return prompt;
 	  }
+	update_shared_memory( module );
      }
    mod_section = NULL;
    
@@ -2065,7 +2107,8 @@ void new_descriptor( int control )
    struct sockaddr_in  sock;
    struct hostent     *from;
    char buf[4096];
-   int size, addr, desc;
+   unsigned int size;
+   int addr, desc;
    int ip1, ip2, ip3, ip4;
 
    size = sizeof( sock );
@@ -3175,6 +3218,16 @@ void process_client_line( char *buf )
 	  {
 	     show_modules( );
 	  }
+	else if ( !strcmp( buf, "`shared" ) )
+	  {
+	     struct shared_memory_data *sm;
+	     
+	     clientfb( "Shared memory:" );
+	     
+	     for ( sm = shared_memory_table; sm; sm = sm->next )
+	       clientff( C_B "\"%s\"" C_0 " (" C_G "%d" C_0 " bytes at " C_G "0x%x" C_0 ", in module " C_W "%s" C_0 ")\r\n",
+			 sm->name, sm->size, sm->pointer, sm->module->name );
+	  }
 	else if ( !strncmp( buf, "`load", 5 ) )
 	  {
 	     if ( buf[5] == ' ' && buf[6] )
@@ -4186,12 +4239,12 @@ int mccp_decompress( char *src, int src_bytes )
    
    /* We have compressed data, beginning at *src. */
    
-   zstream->next_in = src;
+   zstream->next_in = (Bytef *) src;
    zstream->avail_in = src_bytes;
    
    while ( zstream->avail_in )
      {
-	zstream->next_out = buf;
+	zstream->next_out = (Bytef *) buf;
 	zstream->avail_out = INPUT_BUF;
 	
 	status = inflate( zstream, Z_SYNC_FLUSH );
@@ -4826,6 +4879,148 @@ int cmp( char *trigger, char *string )
 	  t++, s++;
 	else
 	  t--, s--;
+     }
+}
+
+
+void share_memory( char *name, void *pointer, int size )
+{
+   struct shared_memory_data *sm, *dest;
+   
+   if ( !current_mod )
+     {
+	debugf( "Request for share memory with no module known." );
+	return;
+     }
+   
+   /* Check for an existing entry. */
+   for ( sm = shared_memory_table; sm; sm = sm->next )
+     if ( sm->module == current_mod && !strcmp( name, sm->name ) )
+       break;
+   
+   if ( sm )
+     {
+	sm->pointer = pointer;
+	sm->size = size;
+	
+	return;
+     }
+   
+   sm = calloc( 1, sizeof( struct shared_memory_data ) );
+   
+   sm->next = shared_memory_table;
+   shared_memory_table = sm;
+   
+   sm->module = current_mod;
+   sm->name = strdup( name );
+   sm->pointer = pointer;
+   sm->size = size;
+   
+   dest = sm;
+   
+   /* Check to see if there's another module with that name/size,
+    * to copy the initial data from. */
+   for ( sm = shared_memory_table; sm; sm = sm->next )
+     if ( sm->module != current_mod && !strcmp( name, sm->name ) && sm->size == size )
+       {
+	  memcpy( dest->pointer, sm->pointer, size );
+	  dest->pointer_to_string = sm->pointer_to_string;
+	  
+	  break;
+       }
+}
+
+
+/* We don't want pointers pointing to a memory zone from an unloaded module! */
+void shared_memory_is_pointer_to_string( char *name )
+{
+   struct shared_memory_data *sm;
+   
+   for ( sm = shared_memory_table; sm; sm = sm->next )
+     if ( sm->size == sizeof( char * ) && !strcmp( name, sm->name ) )
+       sm->pointer_to_string = 1;
+}
+
+
+void update_shared_memory( MODULE *module )
+{
+   struct shared_memory_data *sm_source, *sm_dest;
+   char *s, *d;
+   int i, size;
+   
+   if ( !module )
+     return;
+   
+   for ( sm_source = shared_memory_table; sm_source; sm_source = sm_source->next )
+     if ( sm_source->module == module )
+       {
+	  s = sm_source->pointer;
+	  size = sm_source->size;
+	  
+	  for ( sm_dest = shared_memory_table; sm_dest; sm_dest = sm_dest->next )
+	    {
+	       /* Modify other modules, not this one. */
+	       if ( sm_dest->module == module )
+		 continue;
+	       
+	       /* Size and name must match. */
+	       if ( size != sm_dest->size || strcmp( sm_source->name, sm_dest->name ) )
+		 continue;
+	       
+	       /* Somewhat optimized comparison. */
+	       d = sm_dest->pointer;
+	       
+	       for ( i = 0; i < size; i++ )
+		 if ( *(s+i) != *(d+i) )
+		   {
+		      memcpy( d, s, size );
+		      break;
+		   }
+	    }
+       }
+}
+
+
+void remove_shared_memory_by_module( MODULE *module )
+{
+   struct shared_memory_data *sm, *last_sm, *sm_next;
+   
+   while ( shared_memory_table && shared_memory_table->module == module )
+     {
+	sm = shared_memory_table;
+	if ( sm->pointer_to_string && *(char **)sm->pointer )
+	  {
+	     *(char **)sm->pointer = strdup(  *(char **)sm->pointer );
+	     update_shared_memory( sm->module );
+	  }
+	
+	shared_memory_table = shared_memory_table->next;
+	
+	free( sm->name );
+	free( sm );
+     }
+   
+   last_sm = shared_memory_table;
+   
+   if ( !last_sm )
+     return;
+   
+   for ( sm = last_sm->next; sm; last_sm = sm, sm = sm_next )
+     {
+	sm_next = sm->next;
+	if ( sm->module == module )
+	  {
+	     last_sm->next = sm_next;
+	     
+	     if ( sm->pointer_to_string && *(char **)sm->pointer )
+	       {
+		  *(char **)sm->pointer = strdup( *(char **)sm->pointer );
+		  update_shared_memory( sm->module );
+	       }
+	     
+	     free( sm->name );
+	     free( sm );
+	  }
      }
 }
 
