@@ -3,11 +3,15 @@ IMTS-unstable
 
 (MudBot:)
 - Added limited shared/synchronized memory zone support.
+- Added support for socks5 and http proxies.
+(Imperian:)
+- Added the 'back' body part.
 (IMapper:)
 - Fixed the 'go' command: resets dash/sprint status, and lets unknown 'go'
   commands go to Imperian. Builders rejoyce.
 (IOffense:)
 - Stripped the iScript out of here, into its own module.
+- Moved the 'grep' command to the other mod, to clear the pcre requirement.
 (IScript:)
 - Complete rewrite of the iScript parser.
 
