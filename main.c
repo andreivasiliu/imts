@@ -294,6 +294,10 @@ char client_hostname[1024];
 /* Options from config.txt */
 char default_host[512];
 int default_port;
+char *proxy_host;
+int proxy_port;
+char proxy_type[512];
+int default_port;
 char atcp_login_as[512];
 char default_user[512];
 char default_pass[512];
@@ -703,6 +707,11 @@ void generate_config( char *file_name )
 	    "host \"imperian.com\"\n"
 	    "port \"23\"\n\n\n" );
    
+   fprintf( fl, "# Proxy. The type can be \"http\" or \"socks5\". If empty, \"http\" is assumed.\n\n"
+	    "proxy_type \"\"\n"
+	    "proxy_host \"\"\n"
+	    "proxy_port \"\"\n\n\n" );
+   
    fprintf( fl, "# Autologin. Requires ATCP.\n"
 	    "# Keep your password here at your own risk! Better just leave these empty.\n\n"
 	    "user \"\"\n"
@@ -821,6 +830,27 @@ void read_config( char *file_name, int silent )
 	     get_string( p, buf, 256 );
 	     
 	     default_port = atoi( buf );
+	  }
+	else if ( !strcmp( cmd, "proxy_type" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     strcpy( proxy_type, buf );
+	  }
+	else if ( !strcmp( cmd, "proxy_host" ) || !strcmp( cmd, "proxy_hostname" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     if ( buf[0] )
+	       proxy_host = strdup( buf );
+	     else
+	       proxy_host = NULL;
+	  }
+	else if ( !strcmp( cmd, "proxy_port" ) )
+	  {
+	     get_string( p, buf, 256 );
+	     
+	     proxy_port = atoi( buf );
 	  }
 	else if ( !strcmp( cmd, "user" ) || !strcmp( cmd, "username" ) )
 	  {
@@ -1894,6 +1924,12 @@ int mb_connect( char *hostname, int port )
    struct sockaddr_in saddr;
    int i, sock;
    
+   if ( !hostname && !port )
+     {
+	hostname = proxy_host;
+	port = proxy_port;
+     }
+   
    if ( hostname[0] == '\0' || port < 1 || port > 65535 )
      {
 	connection_error = "Host name or port number invalid";
@@ -1937,6 +1973,193 @@ int mb_connect( char *hostname, int port )
    
    connection_error = "Success";
    return sock;
+}
+
+
+
+char *socks5_msgs( int type, unsigned char msg )
+{
+   if ( type == 1 )
+     {
+	if ( msg == 0x00 )
+	  return "No authentification required";
+	if ( msg == 0xFF )
+	  return "No acceptable methods";
+	return "Unknown Socks5 message";
+     }
+   
+   if ( type == 2 )
+     {
+	if ( msg == 0x00 )
+	  return "Succeeded";
+	if ( msg == 0x01 )
+	  return "General SOCKS server failure";
+	if ( msg == 0x02 )
+	  return "Connection not allowed by ruleset";
+	if ( msg == 0x03 )
+	  return "Network unreachable";
+	if ( msg == 0x04 )
+	  return "Host unreachable";
+	if ( msg == 0x05 )
+	  return "Connection refused";
+	if ( msg == 0x06 )
+	  return "TTL expired";
+	if ( msg == 0x07 )
+	  return "Command not supported";
+	if ( msg == 0x08 )
+	  return "Address type not supported";
+	return "Unknown Socks5 message";
+     }
+   
+   return "Unknown type";
+}
+
+
+
+int mb_connect_request( int sock, char *hostname, int port )
+{
+   char string[1024];
+   int len;
+   
+   if ( sock < 0 )
+     return sock;
+   
+   if ( !strcmp( proxy_type, "socks5" ) )
+     {
+	string[0] = 0x05;
+	string[1] = 0x01;
+	string[2] = 0x00;
+	len = 3;
+	
+	/* Sending: Version5, no authentication methods. */
+	c_write( sock, string, len );
+	len = c_read( sock, string, 1024 );
+	
+	if ( len <= 0 )
+	  {
+	     connection_error = "Read error from proxy";
+	     c_close( sock );
+	     return -1;
+	  }
+	
+	/* Happens if the proxy wants some sort of authentication. */
+	if ( string[1] != 0x00 )
+	  {
+	     connection_error = socks5_msgs( 1, string[1] );
+	     c_close( sock );
+	     return -1;
+	  }
+	
+	string[0] = 0x05; /* Version 5 */
+	string[1] = 0x01; /* Command: Connect */
+	string[2] = 0x00; /* Reserved */
+	string[3] = 0x03; /* Type: Host Name */
+	len = strlen( hostname ); /* Hostname */
+	string[4] = len;
+	memcpy( string+5, hostname, len );
+	string[5+len] = port >> 8; /* Port */
+	string[6+len] = port & 0xFF;
+	
+	len = 7+len;
+	
+	/* Sending: Version5, Connect, Hostname. */
+	c_write( sock, string, len );
+	len = c_read( sock, string, 1024 );
+	
+	if ( len <= 0 )
+	  {
+	     connection_error = "Read error from proxy";
+	     c_close( sock );
+	     return -1;
+	  }
+	
+	if ( len != 10 )
+	  {
+	     connection_error = "Buggy or unknown response from proxy";
+	     c_close( sock );
+	     return -1;
+	  }
+	
+	/* "Version%d, %s, %s, %d-%d-%d-%d, %d-%d." */
+	
+	if ( string[1] != 0x00 )
+	  {
+	     connection_error = socks5_msgs( 2, string[1] );
+	     c_close( sock );
+	     return -1;
+	  }
+	
+	return sock;
+     }
+   else
+     {
+	/* HTTP proxy. */
+	int nr;
+	
+	sprintf( string, "CONNECT %s:%d HTTP/1.0\n\n", hostname, port );
+	len = strlen( string );
+	
+	c_write( sock, string, len );
+	len = c_read( sock, string, 12 );
+	
+	/* strlen( "HTTP/1.0 200" ) == 12 */
+	
+	if ( len < 12 )
+	  {
+	     connection_error = "Read error from proxy";
+	     c_close( sock );
+	     return -1;
+	  }
+	
+	if ( strncmp( string + 9, "200", 3 ) )
+	  {
+	     /* Get the error message. */
+	     char *p;
+	     
+	     strncpy( string, string+9, 3 );
+	     len = c_read( sock, string+3, 1024-3 );
+	     
+	     if ( len <= 0 )
+	       {
+		  connection_error = "Read error from proxy";
+		  c_close( sock );
+		  return -1;
+	       }
+	     
+	     p = string;
+	     while ( *p && *p != '\n' && *p != '\r' )
+	       p++;
+	     *p = 0;
+	     
+	     /* Memory leak. But I don't care. */
+	     connection_error = strdup( string );
+	     return -1;
+	  }
+	
+	/* Seek for a double new line. */
+	nr = 0;
+	while ( 1 )
+	  {
+	     if ( c_read( sock, string, 1 ) <= 0 )
+	       {
+		  connection_error = "Read error from proxy";
+		  c_close( sock );
+		  return -1;
+	       }
+	     
+	     if ( string[0] == '\n' )
+	       nr++;
+	     else if ( string[0] == '\r' )
+	       continue;
+	     else
+	       nr = 0;
+	     
+	     if ( nr == 2 )
+	       break;
+	  }
+	
+	return sock;
+     }
 }
 
 
@@ -2164,10 +2387,30 @@ void new_descriptor( int control )
 	  {
 	     int sock;
 	     
-	     debugf( "Connecting to: %s %d.", default_host, default_port );
-	     clientff( C_B "Connecting to %s:%d... " C_0, default_host, default_port );
+	     if ( !proxy_host || !proxy_port )
+	       {
+		  debugf( "Connecting to: %s %d.", default_host, default_port );
+		  clientff( C_B "Connecting to %s:%d... " C_0, default_host, default_port );
+		  
+		  sock = mb_connect( default_host, default_port );
+	       }
+	     else
+	       {
+		  debugf( "Connecting to: %s %d.", proxy_host, proxy_port );
+		  clientff( C_B "Connecting to %s:%d... " C_0, proxy_host, proxy_port );
+		  
+		  sock = mb_connect( NULL, 0 );
+	       }
 	     
-	     sock = mb_connect( default_host, default_port );
+	     if ( proxy_host && proxy_port && sock >= 0 )
+	       {
+		  clientf( C_B "Done.\r\n" C_0 );
+		  
+		  debugf( "Asking for: %s %d.", default_host, default_port );
+		  clientff( C_B "Requesting %s:%d... " C_0, default_host, default_port );
+		  
+		  sock = mb_connect_request( sock, default_host, default_port );
+	       }
 	     
 	     if ( sock < 0 )
 	       {
