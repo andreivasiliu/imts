@@ -701,6 +701,7 @@ A "something"           n/a n/a n/a            no  no   n/a          "---"
 
 
 # Limb breaks.  We DO have illusion problems...  Level 2 suggested.
+
 # Level 3 - Level 2 mangled limb. (2rest, mend)
 "To your horror, your * has been mutilated beyond repair by ordinary " special part any mangled2 X !F
 # Level 2 - Level 1 mangled limb. (rest, mend)
@@ -744,6 +745,12 @@ A "something"           n/a n/a n/a            no  no   n/a          "---"
 # Torso damage, still in research.
 "Your body feels stronger and healthier." special part torso healed
 
+# Back damage, from backbreakers.
+"You cry out in pain as your back weakens from the blow." special part back mangled
+"You hear your spine breaking under the strain." special part back mangled2
+"Your back is greatly healed, but still damaged." special part back mangled
+"Your back feels stronger and healthier." special part back healed
+
 # Unknown leg/arm damage.
 "* grabs at your leg, causing it to fail as it shrivels beneath away." special part leg crippled
 "^'s strokes your * and it withers away." special part any crippled
@@ -757,7 +764,6 @@ A "something"           n/a n/a n/a            no  no   n/a          "---"
 "your ^ ^ and * shrivel up in response." special part any crippled
 "Immediately, your * and ^ ^ shrivel up in response." special part any crippled
 "Immediately, your ^ ^ and * shrivel up in response." special part any crippled
-
 
 # "reaches out and grabs your leg, which almost gives way"
 # "touches your left arm, and it shrivels away to"
