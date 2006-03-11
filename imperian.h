@@ -54,12 +54,13 @@
 #define PART_RIGHTARM		3
 #define PART_LEFTLEG		4
 #define PART_RIGHTLEG		5
-#define PART_LAST		5
-#define PART_ARM		6
-#define PART_LEG		7
-#define PART_ONEARM		8
-#define PART_ONELEG		9
-#define PART_ANY	       10
+#define PART_BACK		6
+#define PART_LAST		6
+#define PART_ARM		7
+#define PART_LEG		8
+#define PART_ONEARM		9
+#define PART_ONELEG	       10
+#define PART_ANY	       11
 
 #define PART_HEALED		0
 #define PART_CRIPPLED		1

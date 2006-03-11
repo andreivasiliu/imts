@@ -94,7 +94,7 @@ int writhe[WRITHE_LAST];
 int trigger_level = 2;
 
 /* Body parts. */
-int partdamage[6];
+int partdamage[PART_LAST+1];
 
 /* Misc. */
 int tripped;
@@ -625,6 +625,8 @@ void triggers_table_update( char *str )
 			 triggers[i].p_part = PART_LEFTLEG;
 		       else if ( !strcmp( buf, "rightleg" ) )
 			 triggers[i].p_part = PART_RIGHTLEG;
+		       else if ( !strcmp( buf, "back" ) )
+			 triggers[i].p_part = PART_BACK;
 		       else if ( !strcmp( buf, "arm" ) )
 			 triggers[i].p_part = PART_ARM;
 		       else if ( !strcmp( buf, "leg" ) )
@@ -1874,7 +1876,13 @@ int parse_diagnose( char *line )
      writhe[WRITHE_IMPALE] = 1;
    
    /* Check for body parts. */
-   if ( !trigger_cmp( "afflicted by a crippled *.", line, 0 ) )
+   
+   if ( !strcmp( line, "has sprained back." ) )
+     partdamage[PART_BACK] = PART_MANGLED;
+   else if ( !strcmp( line, "has a broken back." ) )
+     partdamage[PART_BACK] = PART_MANGLED2;
+   
+   else if ( !trigger_cmp( "afflicted by a crippled *.", line, 0 ) )
      dmg = PART_CRIPPLED;
    else if ( !trigger_cmp( "has a partially damaged *.", line, 0 ) )
      dmg = PART_MANGLED;
@@ -2038,6 +2046,9 @@ void check_bleeding( )
 	/* And how many should we do? One clot will take one bleeding. */
 	clots = can_clot > bleeding / 2 ? bleeding / 2 : can_clot;
 	
+	if ( clots > 20 )
+	  clots = 20;
+	
 	clientff( C_B "(" C_W "clot * %d" C_B ") " C_0, clots );
 	
 	/* Good, go ahead and send it to the server, "clots" times. */
@@ -2048,6 +2059,9 @@ void check_bleeding( )
      {
 	/* How many should we do? One moss will take five bleeding. */
 	clots = bleeding / 5;
+	
+	if ( clots > 20 )
+	  clots = 20;
 	
 	clientff( C_B "(" C_W "touch moss * %d" C_B ") " C_0, clots );
 	
@@ -2984,6 +2998,8 @@ void parse_triggers( LINE *l )
 			 part = PART_LEFTLEG;
 		       else if ( !strncmp( p, "right leg", 8 ) )
 			 part = PART_RIGHTLEG;
+		       else if ( !strncmp( p, "back", 4 ) )
+			 part = PART_BACK;
 		       else if ( !strncmp( p, "arm", 3 ) )
 			 part = PART_ARM;
 		       else if ( !strncmp( p, "leg", 3 ) )
@@ -3317,6 +3333,9 @@ void cure_limbs( void )
    
    else if ( partdamage[PART_LEFTLEG] == 1 || partdamage[PART_RIGHTLEG] == 1 )
      string = "apply mending to legs";
+   
+   else if ( partdamage[PART_BACK] > 0 )
+     string = "apply restoration to back";
    
    else if ( partdamage[PART_TORSO] > 0 )
      string = "apply restoration to torso";
@@ -4848,7 +4867,7 @@ void imperian_process_server_prompt_action( char *line )
 	prompt_newline = 1;
      }
    
-	/* Stand up and fight! */
+   /* Stand up and fight! */
    if ( !writhing && 
 	partdamage[PART_LEFTLEG] == PART_HEALED &&
 	partdamage[PART_RIGHTLEG] == PART_HEALED &&
