@@ -17,6 +17,8 @@ char *blank_id = BLANK_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 /* Here we register our functions. */
 
 void blank_init_data( );
+void blank_process_server_line( LINE *line );
+void blank_process_server_prompt( LINE *line );
 
 
 ENTRANCE( blank_module_register )
@@ -27,10 +29,8 @@ ENTRANCE( blank_module_register )
    self->id = blank_id;
    
    self->init_data = blank_init_data;
-   self->process_server_line_prefix = NULL;
-   self->process_server_line_suffix = NULL;
-   self->process_server_prompt_informative = NULL;
-   self->process_server_prompt_action = NULL;
+   self->process_server_line = blank_process_server_line;
+   self->process_server_prompt = blank_process_server_prompt;
    self->process_client_command = NULL;
    self->process_client_aliases = NULL;
    self->build_custom_prompt = NULL;
@@ -60,56 +60,25 @@ void blank_unload( )
 }
 */
 
-/* Not yet called anywhere, but reserved for copyright notices. *
-void blank_show_notice( )
+/* Called at every normal line.
+ * See the file header.h for information about the LINE structure.
+ */
+void blank_process_server_line( LINE *line )
 {
    
    
 }
-*/
 
-/* Called before every normal line.
- * Args: colorless_line = String with all color codes stripped.
- *       colorful_line = String with all non-printable characters stripped.
- *       raw_line = String containing the data as it came from the server.
- *
-void blank_process_server_line_prefix( char *colorless_line, char *colorful_line, char *raw_line )
-{
-   
-   
-}
-*/
 
-/* Called after every normal line.
- * Args: Check above.
- *
-void blank_process_server_line_suffix( char *colorless_line, char *colorful_line, char *raw_line )
+/* Called at every prompt.
+ * See the file header.h for information about the LINE structure.
+ */
+void blank_process_server_prompt( LINE *line )
 {
    
    
 }
-*/
 
-/* Called before every prompt.
- * Args: line = String with all colors stripped.
- *       rawline = String with everything in it.
- *
-void blank_process_server_prompt_informative( char *line, char *rawline )
-{
-   
-   
-}
-*/
-
-/* Called after every prompt.
- * Args: rawline = String with everything in it.
- *
-void blank_process_server_prompt_action( char *rawline )
-{
-   
-   
-}
-*/
 
 /* Called for every client command that begins with `.
  * Args: cmd = The command, including the initial symbol.

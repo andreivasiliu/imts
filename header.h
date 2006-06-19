@@ -180,27 +180,29 @@ struct timer_data
 /* Line or prompt from the server. */
 struct line_data
 {
-   char line[INPUT_BUF];
-   char raw_line[INPUT_BUF];
-   char ending[32];
+   /* Read-only variables, used by modules to parse a line. */
+   char line[INPUT_BUF];	/* The line to be processed, stripped of colour codes. */
+   char raw_line[INPUT_BUF];	/* The line with all unprintable codes in it. */
+   char ending[32];		/* New line, GA for prompt, or probably nothing. */
    
    char raw[INPUT_BUF];
    int raw_offset[INPUT_BUF+1];
    char *rawp[INPUT_BUF+1];
    
-   int len;
-   int raw_len;
+   int len;			/* Length of the stripped line. */
+   int raw_len;			/* Length of the raw line. */
    
-   short within_color_code;
+   short within_color_code;	/* (used internally) */
    
-   char *prefix;
-   char *suffix;
-   char *replace;
-   char *inlines[INPUT_BUF];
+   /* Variables filled by modules to modify the line. */
+   char *prefix;		/* Use prefix("string"), or prefixf("fmt", ...) to fill this. */
+   char *suffix;		/* suffix("string"), suffixf("fmd", ...) */
+   char *replace;		/* replace("string") - will replace the whole line. */
+   char *inlines[INPUT_BUF];	/* insert(n, "string") */
    
-   short gag_entirely;
-   short gag_ending;
-   short gag_character[INPUT_BUF];
-   short gag_raw[INPUT_BUF];
+   short gag_entirely;		/* Set to 1 to gag the whole line, except the ending. */
+   short gag_ending;		/* Gag the new line, prompt marker, etc. */
+   short gag_character[INPUT_BUF];  /* Gag a specific character. */
+   short gag_raw[INPUT_BUF];	/* Gag a specific raw character. */
 };
 
