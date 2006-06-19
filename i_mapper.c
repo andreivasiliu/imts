@@ -157,6 +157,7 @@ int floating_map_enabled;
 int skip_newline_on_map;
 int gag_next_prompt;
 int check_for_duplicates;
+int godname;
 
 /* config.mapper.txt options. */
 int disable_swimming;
@@ -169,6 +170,7 @@ int disable_mxp_exits;
 int disable_mxp_map;
 int disable_autolink;
 int disable_sewer_grates;
+int enable_godrooms;
 
 
 char *dash_command;
@@ -1158,8 +1160,14 @@ int parse_title( const char *line )
    else if ( mode == FOLLOWING )
      {
 	if ( !disable_areaname )
-	  clientff( C_R " (" C_g "%s" C_R "%s)" C_0,
-		    current_room->area->name, get_unlost_exits ? "?" : "" );
+	  {
+	     if ( !godname )
+	       clientff( C_R " (" C_g "%s" C_R "%s)" C_0,
+			 current_room->area->name, get_unlost_exits ? "?" : "" );
+	     else
+	       clientff( C_R " (" C_g "%d" C_R "%s)" C_0,
+			 current_room->vnum, get_unlost_exits ? "?" : "" );
+	  }
      }
    
    /* We're ready to move. */
@@ -1172,11 +1180,75 @@ int parse_title( const char *line )
 
 
 
+int check_for_title( LINE *l, int start_offset )
+{
+   char *p;
+   int end_offset;
+   
+   /* Format:
+    *  Title. (road).
+    * or
+    *  Title. (road)   (GODNAME1)
+    */
+   
+   /* So... Check for the title name. */
+   
+   if ( l->line[0] == '(' )
+     return -1;
+   
+   godname = 0;
+   
+   end_offset = 0;
+   p = l->line + start_offset;
+   while ( *p && *p != '(' )
+     {
+	if ( *p == '(' )
+	  break;
+	
+	if ( ( *p < 'A' || *p > 'Z' ) &&
+	     ( *p < 'a' || *p > 'z' ) &&
+	     *p != ',' && *p != '-' && *p != ' ' &&
+	     *p != '.' && *p != '\'' && *p != '\"' )
+	  return -1;
+	
+	if ( *p == '.' )
+	  end_offset = p - l->line + 1;
+	p++;
+     }
+   
+   if ( !*p && end_offset == p - l->line )
+     end_offset = 0;
+   
+   /* Make sure the rest is valid too. */
+   
+   if ( *p == '(' && ( !strncmp( p, "(path)", 6 ) || !strncmp( p, "(road)", 6 ) ) )
+     p += 6;
+   
+   while ( *p == ' ' )
+     p++;
+   
+   if ( *p == '.' )
+     return end_offset;
+   
+   if ( *p == '(' )
+     godname = 1;
+   
+   /* Remove the road from: "Title. (road)." *
+   if ( l->len > 9 && l->line[l->len-2] == ')' &&
+	( eol = strstr( l->line, ". (" ) ) )
+     {
+	end_offset = ( eol - l->line ) + 1;
+     }*/
+   
+   return end_offset;
+}
+
+
+
 void parse_room( LINE *l )
 {
    char *line = l->line;
    static int exit_offset;
-   char *eol;
    int end_offset;
    int i;
    
@@ -1227,25 +1299,18 @@ void parse_room( LINE *l )
    if ( parsing_room == 1 )
      {
 	/* Check if it actually looks like a room. */
-	if ( ( ( l->line[0] < 'A' || l->line[0] > 'Z' ) &&
-	       ( l->line[0] < 'a' || l->line[0] > 'a' ) ) ||
-	     ( l->line[l->len - 1] != '.' ) )
+	end_offset = check_for_title( l, title_offset );
+	
+	if ( end_offset < 0 )
 	  {
 	     parsing_room = 0;
 	     return;
 	  }
 	
+	if ( end_offset )
+	  end_offset -= title_offset;
+	
 	line += title_offset;
-	
-	end_offset = 0;
-	
-	/* Remove the road from: "Title. (road)." */
-	if ( l->len > 9 && l->line[l->len-2] == ')' &&
-	     ( eol = strstr( l->line, ". (" ) ) )
-	  {
-	     end_offset = ( eol - l->line ) + 1;
-	     end_offset -= title_offset;
-	  }
 	
 	/* Disabled for now. Zmud is just really sucky. *
 	if ( !disable_mxp_title )
@@ -2620,6 +2685,7 @@ int save_settings( char *file )
    fprintf( fl, "Disable-MXPMap %s\r\n", disable_mxp_map ? "yes" : "no" );
    fprintf( fl, "Disable-AutoLink %s\r\n", disable_autolink ? "yes" : "no" );
    fprintf( fl, "Disable-SewerGrates %s\r\n", disable_sewer_grates ? "yes" : "no" );
+   fprintf( fl, "Enable-GodRooms %s\r\n", enable_godrooms ? "yes" : "no" );
    
    /* Save all room tags. */
    
@@ -2790,6 +2856,16 @@ int load_settings( char *file )
 	       disable_sewer_grates = 1;
 	     else if ( !strcmp( value, "no" ) )
 	       disable_sewer_grates = 0;
+	     else
+	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
+	  }
+	
+	else if ( !strcmp( option, "Enable-GodRooms" ) )
+	  {
+	     if ( !strcmp( value, "yes" ) )
+	       enable_godrooms = 1;
+	     else if ( !strcmp( value, "no" ) )
+	       enable_godrooms = 0;
 	     else
 	       debugf( "Parse error in file '%s', expected 'yes' or 'no', got '%s' instead.", file, value );
 	  }
@@ -4820,8 +4896,6 @@ void parse_petlist( LINE *line )
      roomname += 2;
    len = strlen( roomname );
    
-   debugf( "(%d) '%s'", len, roomname );
-   
    for ( r = world; r; r = r->next_in_world )
      if ( !strncmp( roomname, r->name, len ) )
        {
@@ -6236,6 +6310,9 @@ void do_map_config( char *arg )
 	  { "sewer_grates", &disable_sewer_grates, 
 	       "Pathfinding through sewer grates disabled.",
 	       "Pathfinding through sewer grates enabled." },
+	  { "god_rooms", &enable_godrooms, 
+	       "Parsing titles with GodRooms enabled.",
+	       "Parsing titles with GodRooms disabled." },
 	
 	  { NULL, NULL, NULL, NULL }
      };

@@ -8,7 +8,8 @@ IMTS-unstable
 - Added the 'back' body part.
 (IMapper:)
 - Fixed the 'go' command: resets dash/sprint status, and lets unknown 'go'
-  commands go to Imperian. Builders rejoyce.
+  commands go to Imperian. Builders rejoice.
+- Improved title recognizing. Builders rejoice again.
 (IOffense:)
 - Stripped the iScript out of here, into its own module.
 - Moved the 'grep' command to the other mod, to clear the pcre requirement.
