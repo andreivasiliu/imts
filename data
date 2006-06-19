@@ -82,7 +82,7 @@ A "right-leg-paralysis" maidenhair n/a n/a     no  no   n/a          "has a para
 A "left-arm-paralysis"  maidenhair n/a n/a     no  yes  n/a          "has a paralysed left arm."
 A "right-arm-paralysis" maidenhair n/a n/a     no  yes  n/a          "has a paralysed right arm."
 A "cyanide"             n/a n/a n/a            no  yes  immunity     "suffering from cyanide."
-A "weakness"            kelp n/a n/a           yes yes  n/a          "wearied in body."
+A "weakness"            kelp n/a n/a           no  yes  n/a          "wearied in body."
 A "sensitivity"         maidenhair n/a n/a     no  yes  n/a          "sensitive to pain."
 A "salves-slow"         kelp n/a n/a           no  yes  n/a          "afflicted with poor salve absorption."
 A "generosity"          galingale n/a n/a      no  no   n/a
@@ -773,10 +773,10 @@ A "something"           n/a n/a n/a            no  no   n/a          "---"
 # More legs/arms.
 "Wrenching pain shoots through your arms as they are twisted and broken*" special part leftarm crippled
 "Wrenching pain shoots through your arms as they are twisted and broken*" special part rightarm crippled
-"As all four of your limbs break, pain overwhelms you and you wonder you've*" special part leftarm crippled
-"As all four of your limbs break, pain overwhelms you and you wonder you've*" special part rightarm crippled
-"As all four of your limbs break, pain overwhelms you and you wonder you've*" special part leftleg crippled
-"As all four of your limbs break, pain overwhelms you and you wonder you've*" special part rightleg crippled
+"As all four of your limbs break, pain overwhelms you and you wonder what*" special part leftarm crippled
+"As all four of your limbs break, pain overwhelms you and you wonder what*" special part rightarm crippled
+"As all four of your limbs break, pain overwhelms you and you wonder what*" special part leftleg crippled
+"As all four of your limbs break, pain overwhelms you and you wonder what*" special part rightleg crippled
 "Blue light crackles forth from ^'s palms, striking you down*" special part leftleg crippled
 "Blue light crackles forth from ^'s palms, striking you down*" special part rightleg crippled
 "Blue light crackles forth from ^'s palms, striking you down*" special part leftarm crippled
