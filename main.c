@@ -2509,8 +2509,20 @@ void write_error_buffer( DESCRIPTOR *self )
 
 void send_to_client( char *data, int bytes )
 {
+   MODULE *module;
+   
    if ( bytes < 1 )
      return;
+   
+   /* Show it off to all the modules... Maybe they want to log it. */
+   for ( module = modules; module; module = module->next )
+     {
+	if ( !module->send_to_client )
+	  continue;
+	
+        if ( (*module->send_to_client)( data, bytes ) )
+          return;
+     }
    
    if ( unable_to_write )
      {
@@ -2746,6 +2758,7 @@ void clientfr( char *string )
 
 void send_to_server( char *string )
 {
+   MODULE *module;
    int length;
    int bytes;
    
@@ -2759,6 +2772,16 @@ void send_to_server( char *string )
      return;
    
    length = strlen( string );
+   
+   /* Show it off to all the modules... Maybe they want to log it. */
+   for ( module = modules; module; module = module->next )
+     {
+	if ( !module->send_to_server )
+	  continue;
+	
+        if ( (*module->send_to_server)( string, length ) )
+          return;
+     }
    
    bytes_sent += length;
    

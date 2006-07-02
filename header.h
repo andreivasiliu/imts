@@ -143,6 +143,8 @@ struct module_data
    void (*update_timers)( );
    void (*debugf)( char *string );
    void (*mxp_enabled)( );
+   int  (*send_to_client)( char *data, int bytes );
+   int  (*send_to_server)( char *data, int bytes );
 };
 
 
