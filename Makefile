@@ -22,7 +22,7 @@ B_FLAGS =
 M_FLAGS = 
 
 ifeq ($(BUILDTYPE),dist)
-  C_FLAGS += -O3
+  C_FLAGS += -O3 -Wall
 else
   C_FLAGS += -ggdb -Wall
 endif
@@ -52,7 +52,7 @@ SRC     = *.c *.h
 
 # External library dependences.
 ifeq ($(BUILDTYPE),dist)
-LIBS_i_offense.so = deps/$(OS)/libpcre.a
+LIBS_i_script.so = deps/$(OS)/libpcre.a
 LIBS_bot = deps/$(OS)/libz.a -ldl
 else
 LIBS_i_script.so = -lpcre
