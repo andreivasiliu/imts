@@ -1,0 +1,66 @@
+script "Noctusari Utils";
+
+alias insc
+{
+   nr_of_cards = nr(arg(1));
+   type_of_card = arg(2);
+   
+   if ( !nr_of_cards or !type_of_card )
+   {
+      echo "Huh? Usage: insc <nr> <type>";
+      show_prompt;
+      return;
+   }
+   
+   stop_inscribing = 0;
+   
+   inscribe_card( );
+}
+
+alias stopinsc
+{
+   stop_inscribing = 1;
+   
+   echo "Alright.";
+   show_prompt;
+}
+
+alias continsc
+{
+   stop_inscribing = 0;
+   
+   inscribe_card( );
+}
+
+
+function inscribe_card( )
+{
+   if ( !nr_of_cards or !type_of_card )
+      return;
+
+   if ( nr_of_cards % 3 == 0 )
+      send "drink mana";
+
+   send "outd blank";
+   send "inscribe blank with " + type_of_card;
+}
+
+trigger "You have successfully inscribed the image of the *"
+{
+   if ( !nr_of_cards or !type_of_card )
+      return;
+   
+   send "ind " + type_of_card;
+   nr_of_cards = nr_of_cards - 1;
+
+   necho " (" + str(nr_of_cards) + " left)";
+   
+   if ( stop_inscribing )
+   {
+      nr_of_cards = 0;
+      return;
+   }
+
+   if ( nr_of_cards )
+      inscribe_card( );
+}
