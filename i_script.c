@@ -3285,6 +3285,9 @@ void scan_for_scripts( SCRIPT_GROUP *group, char *current, DIR *dir )
    
    //clientff( "Scanning %s\n", current );
    
+#if !defined( PATH_MAX )
+# define PATH_MAX 4096
+#endif
    while ( ( dp = readdir( dir ) ) )
      {
         char path[PATH_MAX];
