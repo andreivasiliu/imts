@@ -37,4 +37,4 @@ Using the Imperian module:
 
 
 If you have problems, message Whyte on Imperian, WhyteTheTelepath on AIM, or
-email at andrei@stipo.ro or whytethetelepath@aim.com.
+email at andrei@stipo.ro or whyte.vuhuni@gmail.com.
