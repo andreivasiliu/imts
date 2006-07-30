@@ -28,12 +28,16 @@
 #include <stdarg.h>
 #include <sys/time.h>
 #include <pcre.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
+
 
 #include "module.h"
 
 
 int scripter_version_major = 0;
-int scripter_version_minor = 6;
+int scripter_version_minor = 7;
 
 char *i_script_id = I_SCRIPT_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
@@ -55,12 +59,37 @@ char *beginning;
 #define GLOBAL_MEMORY		4
 #define SCRIPT_FUNCTIONS	5
 
+#define V_TYPE( val ) ( (val).type )
+#define V_STR( val ) ( (val).u.string )
+#define V_NR( val ) ( (val).u.nr )
+#define V_POINTER( val ) ( (val).u.pointer )
+#define V_TRUE( val ) ( ( V_TYPE( (val) ) == VAR_STRING && V_STR( (val) )[0] ) || \
+                        ( V_TYPE( (val) ) == VAR_NUMBER && V_NR( (val) ) ) || \
+                        ( V_TYPE( (val) ) == VAR_POINTER && V_POINTER( (val) ).memory_space != NULL_POINTER ) )
 
+#define INIT_VALUE( val ) V_TYPE(val) = VAR_NUMBER, V_NR(val) = 0
+#define FREE_VALUE( val ) if ( V_TYPE(val) == VAR_STRING && V_STR(val) ) free( V_STR(val) );
+
+#define INIT_VARIABLE( var ) INIT_VALUE( (var).value ), (var).address.memory_space = NULL_POINTER
+#define FREE_VARIABLE( var ) FREE_VALUE( (var).value )
+
+
+/* Layout:
+ * 
+ * There may be several iScript groups.
+ *  - Each group has its own memory zone, and some scripts in it.
+ *    - Each script has multiple triggers, aliases, and functions.
+ *      - Each trigger has a code that gets executed.
+ *      - Each function also has a code that gets executed.
+ *      - And each alias, the same.
+ *        - Finally, each code has many instructions that compose it.
+ */
 
 /* Structures that we'll need. */
 
-typedef struct script_data SCRIPT;
+typedef struct list_data LIST;
 typedef struct pointer_data POINTER;
+typedef struct value_data VALUE;
 typedef struct variable_data VARIABLE;
 typedef struct symbol_data SYMBOL;
 typedef struct symbol_table_data SYMBOL_TABLE;
@@ -68,62 +97,88 @@ typedef struct instr_data INSTR;
 typedef struct code_data CODE;
 typedef struct function_data FUNCTION;
 typedef struct trigger_data TRIGGER;
+typedef struct script_data SCRIPT;
+typedef struct script_group_data SCRIPT_GROUP;
 
 
 
+#define LINKED_LIST void *next, *prev
+
+struct list_data
+{
+   LINKED_LIST;
+};
+
+
+
+/* Currently, 16 bytes. A nice number. */
 struct pointer_data
 {
    int offset;
    
-   int memory_space;
+   unsigned char memory_space;
+   
+   void *memory_section;
 } null_pointer = { 0, 0 };
+
+
+
+struct value_data
+{
+   char type;
+   union
+     {
+        // fixme.. consider long? We have enough space in the union..
+        int nr;
+        char *string;
+        POINTER pointer;
+     } u;
+};
+
 
 
 struct variable_data
 {
-   char *name;
-   
-   int type;
-   
-   /* String. */
-   char *string;
-   
-   /* Number. */
-   int nr;
-   
-   /* Pointer. */
-   POINTER pointer;
+   /* The most obvious part of a variable. */
+   VALUE value;
    
    /* Its place in memory. */
    POINTER address;
-   
-   VARIABLE *next;
 };
 
 
 
 struct symbol_data
 {
+   LINKED_LIST;
+   
    char *name;
    
-   int invisible;
+   /* Line where it was declared. */
+   int declared_at;
    
    /* Variable - where will it point to? */
    POINTER pointer;
    
    /* Constant. */
    int is_constant;
-   VARIABLE constant;
+   VALUE constant;
+   
+   /* In the scope stack, it's a pointer to the symbol in the symbol table. */
+   SYMBOL *symbol;
 };
 
 
 
+// FIXME: Destroy too.
 struct symbol_table_data
 {
    SYMBOL *symbol;
+   SYMBOL *last;
    
-   int nr;
    int memory_size;
+   
+   struct symbol_table_data *lower;
 };
 
 
@@ -132,21 +187,20 @@ struct instr_data
 {
    int instruction;
    
-   /* Constant. */
-   VARIABLE constant;
+   /* Constant - its value. */
+   VALUE constant;
    
-   /* Variable. */
-   char *var_name;
-   short defined_as_local;
-   short defined_as_global;
+   /* Variable - pointer to its memory space. */
    POINTER pointer;
-   
-   int no_linking_needed;
    
    /* Operator. */
    int oper;
    
+   /* Used when compiling. */
    int sys_function;
+   SYMBOL *symbol;
+   
+   SCRIPT *parent_script;
    
    int links;
    INSTR **link;
@@ -156,7 +210,9 @@ struct instr_data
 
 struct code_data
 {
-   SYMBOL_TABLE symbol_table;
+   LINKED_LIST;
+   
+   SYMBOL_TABLE local_symbol_table;
    
    INSTR *first_instruction;
 };
@@ -165,44 +221,68 @@ struct code_data
 
 struct function_data
 {
+   LINKED_LIST;
+   
    char *name;
    short alias;
    int args_nr;
    
-   int code_offset;
+   POINTER pointer;
    
    SCRIPT *parent;
-   FUNCTION *next;
 };
 
 
 
 struct script_data
 {
+   LINKED_LIST;
+   
    char *name;
+   char *path;
    char *description;
    
-   short in_use;
+   time_t modified_date;
    
-   CODE *codes;
-   int codes_nr;
+   SYMBOL_TABLE *scope_symbol_table;
+   SYMBOL_TABLE script_symbol_table;
    
-   FUNCTION *functions;
-   TRIGGER *triggers;
+   CODE *codes, *codes_last;
    
-   SYMBOL_TABLE symbol_table;
+   FUNCTION *functions, *functions_last;
+   TRIGGER *triggers, *triggers_last;
    
-   VARIABLE *script_memory;
-   VARIABLE *script_memory_top;
+   SCRIPT_GROUP *parent_group;
    
-   SCRIPT *next;
+   CODE *init_code;
 };
 
 
 
-/* When a function is called, one such structure is created in the call-stack. */
+// FIXME: don't forget about destroying
+struct script_group_data
+{
+   LINKED_LIST;
+   
+   char *name;
+   
+   short changed;
+   
+   SCRIPT *scripts;
+   SCRIPT *scripts_last;
+   
+   SYMBOL_TABLE group_symbol_table;
+   
+   VALUE *script_memory;
+   VALUE *script_memory_top;
+};
+
+
+
 struct trigger_data
 {
+   LINKED_LIST;
+   
    char *name;
    
    short prompt;
@@ -218,26 +298,21 @@ struct trigger_data
    pcre *pattern;
    pcre_extra *extra;
    
-   int code_offset;
+   POINTER pointer;
    
    SCRIPT *parent;
-   
-   TRIGGER *next;
 };
+
 
 
 /* Convenience structure. */
 struct prev_data
 {
    int bottom, top;
-   short script_in_use;
-   SCRIPT *script;
    VARIABLE *function_return_value;
 };
 
 
-VARIABLE *variables;
-SCRIPT *scripts;
 
 
 
@@ -250,6 +325,7 @@ SCRIPT *scripts;
 #define INSTR_VARIABLE		4
 #define INSTR_RETURN		5
 #define INSTR_IF		6
+#define INSTR_WHILE		7
 
 typedef int instruction_handler( INSTR *, VARIABLE * );
 instruction_handler instr_function;
@@ -259,6 +335,7 @@ instruction_handler instr_constant;
 instruction_handler instr_variable;
 instruction_handler instr_return;
 instruction_handler instr_if;
+instruction_handler instr_while;
 
 /* Must be in the order of the defines above. */
 instruction_handler *instructions[ ] =
@@ -270,6 +347,7 @@ instruction_handler *instructions[ ] =
      instr_variable,
      instr_return,
      instr_if,
+     instr_while,
      
      NULL
 };
@@ -281,7 +359,7 @@ instruction_handler *instructions[ ] =
 #define P VAR_POINTER
 #define S VAR_STRING
 
-typedef int operator_handler( VARIABLE *, VARIABLE *, VARIABLE * );
+typedef int operator_handler( VARIABLE *, VARIABLE *, VARIABLE *, INSTR * );
 operator_handler oper_not_implemented;
 operator_handler oper_dereference;
 operator_handler oper_address_of;
@@ -396,9 +474,6 @@ system_function sysfunc_arg;
 system_function sysfunc_args;
 system_function sysfunc_show_prompt;
 system_function sysfunc_debug;
-system_function sysfunc_load_script;
-system_function sysfunc_unload_script;
-system_function sysfunc_call;
 system_function sysfunc_nr;
 system_function sysfunc_str;
 
@@ -407,23 +482,21 @@ struct sys_function_data
    char *name;
    
    int args;
+   short full_arg_priority;
    
    system_function *function;
 } sys_functions[ ] =
 {
-     { "echo",		1, sysfunc_echo			},
-     { "send",		1, sysfunc_send			},
-     { "necho",		1, sysfunc_necho		},
-     { "nsend",		1, sysfunc_nsend		},
-     { "arg",		1, sysfunc_arg			},
-     { "args",		2, sysfunc_args			},
-     { "show_prompt",	0, sysfunc_show_prompt		},
-     { "debug",		0, sysfunc_debug		},
-     { "load_script",	1, sysfunc_load_script		},
-     { "unload_scriot",	1, sysfunc_unload_script	},
-     { "call",		2, sysfunc_call			},
-     { "nr",		1, sysfunc_nr			},
-     { "str",		1, sysfunc_str			},
+     { "echo",		1, 1, sysfunc_echo		},
+     { "send",		1, 1, sysfunc_send		},
+     { "necho",		1, 1, sysfunc_necho		},
+     { "nsend",		1, 1, sysfunc_nsend		},
+     { "arg",		1, 0, sysfunc_arg		},
+     { "args",		2, 0, sysfunc_args		},
+     { "show_prompt",	0, 0, sysfunc_show_prompt	},
+     { "debug",		0, 0, sysfunc_debug		},
+     { "nr",		1, 0, sysfunc_nr		},
+     { "str",		1, 0, sysfunc_str		},
    
      { NULL }
 };
@@ -449,23 +522,27 @@ int sb_size;
 
 int returning_successful;
 
+/* This one has it all. All the goodness is fit in here. */
+SCRIPT_GROUP *groups, *groups_last;
+
+SCRIPT_GROUP *current_group;
 SCRIPT *current_script;
 CODE *current_code;
 
-SYMBOL_TABLE symbol_table;
+SYMBOL_TABLE global_symbol_table;
 
-INSTR *compile_command( int priority );
-int run_code( SCRIPT *script, int code_offset );
+VALUE *global_memory;
 
-VARIABLE *local_memory;
-VARIABLE *global_memory;
-
-VARIABLE *current_local_bottom;
-VARIABLE *current_local_top;
-
-VARIABLE *top_of_allocated_memory_for_locals;
+VALUE *local_memory;
+VALUE *current_local_bottom;
+VALUE *current_local_top;
+VALUE *top_of_allocated_memory_for_locals;
 
 VARIABLE *function_return_value;
+
+
+INSTR *compile_command( int priority );
+int run_code( CODE *code );
 
 
 
@@ -501,71 +578,126 @@ ENTRANCE( scripter_module_register )
 
 
 
+/* Generic linked-list handlers. */
+#define link_to_list( object, first, last ) _link_to_list( (LIST *)object, (void **)first, (void **)last )
+void _link_to_list( LIST *object, void **first, void **last )
+{
+   if ( *last )
+     {
+        ((LIST *)*last)->next = object;
+        object->prev = (LIST *)*last;
+        object->next = NULL;
+        *last = object;
+     }
+   else
+     {
+        *first = *last = object;
+        object->next = NULL;
+        object->prev = NULL;
+     }
+}
+
+#define unlink_from_list( object, first, last ) _unlink_from_list( (LIST *)object, (void **)first, (void **)last )
+void _unlink_from_list( LIST *object, void **first, void **last )
+{ 
+   if ( !object->prev )
+     *first = object->next;
+   else
+     ((LIST *)object->prev)->next = object->next;
+   
+   if ( !object->next )
+     *last = object->prev;
+   else
+     ((LIST *)object->next)->prev = object->prev;
+}
+
+#define replace_link_in_list( src, dest, first, last ) _replace_link_in_list( (LIST *)src, (LIST *)dest, (void **)first, (void **)last )
+void _replace_link_in_list( LIST *src, LIST *dest, void **first, void **last )
+{
+   src->prev = dest->prev;
+   src->next = dest->next;
+   
+   if ( src->prev )
+     ((LIST *)src->prev)->next = src;
+   else
+     *first = src;
+   
+   if ( src->next )
+     ((LIST *)src->next)->prev = src;
+   else
+     *last = src;
+}
+
+
+
 void exec_trigger( TRIGGER *trigger )
 {
-   run_code( trigger->parent, trigger->code_offset );
+   run_code( (CODE*)trigger->pointer.memory_section );
 }
 
 
 
 void check_triggers( LINE *l, int prompt )
 {
+   SCRIPT_GROUP *group;
    SCRIPT *script;
    TRIGGER *trigger;
    char *line;
    int len;
    int rc;
    
-   for ( script = scripts; script; script = script->next )
-     for ( trigger = script->triggers; trigger; trigger = trigger->next )
-       {
-	  if ( trigger->prompt != prompt )
-	    continue;
-	  
-	  if ( !trigger->raw )
-	    {
-	       line = l->line;
-	       len = l->len;
-	    }
-	  else
-	    {
-	       line = l->raw_line;
-	       len = l->raw_len;
-	    }
-	  
-	  if ( trigger->everything )
-	    {
-	       current_line = line;
-	       exec_trigger( trigger );
-	    }
-	  
-	  else if ( trigger->regex )
-	    {
-	       rc = pcre_exec( trigger->pattern, trigger->extra, line, len, 0, 0, regex_ovector, 30 );
-	       
-	       if ( rc < 0 )
-		 continue;
-	       
-	       /* Regex Matched. Beware of recursiveness! */
-	       
-	       if ( rc == 0 )
-		 regex_callbacks = 10;
-	       else
-		 regex_callbacks = rc;
-	       
-	       current_line = line;
-	       exec_trigger( trigger );
-	       
-	       regex_callbacks = 0;
-	    }
-	  
-	  else if ( !cmp( trigger->message, line ) )
-	    {
-	       current_line = line;
-	       exec_trigger( trigger );
-	    }
-       }
+   for ( group = groups; group; group = group->next )
+     for ( script = group->scripts; script; script = script->next )
+       for ( trigger = script->triggers; trigger; trigger = trigger->next )
+         {
+            if ( trigger->prompt != prompt )
+              continue;
+            
+            if ( !trigger->raw )
+              {
+                 line = l->line;
+                 len = l->len;
+              }
+            else
+              {
+                 line = l->raw_line;
+                 len = l->raw_len;
+              }
+            
+            if ( trigger->everything )
+              {
+                 current_line = line;
+                 exec_trigger( trigger );
+              }
+            
+            else if ( trigger->regex )
+              {
+                 rc = pcre_exec( trigger->pattern, trigger->extra, line, len, 0, 0, regex_ovector, 30 );
+                 
+                 if ( rc < 0 )
+                   continue;
+                 
+                 /* Regex Matched. Beware of recursiveness! */
+                 
+                 if ( rc == 0 )
+                   regex_callbacks = 10;
+                 else
+                   regex_callbacks = rc;
+                 
+                 current_line = line;
+                 exec_trigger( trigger );
+                 
+                 regex_callbacks = 0;
+              }
+            
+            else if ( !cmp( trigger->message, line ) )
+              {
+                 current_line = line;
+                 exec_trigger( trigger );
+              }
+         }
 }
+
 
 
 void scripter_process_server_line( LINE *l )
@@ -590,6 +722,7 @@ void scripter_process_server_line( LINE *l )
 	sb_size += l->len + 1;
      }
 }
+
 
 
 void scripter_process_server_prompt( LINE *l )
@@ -648,17 +781,18 @@ void set_args( char *line )
 
 void resize_global_memory( int size )
 {
-   global_memory = realloc( global_memory, size * sizeof( VARIABLE ) );
+   global_memory = realloc( global_memory, size * sizeof( VALUE ) );
    
-   (global_memory+target_offset)->type = VAR_STRING;
-   share_memory( "target", &(global_memory + target_offset)->string, sizeof( char * ) );
+   V_TYPE( *(global_memory+target_offset) ) = VAR_STRING;
+   share_memory( "target", &V_STR( *(global_memory + target_offset) ), sizeof( char * ) );
    shared_memory_is_pointer_to_string( "target" );
 }
 
 
+
 void scripter_module_init_data( )
 {
-   int add_global_variable( char *name, VARIABLE *constant );
+   SYMBOL *add_symbol_to_table( char *name, int unique, SYMBOL_TABLE *table, int space );
    void load_scripts( );
    
    DEBUG( "scripter_init_data" );
@@ -666,25 +800,27 @@ void scripter_module_init_data( )
    current_line = "";
    set_args( "" );
    
+   // fix..?
    /* Initialize the common variables. */
-   target_offset = add_global_variable( "target", NULL );
+   add_symbol_to_table( "target", 1, &global_symbol_table, GLOBAL_MEMORY );
+   target_offset = 0;
    
-   resize_global_memory( symbol_table.memory_size );
+   resize_global_memory( global_symbol_table.memory_size );
    
    /* Initialize memory for scripts. */
    if ( !local_memory )
      {
-	local_memory = calloc( 32, sizeof( VARIABLE ) );
+	local_memory = calloc( 32, sizeof( VALUE ) );
 	current_local_bottom = local_memory;
 	current_local_top = local_memory;
 	top_of_allocated_memory_for_locals = local_memory + 32;
      }
    
-   get_timer( );
+//   get_timer( );
    
    load_scripts( );
    
-   debugf( "All scripts compiled. (%d microseconds)", get_timer( ) );
+//   debugf( "All scripts compiled. (%d microseconds)", get_timer( ) );
 }
 
 
@@ -707,7 +843,7 @@ void print_matched_line( char *string, int match_start, int match_end )
    while ( string[end] && string[end] != '\n' )
      end++;
    
-   clientff( "> %.*s" C_R "%.*s" C_0 "%.*s\n",
+   clientff( "> %.*s" C_R "%.*s" C_0 "%.*s\r\n",
 	     match_start - start, string + start,
 	     match_end - match_start, string + match_start,
 	     end - match_end, string + match_end );
@@ -801,32 +937,257 @@ void do_searchback( char *pattern_string )
 
 
 
+#if 0
+void show_symbol( SYMBOL *s )
+{
+   clientff( " - %s: %s", s->name, s->is_constant ? "constant = " : "variable at " );
+   if ( s->is_constant )
+     {
+        if ( V_TYPE( s->constant ) == VAR_NUMBER )
+          clientff( "%d", V_NR( s->constant ) );
+        else if ( V_TYPE( s->constant ) == VAR_STRING )
+          clientff( "\"%s\"", V_STR( s->constant ) );
+        else if ( V_TYPE( s->constant ) == VAR_POINTER )
+          clientff( "pointer" );
+     }
+   else
+     {
+        clientff( "%d (in %d)", s->pointer.offset, s->pointer.memory_space );
+     }
+   clientff( C_0 "\r\n" );
+}
+#endif
+
+
+
+#define add_object( obj ) (*objects)++, (*total_size) += sizeof( obj )
+#define add_string( str ) if ( str ) (*strings)++, (*string_size) += 1 + strlen( str )
+#define add_memory( mem ) (*mem_zones)++, (*memory_size) += (mem);
+
+void recursive_add_instruction( INSTR *instr,
+                                int *objects, int *total_size,
+                                int *strings, int *string_size )
+{
+   int i;
+   
+   add_object( INSTR );
+   if ( V_TYPE( instr->constant ) == VAR_STRING )
+     add_string( V_STR( instr->constant ) );
+   
+   for ( i = 0; i < instr->links; i++ )
+     if ( instr->link[i] )
+       recursive_add_instruction( instr->link[i],
+                                  objects, total_size,
+                                  strings, string_size );
+}
+
+void show_statistics( SCRIPT_GROUP *groups )
+{
+   SCRIPT_GROUP *g;
+   SCRIPT *s;
+   SYMBOL *sb;
+   SYMBOL_TABLE *tb;
+   CODE *c;
+   FUNCTION *f;
+   TRIGGER *t;
+   
+   int data[6];
+   int *objects = &data[0];
+   int *strings = &data[1];
+   int *mem_zones = &data[2];
+   int *total_size = &data[3];
+   int *string_size = &data[4];
+   int *memory_size = &data[5];
+   memset( data, 0, 6*sizeof( int ) );
+   
+   add_memory( top_of_allocated_memory_for_locals - local_memory );
+   add_memory( global_symbol_table.memory_size );
+   
+   for ( g = groups; g; g = g->next )
+     {
+        add_object( SCRIPT_GROUP );
+        add_string( g->name );
+        
+        for ( sb = g->group_symbol_table.symbol; sb; sb = sb->next )
+          {
+             add_object( SYMBOL );
+             add_string( sb->name );
+             if ( V_TYPE( sb->constant ) == VAR_STRING )
+               add_string( V_STR( sb->constant ) );
+          }
+        
+        add_memory( g->script_memory_top - g->script_memory );
+        
+        for ( s = g->scripts; s; s = s->next )
+          {
+             add_object( SCRIPT );
+             add_string( s->name );
+             add_string( s->path );
+             add_string( s->description );
+             
+             for ( sb = s->script_symbol_table.symbol; sb; sb = sb->next )
+               {
+                  add_object( SYMBOL );
+                  add_string( sb->name );
+                  if ( V_TYPE( sb->constant ) == VAR_STRING )
+                    add_string( V_STR( sb->constant ) );
+               }
+             
+             if ( s->scope_symbol_table )
+               for ( tb = s->scope_symbol_table; tb; tb = tb->lower )
+                 for ( sb = tb->symbol; sb; sb = sb->next )
+                 {
+                    add_object( SYMBOL );
+                    add_string( sb->name );
+                    if ( V_TYPE( sb->constant ) == VAR_STRING )
+                      add_string( V_STR( sb->constant ) );
+                 }
+             
+             for ( c = s->codes; c; c = c->next )
+               {
+                  add_object( CODE );
+                  
+                  for ( sb = c->local_symbol_table.symbol; sb; sb = sb->next )
+                    {
+                       add_object( SYMBOL );
+                       add_string( sb->name );
+                       if ( V_TYPE( sb->constant ) == VAR_STRING )
+                         add_string( V_STR( sb->constant ) );
+                    }
+               }
+             
+             for ( f = s->functions; f; f = f->next )
+               {
+                  add_object( FUNCTION );
+                  add_string( f->name );
+               }
+             for ( t = s->triggers; t; t = t->next )
+               {
+                  add_object( TRIGGER );
+                  add_string( t->name );
+                  add_string( t->message );
+               }
+          }
+     }
+   
+   clientfr( "iScript Statistics" );
+   clientff( "Strings: %d, occupying %d bytes.\r\n", *strings, *string_size );
+   clientff( "Objects: %d, occupying %d bytes.\r\n", *objects, *total_size );
+   clientff( "M Zones: %d, occupying %d bytes, in %d variables.\r\n", *mem_zones, *memory_size * sizeof( VALUE ), *memory_size );
+   clientff( "A grand total of: %.2f megabytes of your precious RAM.\r\n",
+             (float) ( *string_size + *total_size + ( *memory_size * sizeof( VALUE ) ) ) / (1024*1024) );
+}
+
+
+
+void show_scripts( )
+{
+   SCRIPT_GROUP *group;
+   SCRIPT *script;
+   
+   clientfr( "Loaded iScripts:" );
+   for ( group = groups; group; group = group->next )
+     {
+        clientff( C_B "* %s:\r\n", group->name );
+        for ( script = group->scripts; script; script = script->next )
+          {
+             clientff( C_B " - %s/" C_W "%s",
+                       script->path, script->name );
+             if ( script->description )
+               clientff( C_D " (%s)", script->description );
+             clientff( "\r\n" C_0 );
+          }
+     }
+}
+
+
+
 int scripter_process_client_aliases( char *line )
 {
+   SCRIPT_GROUP *group;
    SCRIPT *script;
    FUNCTION *function;
    char command[4096], *args;
    
    DEBUG( "scripter_process_client_aliases" );
    
-   if ( !strcmp( line, "load" ) )
+   args = get_string( line, command, 4096 );
+   
+   if ( !strcmp( command, "grep" ) )
+     {
+	do_searchback( args );
+	show_prompt( );
+	return 1;
+     }
+   
+   /* Look around the alias list. */
+   
+   for ( group = groups; group; group = group->next )
+     for ( script = group->scripts; script; script = script->next )
+       for ( function = script->functions; function; function = function->next )
+         if ( function->alias && !strcmp( function->name, command ) )
+           {
+              current_line = line;
+              set_args( line );
+              
+              run_code( (CODE*)function->pointer.memory_section );
+              
+              return 1;
+           }
+   
+   if ( strcmp( command, "is" ) )
+     return 0;
+   
+   args = get_string( args, command, 4096 );
+   
+   if ( !strcmp( command, "load" ) )
      {
 	void load_scripts( );
 	load_scripts( );
-	show_prompt( );
-	return 1;
      }
-   else if ( !strcmp( line, "show" ) || !strncmp( line, "show ", 5 ) )
+   else if ( !strcmp( command, "laod" ) )
+     {
+        void load_scripts( );
+        clientfr( "I'll assume you meant 'load'. Learn to type please." );
+        load_scripts( );
+     }
+   else if ( !strcmp( command, "stat" ) ||
+             !strcmp( command, "stats" ) ||
+             !strcmp( command, "statistics" ) )
+     {
+        show_statistics( groups );
+     }
+   else if ( !strcmp( command, "scripts" ) ||
+             !strcmp( command, "groups" ) )
+     {
+        show_scripts( );
+     }
+#if 0
+   else if ( !strcmp( command, "show" ) )
      {
 	void do_show( );         
-	char buf[256];
 	
-	get_string( line+4, buf, 256 );
-	do_show( !strcmp( buf, "full" ) );
-	show_prompt( );
-	return 1;
+	do_show( !strcmp( args, "full" ) );
      }
-   else if ( !strcmp( line, "scripts" ) )
+   else if ( !strcmp( command, "symbols" ) )
+     {
+        SCRIPT *script;
+        SYMBOL *s;
+        
+        clientfr( "Global Symbols:" );
+        for ( s = global_symbol_table.symbol; s; s = s->next )
+          show_symbol( s );
+        
+        clientf( "\r\n" );
+        clientfr( "Script Symbols:" );
+        for ( script = scripts; script; script = script->next )
+          {
+             clientfr( script->name );
+             for ( s = script->script_symbol_table.symbol; s; s = s->next )
+               show_symbol( s );
+          }
+     }
+   else if ( !strcmp( command, "scripts" ) )
      {
 	SCRIPT *script;
 	FUNCTION *f;
@@ -840,9 +1201,6 @@ int scripter_process_client_aliases( char *line )
 	
 	for ( script = scripts; script; script = script->next )
 	  {
-	     clientff( C_W "* " C_B "%s" C_0 " (" C_B "%s" C_0 ")\r\n",
-		       script->name, script->description );
-	     
 	     f_count = a_count = t_count = 0;
 	     
 	     for ( f = script->functions; f; f = f->next )
@@ -856,78 +1214,50 @@ int scripter_process_client_aliases( char *line )
 	     for ( t = script->triggers; t; t = t->next )
 	       t_count++;
 	     
-	     clientff( " " C_G "%d" C_D " function%s" C_0 "\r\n",
-		       f_count, f_count == 1 ? "" : "s" );
-	     clientff( " " C_G "%d" C_D " alias%s" C_0 "\r\n",
-		       a_count, a_count == 1 ? "" : "es" );
-	     clientff( " " C_G "%d" C_D " trigger%s" C_0 "\r\n",
-		       t_count, t_count == 1 ? "" : "s" );
-	     
-	     /* Function List.
-	       {
-		  clientff( C_D " %s%s (" C_G "%d" C_D " bytes)" C_0 "\r\n",
-			    f->name,
-			    f->alias ? C_D " [" C_W "A" C_D "]" : "",
-			    f->size );
-	       } */
+	     clientff( C_W "* " C_B "%s" C_0 " (" C_B "%s" C_0 ") - "
+                       C_G "%d" C_D " function%s, "
+                       C_G "%d" C_D " alias%s, "
+                       C_G "%d" C_D " trigger%s." C_0 "\r\n",
+		       script->name, script->description,
+                       f_count, f_count == 1 ? "" : "s",
+                       a_count, a_count == 1 ? "" : "es",
+                       t_count, t_count == 1 ? "" : "s" );
 	  }
-	
-	show_prompt( );
-	return 1;
      }
-   else if ( !strncmp( line, "callfunc ", 9 ) )
+#endif
+   else if ( !strcmp( command, "call" ) )
      {
 	int run_function_with_args( FUNCTION *function, char *args );
+        SCRIPT_GROUP *g;
 	SCRIPT *s;
 	FUNCTION *f;
 	char name[256];
 	
-	line = get_string( line + 9, name, 256 );
+	args = get_string( args, name, 256 );
 	
 	f = NULL;
-	for ( s = scripts; s; s = s->next )
-	  for ( f = s->functions; f; f = f->next )
-	    if ( !strcmp( name, f->name ) )
-	      break;
-	
-	if ( !f )
-	  {
-	     clientfr( "Function not found. Perhaps you misspelled it?" );
-	     show_prompt( );
-	     return 1;
-	  }
-	
-	current_line = line;
-	set_args( line );
-	
-	run_function_with_args( f, line );
-	show_prompt( );
-	return 1;
-     }
-   else if ( !strncmp( line, "grep ", 5 ) )
-     {
-	do_searchback( line + 5 );
-	show_prompt( );
-	return 1;
+        for ( g = groups; g; g = g->next )
+          for ( s = g->scripts; s; s = s->next )
+            for ( f = s->functions; f; f = f->next )
+              if ( !strcmp( name, f->name ) )
+                {
+                   current_line = args;
+                   set_args( args );
+                   
+                   run_function_with_args( f, args );
+                   
+                   return 1;
+                }
+        
+        clientfr( "Function not found. Perhaps you misspelled it?" );
+        show_prompt( );
      }
    
-   args = get_string( line, command, 4096 );
+   else
+     clientfr( "Unknown IScript command." );
    
-   /* Look around the function list. */
-   
-   for ( script = scripts; script; script = script->next )
-     for ( function = script->functions; function; function = function->next )
-       if ( function->alias && !strcmp( function->name, command ) )
-	 {
-	    current_line = line;
-	    set_args( line );
-	    
-	    run_code( function->parent, function->code_offset );
-	    
-	    return 1;
-	 }
-   
-   return 0;
+   show_prompt( );
+   return 1;
 }
 
 
@@ -963,7 +1293,7 @@ void skip_whitespace( )
 
 
 
-// Test me.
+// Test me. max overflow.
 void get_identifier( char *dest, int max )
 {
    skip_whitespace( );
@@ -981,13 +1311,41 @@ void get_identifier( char *dest, int max )
 
 
 
+int get_line_number( )
+{
+   char *p = beginning;
+   int line = 1, column = 1;
+   
+   if ( !p )
+     return -1;
+   
+   while ( *p )
+     {
+        if ( *p == '\n' )
+          line++, column = 1;
+        else if ( *p != '\r' )
+          column++;
+        
+        p++;
+        if ( p == pos )
+          break;
+     }
+   
+   /* Just.. in case a file is THAT big. */
+   if ( line == 0 )
+     line = -1;
+   
+   return line;
+}
+
+
+
 void abort_script( int syntax, char *error, ... )
 {
    char buf[1024];
    char where[1024];
    char what[1024];
    char error_buf[1024];
-   int line = 0, column = 0;
    
    va_list args;
    error_buf[0] = 0;
@@ -1000,23 +1358,7 @@ void abort_script( int syntax, char *error, ... )
    
    /* Find the current line/column in the file. */
    if ( beginning && current_script && current_script->name )
-     {
-	char *p = beginning;
-	
-	while ( *p )
-	  {
-	     if ( *p == '\n' )
-	       line++, column = 0;
-	     else if ( *p != '\r' )
-	       column++;
-	     
-	     p++;
-	     if ( p == pos )
-	       break;
-	  }
-	
-	sprintf( where, " in file %s:%d", current_script->name, line );
-     }
+     sprintf( where, " in file %s/%s:%d", current_script->path, current_script->name, get_line_number( ) );
    else
      where[0] = 0;
    
@@ -1065,48 +1407,20 @@ void script_warning( char *warning, ... )
 
 
 
-void clear_value( VARIABLE *v )
+void copy_value( VALUE *v1, VALUE *v2 )
 {
-   if ( v->type == VAR_STRING && v->string )
-     {
-	free( v->string );
-	v->string = NULL;
-     }
-   
-   v->type = VAR_NUMBER;
-   v->nr = 0;
-}
-
-
-
-void copy_value( VARIABLE *v1, VARIABLE *v2, int move )
-{
-   if ( v2->type == VAR_STRING && v2->string )
-     free( v2->string );
-   
 //   if ( v2->type &&
 //	v2->type != VAR_NUMBER &&
 //	v2->type != VAR_STRING &&
 //	v2->type != VAR_POINTER )
   //   script_warning( "Assigning to an uninitialized variable!" );
    
-   v2->type = v1->type;
+   if ( V_TYPE( *v2 ) == VAR_STRING && V_STR( *v2 ) )
+     free( V_STR( *v2 ) );
    
-   if ( v1->type == VAR_STRING )
-     {
-	if ( move )
-	  v2->string = v1->string;
-	else
-	  v2->string = strdup( v1->string );
-     }
-   else if ( v1->type == VAR_NUMBER )
-     {
-	v2->nr = v1->nr;
-     }
-   else if ( v1->type == VAR_POINTER )
-     {
-	v2->pointer = v1->pointer;
-     }
+   *v2 = *v1;
+   if ( V_TYPE( *v2 ) == VAR_STRING )
+     V_STR( *v2 ) = strdup( V_STR( *v1 ) );
 }
 
 
@@ -1128,20 +1442,20 @@ void copy_address( POINTER pointer, VARIABLE *v )
 }
 
 
-void destroy_symbol_table( SYMBOL_TABLE table )
+void destroy_symbols( SYMBOL_TABLE *table )
 {
-   int i;
+   SYMBOL *symbol;
    
-   for ( i = 0; i < table.nr; i++ )
+   while ( table->symbol )
      {
-	if ( table.symbol[i].name )
-	  free( table.symbol[i].name );
-	
-	clear_value( &table.symbol[i].constant );
+        symbol = table->symbol;
+        table->symbol = symbol->next;
+        
+        FREE_VALUE( symbol->constant );
+        if ( symbol->name )
+          free( symbol->name );
+        free( symbol );
      }
-   
-   if ( table.symbol )
-     free( table.symbol );
 }
 
 
@@ -1150,10 +1464,7 @@ void destroy_instruction( INSTR *instr )
 {
    int i;
    
-   clear_value( &instr->constant );
-   
-   if ( instr->var_name )
-     free( instr->var_name );
+   FREE_VALUE( instr->constant );
    
    for ( i = 0; i < instr->links; i++ )
      destroy_instruction( instr->link[i] );
@@ -1166,46 +1477,27 @@ void destroy_instruction( INSTR *instr )
 
 
 
-void destroy_code( CODE code )
-{
-   destroy_symbol_table( code.symbol_table );
-   
-   if ( code.first_instruction )
-     destroy_instruction( code.first_instruction );
-}
-
-
-
 void destroy_script( SCRIPT *script )
 {
-   SCRIPT *s;
    FUNCTION *f, *f_next;
    TRIGGER *t, *t_next;
-   int i;
-   
-   /* Unlink it. */
-   if ( script == scripts )
-     scripts = script->next;
-   else
-     for ( s = scripts; s; s = s->next )
-       {
-	  if ( s->next == script )
-	    {
-	       s->next = script->next;
-	       break;
-	    }
-       }
+   CODE *c, *c_next;
+   SYMBOL_TABLE *table;
    
    if ( script->name )
      free( script->name );
    if ( script->description )
      free( script->description );
    
-   for ( i = 0; i < script->codes_nr; i++ )
-     destroy_code( script->codes[i] );
-   
-   if ( script->codes )
-     free( script->codes );
+   for ( c = script->codes; c; c = c_next )
+     {
+        c_next = c->next;
+        
+        if ( c->first_instruction )
+          destroy_instruction( c->first_instruction );
+        
+        free( c );
+     }
    
    for ( f = script->functions; f; f = f_next )
      {
@@ -1233,80 +1525,210 @@ void destroy_script( SCRIPT *script )
 	free( t );
      }
    
-   destroy_symbol_table( script->symbol_table );
+   while ( script->scope_symbol_table )
+     {
+        table = script->scope_symbol_table;
+        script->scope_symbol_table = table->lower;
+        
+        destroy_symbols( table );
+        free( table );
+     }
    
-   if ( script->script_memory )
-     free( script->script_memory );
+   destroy_symbols( &script->script_symbol_table );
    
    free( script );
 }
 
 
 
-int add_symbol( SYMBOL_TABLE *table, int memory_space, char *name, VARIABLE *constant )
+void destroy_group( SCRIPT_GROUP *group )
 {
-   int i;
+   // add strings, add everything
    
-   /* Already here? */
-   for ( i = 0; i < table->nr; i++ )
-     if ( !strcmp( name, table->symbol[i].name ) )
-       {
-	  if ( constant )
-	    {
-	       if ( table->symbol[i].is_constant )
-		 {
-		    abort_script( 0, "Constant was already defined somewhere else." );
-		    return -1;
-		 }
-	       
-	       copy_value( constant, &(table->symbol[i].constant), 1 );
-	       table->symbol[i].is_constant = 1;
-	    }
-	  
-	  return i;
-       }
+   destroy_symbols( &group->group_symbol_table );
    
-   table->symbol = realloc( table->symbol, sizeof( SYMBOL ) * (table->nr + 1) );
-   memset( &table->symbol[table->nr], 0, sizeof ( SYMBOL ) );
-   table->symbol[table->nr].name = strdup( name );
+   if ( group->script_memory )
+     free( group->script_memory );
    
-   if ( constant )
+   free( group );
+}
+
+
+
+SYMBOL *add_symbol_to_table( char *name, int unique, SYMBOL_TABLE *table, int space )
+{
+   SYMBOL *symbol;
+   
+   /* Make sure it doesn't exist already. */
+   if ( unique )
+     for ( symbol = table->symbol; symbol; symbol = symbol->next )
+       if ( symbol->name && !strcmp( name, symbol->name ) )
+         {
+            if ( unique == -1 )
+              {
+                 symbol->declared_at = get_line_number( beginning, pos );
+                 return symbol;
+              }
+            
+            abort_script( 0, "Symbol '%s' redefined. Previously defined at line %d.",
+                          name, symbol->declared_at );
+            return NULL;
+         }
+   
+   /* First, see if we can recycle any unused entries. */
+   for ( symbol = table->symbol; symbol; symbol = symbol->next )
+     if ( !symbol->name )
+       break;
+   
+   /* And if not, create a brand new one. */
+   if ( !symbol )
      {
-	copy_value( constant, &(table->symbol[table->nr].constant), 1 );
-	table->symbol[table->nr].is_constant = 1;
+        symbol = calloc( 1, sizeof( SYMBOL ) );
+        link_to_list( symbol, &table->symbol, &table->last );
      }
+   
+   symbol->name = strdup( name );
+   // file, too. headers, for example
+   symbol->declared_at = get_line_number( beginning, pos );
+   if ( space )
+     {
+        symbol->pointer.memory_space = space;
+        symbol->pointer.offset = table->memory_size;
+        table->memory_size++;
+     }
+   
+   return symbol;
+}
+
+
+
+SYMBOL *create_constant( char *name, VALUE *constant )
+{
+   SYMBOL *scope_symbol;
+   
+   scope_symbol = add_symbol_to_table( name, 1, current_script->scope_symbol_table, 0 );
+   if ( !scope_symbol )
+     return NULL;
+   
+   scope_symbol->is_constant = 1;
+   scope_symbol->constant = *constant;
+   
+   return scope_symbol;
+}
+
+
+
+SYMBOL *create_local_variable( char *name )
+{
+   SYMBOL *scope_symbol;
+   SYMBOL *local_symbol;
+   
+   scope_symbol = add_symbol_to_table( name, 1, current_script->scope_symbol_table, 0 );
+   if ( !scope_symbol )
+     return NULL;
+   
+   if ( current_script->scope_symbol_table->lower )
+     local_symbol = add_symbol_to_table( name, 0, &current_code->local_symbol_table, RELATIVE_LOCAL_MEMORY );
    else
      {
-	table->symbol[table->nr].pointer.offset = table->memory_size;
-	table->symbol[table->nr].pointer.memory_space = memory_space;
-	
-	table->memory_size++;
+        char bigger_name[4096];
+        
+        /* Why? Prevents it from conflicting with other scripts. */
+        snprintf( bigger_name, 4096, "%s/%s:%s", current_script->path, current_script->name, name );
+        local_symbol = add_symbol_to_table( bigger_name, 1, &current_script->script_symbol_table, SCRIPT_MEMORY );
+     }
+   if( !local_symbol )
+     return NULL;
+   
+   scope_symbol->symbol = local_symbol;
+   
+   return local_symbol;
+}
+
+
+
+SYMBOL *create_global_variable( char *name )
+{
+   SYMBOL *scope_symbol;
+   SYMBOL *global_symbol;
+   
+   scope_symbol = add_symbol_to_table( name, 1, current_script->scope_symbol_table, 0 );
+   if ( !scope_symbol )
+     return NULL;
+   
+   global_symbol = add_symbol_to_table( name, -1, &global_symbol_table, GLOBAL_MEMORY );
+   if( !global_symbol )
+     return NULL;
+   
+   scope_symbol->symbol = global_symbol;
+   
+   return global_symbol;
+}
+
+
+
+VALUE *get_constant( char *name )
+{
+   SYMBOL_TABLE *table;
+   SYMBOL *symbol;
+   
+   for ( table = current_script->scope_symbol_table; table; table = table->lower )
+     for ( symbol = table->symbol; symbol; symbol = symbol->next )
+       if ( symbol->is_constant && symbol->name && !strcmp( name, symbol->name ) )
+         return &symbol->constant;
+   
+   return NULL;
+}
+
+
+
+// check all places for get_constant, too
+SYMBOL *get_symbol( char *name )
+{
+   SYMBOL_TABLE *table;
+   SYMBOL *symbol;
+   
+   for ( table = current_script->scope_symbol_table; table; table = table->lower )
+     for ( symbol = table->symbol; symbol; symbol = symbol->next )
+       if ( symbol->name && !strcmp( name, symbol->name ) )
+         return symbol->symbol;
+   
+   /* Doesn't exist? Create a script-wide variable on the bottom, then. */
+   
+   // check validity first.
+   
+   return add_symbol_to_table( name, -1, &current_script->script_symbol_table, SCRIPT_MEMORY );
+}
+
+
+
+void enter_scope( SCRIPT *script )
+{
+   SYMBOL_TABLE *table;
+   
+   table = calloc( 1, sizeof( SYMBOL_TABLE ) );
+   
+   if ( !script->scope_symbol_table )
+     {
+        script->scope_symbol_table = table;
+        return;
      }
    
-   return table->nr++;
+   table->lower = script->scope_symbol_table;
+   script->scope_symbol_table = table;
 }
 
 
 
-int add_local_variable( CODE *code, char *name, VARIABLE *constant )
+void leave_scope( SCRIPT *script )
 {
-   if ( !code )
-     return -1;
+   SYMBOL_TABLE *table;
    
-   return add_symbol( &code->symbol_table, RELATIVE_LOCAL_MEMORY, name, constant );
-}
-
-int add_script_variable( SCRIPT *script, char *name, VARIABLE *constant )
-{
-   if ( !script )
-     return -1;
+   table = script->scope_symbol_table;
+   script->scope_symbol_table = table->lower;
    
-   return add_symbol( &script->symbol_table, SCRIPT_MEMORY, name, constant );
-}
-
-int add_global_variable( char *name, VARIABLE *constant )
-{
-   return add_symbol( &symbol_table, GLOBAL_MEMORY, name, constant );
+   destroy_symbols( table );
+   free( table );
 }
 
 
@@ -1318,6 +1740,7 @@ INSTR *new_instruction( int instruction )
    instr = calloc( 1, sizeof( INSTR ) );
    
    instr->instruction = instruction;
+   instr->parent_script = current_script;
    
    return instr;
 }
@@ -1333,21 +1756,200 @@ void link_instruction( INSTR *child, INSTR *parent )
 
 
 
+int force_constant( VALUE *val )
+{
+   INSTR *instr;
+   
+   instr = compile_command( FULL_PRIORITY );
+   if ( !pos )
+     return 1;
+   
+   /* This will bring all instructions into one constant. */
+     {
+        void optimize_constants( INSTR *instr );
+        optimize_constants( instr );
+     }
+   
+   if ( instr->instruction != INSTR_CONSTANT )
+     {
+        abort_script( 0, "Constant value required." );
+        destroy_instruction( instr );
+        return 1;
+     }
+   
+   copy_value( &instr->constant, val );
+   destroy_instruction( instr );
+   return 0;
+}
+
+
+
+void create_initializer( SYMBOL *symbol, VALUE *constant )
+{
+   /* Use is_constant for now.. even though it's not a constant. */
+   if ( symbol->is_constant )
+     {
+        script_warning( "Symbol '%s' redefined!", symbol->name );
+        FREE_VALUE( symbol->constant );
+     }
+   
+   symbol->is_constant = 1;
+   symbol->constant = *constant;
+}
+
+
+
+int load_declaration( SYMBOL *use_symbol, int global, int constant, INSTR *parent )
+{
+   INSTR *instr = NULL, *c_instr;
+   SYMBOL *symbol;
+   VALUE val;
+   char name[4096];
+   int have_value = 0;
+   
+   INIT_VALUE( val );
+   
+   /* General: [[local/global/constant] name] [= [value/constant]] */
+   
+   /* First, get its name.. if needed. */
+   if ( !use_symbol )
+     {
+        get_identifier( name, 4096 );
+        if ( !name[0] )
+          {
+             abort_script( 1, "Expected identifier." );
+             return 1;
+          }
+        
+        // check validity
+     }
+   
+   /* Then see if it has a value. */
+   
+   skip_whitespace( );
+   if ( *pos == '=' )
+     {
+        pos++;
+        
+        /* Only constant initializers allowed here. */
+        if ( constant || !parent )
+          {
+             if ( force_constant( &val ) )
+               return 1;
+          }
+        else
+          {
+             instr = compile_command( FULL_PRIORITY );
+             if ( !pos )
+               return 1;
+          }
+        
+        have_value = 1;
+     }
+   else if ( constant || use_symbol )
+     {
+        abort_script( 1, "Expected '=' after '%s'.",
+                      use_symbol ? use_symbol->name : name );
+        return 1;
+     }
+   else
+     instr = NULL;
+   
+   /* Then, create the symbol! */
+   if ( constant )
+     {
+        if ( !create_constant( name, &val ) )
+          return 1;
+     }
+   else
+     {
+        if ( use_symbol )
+          symbol = use_symbol;
+        else if ( global )
+          symbol = create_global_variable( name );
+        else
+          symbol = create_local_variable( name );
+        
+        if ( !symbol )
+          {
+             if ( instr )
+               destroy_instruction( instr );
+             return 1;
+          }
+        
+        /* And give it a value at startup, if we must. */
+        if ( have_value )
+          {
+             if ( !parent )
+               {
+                  create_initializer( symbol, &val );
+               }
+             else
+               {
+                  INSTR *variable;
+                  int i;
+                  
+                  for ( i = 0; operators[i].symbol; i++ )
+                    if ( !strcmp( operators[i].symbol, "=" ) )
+                      break;
+                  
+                  if ( !operators[i].symbol )
+                    {
+                       abort_script( 0, "Internal error... Operator table is buggy!" );
+                       destroy_instruction( instr );
+                       return 1;
+                    }
+                  
+                  c_instr = new_instruction( INSTR_OPERATOR );
+                  c_instr->oper = i;
+                  
+                  variable = new_instruction( INSTR_VARIABLE );
+                  link_instruction( variable, c_instr );
+                  variable->symbol = symbol;
+                  variable->pointer = symbol->pointer;
+                  
+                  link_instruction( instr, c_instr );
+                  link_instruction( c_instr, parent );
+               }
+          }
+     }
+   
+   skip_whitespace( );
+   if ( !use_symbol && *pos == ',' )
+     {
+        pos++;
+        
+        return load_declaration( NULL, global, constant, parent );
+     }
+   
+   skip_whitespace( );
+   if ( *pos != ';' )
+     {
+        abort_script( 1, "Expected ';' instead." );
+        return 1;
+     }
+   
+   return 0;
+}
+
+
+
 INSTR *compile_operator( INSTR *instr, int priority )
 {
    INSTR *instr2, *i_oper, *i_func;
    char *temp_pos, buf[4096];
-   int expect_ending_bracket = 0;
    int i;
    
    skip_whitespace( );
    
    /* Check for function calls. */
-   if ( *pos == '(' || ( instr->sys_function && instr->instruction == INSTR_VARIABLE ) )
+   if ( *pos == '(' || ( instr->sys_function &&
+                         instr->instruction == INSTR_VARIABLE ) )
      {
-	if ( *pos == '(' )
-	  pos++, expect_ending_bracket = 1;
-	
+        int args = 0;
+        int expect_ending_bracket = 0;
+        int first = 1;
+        
 	i_func = new_instruction( INSTR_FUNCTION );
 	
 	if ( !instr->sys_function )
@@ -1359,66 +1961,57 @@ INSTR *compile_operator( INSTR *instr, int priority )
 	else
 	  {
 	     i_func->pointer.offset = instr->sys_function - 1;
-	     i_func->sys_function = 1 + sys_functions[i_func->pointer.offset].args;
+             i_func->sys_function = 1;
+             args = sys_functions[i_func->pointer.offset].args;
 	     destroy_instruction( instr );
 	  }
 	
-	i = 0;
 	/* Next, are arguments. */
-	while ( 1 )
-	  {
-	     skip_whitespace( );
-	     
-	     /* Eh... It's a mess, but I couldn't be bothered to think. */
-	     if ( i_func->sys_function )
-	       {
-		  if ( i_func->sys_function == 1 )
-		    {
-		       if ( expect_ending_bracket )
-			 {
-			    if ( *pos == ')' )
-			      {
-				 pos++;
-				 break;
-			      }
-			    else
-			      {
-				 abort_script( 1, "Expected ')' instead." );
-				 return NULL;
-			      }
-			 }
-		       break;
-		    }
-		  i_func->sys_function--;
-	       }
-	     
-	     if ( expect_ending_bracket && *pos == ')' )
-	       {
-		  if ( i_func->sys_function )
-		    {
-		       /* If it got here, then sys_function was not '1'. */
-		       abort_script( 1, "Not enough arguments passed to a system function." );
-		       destroy_instruction( i_func );
-		       return NULL;
-		    }
-		  
-		  pos++;
-		  break;
-	       }
-	     
-	     if ( i )
-	       {
+        
+	if ( *pos == '(' )
+	  pos++, expect_ending_bracket = 1;
+        
+        while ( 1 )
+          {
+             skip_whitespace( );
+             
+             /* System functions have a specific argument number.
+              * Normal functions don't. */
+             if ( i_func->sys_function )
+               {
+                  if ( !args )
+                    break;
+                  
+                  args--;
+               }
+             else
+               if ( *pos == ')' )
+                 break;
+             
+             /* Require commas between arguments. */
+             if ( !first )
+               {
 		  if ( *pos != ',' )
 		    {
 		       abort_script( 1, "Expected ',' between function arguments, or ')'." );
 		       destroy_instruction( i_func );
 		       return NULL;
-		    }
-		  else
-		    pos++;
-	       }
-	     
-	     instr2 = compile_command( FULL_PRIORITY );
+                    }
+                  pos++;
+                  
+                  skip_whitespace( );
+               }
+             else
+               first = 0;
+             
+             /* Last argument of a system (bracket-less) function? */
+             if ( i_func->sys_function && args == 0 &&
+                  !sys_functions[i_func->pointer.offset].full_arg_priority &&
+                  !expect_ending_bracket )
+               instr2 = compile_command( UNARY_PRIORITY );
+             else
+               instr2 = compile_command( FULL_PRIORITY );
+             
 	     if ( !pos )
 	       {
 		  destroy_instruction( i_func );
@@ -1426,9 +2019,21 @@ INSTR *compile_operator( INSTR *instr, int priority )
 	       }
 	     
 	     link_instruction( instr2, i_func );
-	     i++;
-	  }
-	
+          }
+        
+        if ( expect_ending_bracket )
+          {
+             skip_whitespace( );
+             
+             if ( *pos != ')' )
+               {
+                  abort_script( 1, "Expected ')' instead." );
+                  return NULL;
+               }
+             
+             pos++;
+          }
+        
 	return compile_operator( i_func, priority );
      }
    
@@ -1565,6 +2170,7 @@ void get_text( char *dest, int max )
 
 
 
+// Limited by 'int', of course. Not good.
 int get_number( )
 {
    int nr = 0;
@@ -1586,7 +2192,26 @@ int get_number( )
 	     
 	     pos++;
 	  }
-	
+        
+        /* Example 5e2 = 5 * pow(10,2) */
+        if ( *pos == 'e' || *pos == 'E' )
+          {
+             int e;
+             
+             pos++;
+             
+             while ( *pos >= '0' && *pos <= '9' )
+               {
+                  e *= 10;
+                  e += (int) (*pos - '0');
+                  
+                  pos++;
+               }
+             
+             while ( e )
+               nr *= 10, e--;
+          }
+        
 	return nr;
      }
    
@@ -1659,8 +2284,8 @@ INSTR *compile_command( int priority )
 	
 	instr = new_instruction( INSTR_CONSTANT );
 	
-	instr->constant.type = VAR_STRING;
-	instr->constant.string = strdup( buf );
+	V_TYPE( instr->constant ) = VAR_STRING;
+	V_STR( instr->constant ) = strdup( buf );
 	
 	return compile_operator( instr, priority );
      }
@@ -1674,8 +2299,8 @@ INSTR *compile_command( int priority )
 	  return NULL;
 	
 	instr = new_instruction( INSTR_CONSTANT );
-	instr->constant.type = VAR_NUMBER;
-	instr->constant.nr = nr;
+        V_TYPE( instr->constant ) = VAR_NUMBER;
+        V_NR( instr->constant ) = nr;
 	
 	return compile_operator( instr, priority );
      }
@@ -1707,33 +2332,38 @@ INSTR *compile_command( int priority )
 	( *pos >= 'A' && *pos <= 'Z' ) ||
 	*pos == '_' )
      {
+        SYMBOL *symbol;
+        
 	get_identifier( buf, 4096 );
 	
-	instr = new_instruction( INSTR_VARIABLE );
-	instr->var_name = strdup( buf );
-	
-	/* Specifically declared as local? */
-	for ( i = 0; i < current_code->symbol_table.nr; i++ )
-	  if ( !strcmp( current_code->symbol_table.symbol[i].name, buf ) &&
-	       !current_code->symbol_table.symbol[i].invisible )
-	    {
-	       instr->defined_as_local = 1;
-	       break;
-	    }
-	
-	/* Or global? */
-	for ( i = 0; i < symbol_table.nr; i++ )
-	  if ( !strcmp( symbol_table.symbol[i].name, buf ) &&
-	       !symbol_table.symbol[i].invisible )
-	    {
-	       instr->defined_as_global = 1;
-	       break;
-	    }
-	
+        instr = new_instruction( INSTR_VARIABLE );
+        
 	/* System functions don't need parantheses. For compile_operator. */
 	for ( i = 0; sys_functions[i].name; i++ )
 	  if ( !strcmp( sys_functions[i].name, buf ) )
 	    instr->sys_function = 1 + i;
+        
+        if ( !instr->sys_function )
+          {
+             VALUE *c;
+             
+             c = get_constant( buf );
+             if ( c )
+               {
+                  destroy_instruction( instr );
+                  instr = new_instruction( INSTR_CONSTANT );
+                  
+                  copy_value( c, &instr->constant );
+               }
+             else
+               {
+                  symbol = get_symbol( buf );
+                  if ( !symbol )
+                    return NULL;
+                  instr->symbol = symbol;
+                  instr->pointer = symbol->pointer;
+               }
+          }
 	
 	return compile_operator( instr, priority );
      }
@@ -1793,7 +2423,10 @@ int compile_block( INSTR *parent )
    skip_whitespace( );
    
    if ( *pos == '{' )
-     expect_end_of_block = 1, pos++;
+     {
+        expect_end_of_block = 1, pos++;
+        enter_scope( current_script );
+     }
    
    do_all = new_instruction( INSTR_DOALL );
    link_instruction( do_all, parent );
@@ -1812,6 +2445,7 @@ int compile_block( INSTR *parent )
 	if ( expect_end_of_block && *pos == '}' )
 	  {
 	     pos++;
+             leave_scope( current_script );
 	     return 0;
 	  }
 	
@@ -1833,7 +2467,7 @@ int compile_block( INSTR *parent )
 	
 	if ( !strcmp( buf, "if" ) )
 	  {
-	     /* if <command> <block> [else <block>] */
+	     /* if ( <command> ) <block> [else <block>] */
 	     
 	     skip_whitespace( );
 	     
@@ -1884,7 +2518,7 @@ int compile_block( INSTR *parent )
 	     if ( expect_end_of_block )
 	       continue;
 	     else
-	       return 1;
+	       break;
 	  }
 	else if ( !strcmp( buf, "return" ) )
 	  {
@@ -1901,77 +2535,66 @@ int compile_block( INSTR *parent )
 		  link_instruction( instr, c_instr );
 	       }
 	  }
-	else if ( !strcmp( buf, "local" ) || !strcmp( buf, "global" ) )
-	  {
-	     int global;
+	else if ( expect_end_of_block &&
+                  ( !strcmp( buf, "local" ) ||
+                    !strcmp( buf, "global" ) ||
+                    !strcmp( buf, "const" ) ||
+                    !strcmp( buf, "constant" ) ) )
+          {
+             int global = 0;
+             int constant = 0;
+             
+             if ( !strcmp( buf, "global" ) )
+               global = 1;
+             else if ( !strcmp( buf, "const" ) || !strcmp( buf, "constant" ) )
+               constant = 1;
+             
+             if ( load_declaration( NULL, global, constant, do_all ) )
+               return 1;
+          }
+        else if ( !strcmp( buf, "while" ) )
+          {
+             /* while ( <command> ) <block> */
+             
+	     skip_whitespace( );
 	     
-	     global = !strcmp( buf, "global" );
-	     
-	     while ( *pos != ';' )
+	     if ( *pos != '(' )
 	       {
-		  skip_whitespace( );
-		  
-		  get_identifier( buf, 4096 );
-		  
-		  if ( !buf[0] )
-		    {
-		       abort_script( 1, "Expected identifier after 'local' keyword." );
-		       return 1;
-		    }
-		  
-		  if ( global && add_global_variable( buf, NULL ) < 0 )
-		    return 1;
-		  else if ( !global && add_local_variable( current_code, buf, NULL ) < 0 )
-		    return 1;
-		  
-		  skip_whitespace( );
-		  
-		  if ( *pos == '=' )
-		    {
-		       int i;
-		       
-		       pos++;
-		       
-		       for ( i = 0; operators[i].symbol; i++ )
-			 if ( !strcmp( operators[i].symbol, "=" ) )
-			   break;
-		       
-		       if ( !operators[i].symbol )
-			 {
-			    abort_script( 0, "Internal error... Operator table is buggy!" );
-			    return 1;
-			 }
-		       
-		       c_instr = new_instruction( INSTR_OPERATOR );
-		       link_instruction( c_instr, do_all );
-		       c_instr->oper = i;
-		       
-		       instr = new_instruction( INSTR_VARIABLE );
-		       link_instruction( instr, c_instr );
-		       instr->var_name = strdup( buf );
-		       if ( global )
-			 instr->defined_as_global = 1;
-		       else
-			 instr->defined_as_local = 1;
-		       
-		       instr = compile_command( FULL_PRIORITY );
-		       if ( !pos )
-			 return 1;
-		       link_instruction( instr, c_instr );
-		       
-		       skip_whitespace( );
-		    }
-		  
-		  if ( *pos == ',' )
-		    {
-		       pos++;
-		       continue;
-		    }
-		  
-		  break;
+		  abort_script( 1, "Expected '(' instead." );
+		  return 1;
 	       }
-	  }
-	
+	     pos++;
+	     
+	     c_instr = new_instruction( INSTR_WHILE );
+	     link_instruction( c_instr, do_all );
+	     
+	     instr = compile_command( FULL_PRIORITY );
+	     
+	     if ( !pos )
+	       return 1;
+	     
+	     link_instruction( instr, c_instr );
+	     
+	     skip_whitespace( );
+	     
+	     if ( *pos != ')' )
+	       {
+		  abort_script( 1, "Expected ')' instead." );
+		  return 1;
+	       }
+	     pos++;
+	     
+	     /* This will go round an' round... */
+	     compile_block( c_instr );
+	     if ( !pos )
+	       return 1;
+             
+	     if ( expect_end_of_block )
+	       continue;
+	     else
+	       break;
+          }
+        
 	// While's, For's, etc.
 	
 	/* We have a single, normal command here. */
@@ -2036,11 +2659,14 @@ int compile_code( CODE *code )
 
 int load_script_function( SCRIPT *script, int alias )
 {
-   FUNCTION *function, *f;
-   VARIABLE v;
+   FUNCTION *function;
+   VALUE v;
    CODE *code;
+   CODE *previous_code;
    char buf[4096];
    int expect_ending, expect_argument;
+   
+   INIT_VALUE( v );
    
    /* A function must have:
     *   - a name
@@ -2053,36 +2679,61 @@ int load_script_function( SCRIPT *script, int alias )
    function->parent = script;
    
    /* Add a code in the script for it. */
-   script->codes = realloc( script->codes, sizeof( CODE ) * ( script->codes_nr + 1 ) );
-   memset( &script->codes[script->codes_nr], 0, sizeof( CODE ) );
-   function->code_offset = script->codes_nr;
-   code = &script->codes[script->codes_nr];
+   code = calloc( 1, sizeof( CODE ) );
+   link_to_list( code, &script->codes, &script->codes_last );
+   previous_code = current_code;
+   current_code = code;
    
    /* Make a pointer for it. */
-   v.type = VAR_POINTER;
-   v.pointer.memory_space = SCRIPT_FUNCTIONS;
-   v.pointer.offset = script->codes_nr++;
+   V_TYPE( v ) = VAR_POINTER;
+   V_POINTER( v ).memory_space = SCRIPT_FUNCTIONS;
+   V_POINTER( v ).offset = 0;
+   V_POINTER( v ).memory_section = (void *) code;
+   function->pointer = V_POINTER( v );
+   
+   /* Get its name. */
+   get_identifier( buf, 4096 );
+   
+   // check validity
+   
+   if ( !buf[0] )
+     {
+        abort_script( 0, "%s name not provided.", alias ? "Alias" : "Function" );
+        current_code = previous_code;
+        return 1;
+     }
+   
+   /* In case of a function, make its name a variable. */
+   if ( !alias )
+     {
+        SYMBOL *symbol;
+        VALUE v2;
+        
+        copy_value( &v, &v2 );
+        
+        /* Initialize a variable for the other scripts. */
+        symbol = add_symbol_to_table( buf, -1, &current_script->script_symbol_table, SCRIPT_MEMORY );
+        if ( !symbol )
+          return 1;
+        create_initializer( symbol, &v2 );
+        
+        /* And a constant for this script, for speed. */
+        if ( !create_constant( buf, &v ) )
+          {
+             current_code = previous_code;
+             return 1;
+          }
+     }
    
    /* Link it. Easier to get destroyed with the rest if something fails. */
-   if ( script->functions )
-     {
-	for ( f = script->functions; f->next; f = f->next );
-	f->next = function;
-     }
-   else
-     script->functions = function;
+   link_to_list( function, &script->functions, &script->functions_last );
+   
+   /* This scope will keep all the arguments. */
+   enter_scope( script );
    
    if ( !alias )
      {
 	/* Format: function <name> [ [(] [arg1 [[,] arg2]... ] [)] ] { ... } */
-	get_identifier( buf, 4096 );
-	
-	if ( !buf[0] )
-	  {
-	     abort_script( 0, "Function name not provided." );
-	     return 1;
-	  }
-	
 	function->name = strdup( buf );
 	
 	if ( *pos == '(' )
@@ -2112,7 +2763,13 @@ int load_script_function( SCRIPT *script, int alias )
 	     
 	     if ( expect_argument )
 	       expect_argument = 0;
-	     add_local_variable( code, buf, NULL );
+             
+             if ( !create_local_variable( buf ) )
+               {
+                  current_code = previous_code;
+                  return 1;
+               }
+             
 	     function->args_nr++;
 	  }
 	
@@ -2127,6 +2784,7 @@ int load_script_function( SCRIPT *script, int alias )
 	     if ( *pos != ')' )
 	       {
 		  abort_script( 0, "Mismatched '(', expected ')' on argument list." );
+                  current_code = previous_code;
 		  return 1;
 	       }
 	     
@@ -2137,25 +2795,18 @@ int load_script_function( SCRIPT *script, int alias )
    else
      {
 	/* Format: alias <name> { ... } */
-	get_identifier( buf, 4096 );
-	
-	if ( !buf[0] )
-	  {
-	     abort_script( 0, "Alias name not provided." );
-	     return 1;
-	  }
-	
 	function->name = strdup( buf );
 	function->alias = 1;
      }
    
    /* Common code for 'function' and 'alias'. */
    
-   if ( add_script_variable( script, function->name, &v ) < 0 )
-     return 1;
-   
    if ( compile_code( code ) )
      return 1;
+   
+   leave_scope( script );
+   
+   current_code = previous_code;
    
    return 0;
 }
@@ -2164,7 +2815,7 @@ int load_script_function( SCRIPT *script, int alias )
 
 int load_script_trigger( SCRIPT *script )
 {
-   TRIGGER *trigger, *t;
+   TRIGGER *trigger;
    CODE *code;
    char buf[4096];
    
@@ -2174,19 +2825,15 @@ int load_script_trigger( SCRIPT *script )
    trigger->parent = script;
    
    /* Add a code in the script for it. */
-   script->codes = realloc( script->codes, sizeof( CODE ) * ( script->codes_nr + 1 ) );
-   memset( &script->codes[script->codes_nr], 0, sizeof( CODE ) );
-   trigger->code_offset = script->codes_nr;
-   code = &script->codes[script->codes_nr++];
+   code = calloc( 1, sizeof( CODE ) );
+   link_to_list( code, &script->codes, &script->codes_last );
+   
+   trigger->pointer.memory_space = SCRIPT_FUNCTIONS;
+   trigger->pointer.offset = 0;
+   trigger->pointer.memory_section = (void*) code;
    
    /* Link it. */
-   if ( script->triggers )
-     {
-	for ( t = script->triggers; t->next; t = t->next );
-	t->next = trigger;
-     }
-   else
-     script->triggers = trigger;
+   link_to_list( trigger, &script->triggers, &script->triggers_last );
    
    /* Name, if there's one. */
    if ( *pos == '\'' )
@@ -2285,21 +2932,21 @@ int load_script_trigger( SCRIPT *script )
 
 
 
-SCRIPT *load_script( const char *flname )
+int compile_script( SCRIPT *script, char *flname )
 {
-   int link_symbols( CODE *code, INSTR *instr );
-   SCRIPT *script, *s, *previous_script;
+   void link_all_symbols( SCRIPT *script );
+   SCRIPT *previous_script;
    FILE *fl;
    char buf[4096];
    char *old_pos, *old_beginning;
    char *body = NULL;
-   int bytes, size, i;
+   int bytes, size;
    int aborted = 0;
    
    fl = fopen( flname, "r" );
    
    if ( !fl )
-     return NULL;
+     return 1;
    
    /* Load the code that is to be compiled. */
    
@@ -2328,14 +2975,13 @@ SCRIPT *load_script( const char *flname )
    if ( !body )
      {
 	script_warning( "Empty script file." );
-	return NULL;
+	return 0;
      }
    
    body[size] = 0;
    
-   script = calloc( 1, sizeof( SCRIPT ) );
-   
-   script->name = strdup( flname );
+   /* A scope that will contain all script-wide variables. */
+   enter_scope( script );
    
    /* Seek all functions/triggers within it. */
    
@@ -2411,67 +3057,100 @@ SCRIPT *load_script( const char *flname )
 	     
 	     script->description = strdup( buf );
 	  }
-	else
+        
+        else if ( !strcmp( buf, "include" ) )
+          {
+             
+             
+             
+          }
+        
+	else if ( !strcmp( buf, "global" ) ||
+                  !strcmp( buf, "local" ) ||
+                  !strcmp( buf, "constant" ) ||
+                  !strcmp( buf, "const" ) )
 	  {
-	     abort_script( 1, NULL );
-	     aborted = 1;
-	     break;
+             int global = 0;
+             int constant = 0;
+             
+             if ( !strcmp( buf, "global" ) )
+               global = 1;
+             else if ( strcmp( buf, "local" ) )
+               constant = 1;
+             
+             if ( load_declaration( NULL, global, constant, NULL ) )
+               {
+                  aborted = 1;
+                  break;
+               }
+             
+             skip_whitespace( );
+	     if ( *pos != ';' )
+	       {
+		  abort_script( 1, "Expected ';' instead." );
+                  aborted = 1;
+		  break;
+	       }
+	     pos++;
 	  }
+        
+        else
+          {
+             /* Most likely a variable being initialized. */
+             if ( ( buf[0] >= 'a' && buf[0] <= 'z' ) ||
+                  ( buf[0] >= 'A' && buf[0] <= 'Z' ) ||
+                  buf[0] == '_' )
+               {
+                  SYMBOL *symbol;
+                  
+                  symbol = get_symbol( buf );
+                  if ( !symbol )
+                    {
+                       aborted = 1;
+                       break;
+                    }
+                  
+                  if ( load_declaration( symbol, 0, 0, NULL ) )
+                    return 1;
+                  
+                  skip_whitespace( );
+                  if ( *pos != ';' )
+                    {
+                       abort_script( 1, "Expected ';' instead." );
+                       aborted = 1;
+                       break;
+                    }
+                  pos++;
+               }
+             else
+               {
+                  abort_script( 1, NULL );
+                  aborted = 1;
+                  break;
+               }
+          }
      }
    
    pos = old_pos;
    beginning = old_beginning;
    free( body );
    
+   leave_scope( script );
+   
    if ( aborted )
      {
-	destroy_script( script );
 	current_script = previous_script;
-	return NULL;
+        return 1;
      }
    
-   if ( !script->description )
-     script->description = strdup( "No Description" );
-   
-   for ( i = 0; i < script->codes_nr; i++ )
-     if ( link_symbols( &script->codes[i], script->codes[i].first_instruction ) )
-       {
-	  destroy_script( script );
-	  current_script = previous_script;
-	  return NULL;
-       }
+//   link_all_symbols( script );
    
    current_script = previous_script;
    
-   /* Initialize its memory. */
-   script->script_memory = calloc( script->symbol_table.memory_size, sizeof( VARIABLE ) );
-   script->script_memory_top = script->script_memory + script->symbol_table.memory_size;
-   
    /* Resize global memory. */
-   resize_global_memory( symbol_table.memory_size );
+   resize_global_memory( global_symbol_table.memory_size );
    
-   
-   /* Everything went okay, go ahead and replace/link it! */
-   
-   /* Unload the script if it's already loaded, first. */
-   for ( s = scripts; s; s = s->next )
-     if ( !strcmp( s->name, script->name ) )
-       {
-	  if ( s->in_use )
-	    {
-	       destroy_script( script );
-	       return NULL;
-	    }
-	  
-	  destroy_script( s );
-	  break;
-       }
-   
-   /* Link the script. */
-   script->next = scripts;
-   scripts = script;
-   
-   return script;
+   return 0;
 }
 
 
@@ -2489,26 +3168,26 @@ void show_instr( INSTR *instr, int space )
       case INSTR_OPERATOR: clientff( C_r "operator (%s)", operators[instr->oper].symbol ); break;
       case INSTR_CONSTANT:
 	clientff( C_r "const " );
-	if ( instr->constant.type == VAR_STRING )
-	  clientff( "(\"%s\")", instr->constant.string );
-	if ( instr->constant.type == VAR_NUMBER )
-	  clientff( "(%d)", instr->constant.nr );
-	if ( instr->constant.type == VAR_POINTER )
+	if ( V_TYPE( instr->constant ) == VAR_STRING )
+	  clientff( "(\"%s\")", V_STR( instr->constant ) );
+	if ( V_TYPE( instr->constant ) == VAR_NUMBER )
+	  clientff( "(%d)", V_NR( instr->constant ) );
+	if ( V_TYPE( instr->constant ) == VAR_POINTER )
 	  clientff( "(p%s, %d)",
-		    instr->constant.pointer.memory_space == GLOBAL_MEMORY ? "-global" :
-		    instr->constant.pointer.memory_space == RELATIVE_LOCAL_MEMORY ? "-local" : "",
-		    instr->constant.pointer.offset );
+		    V_POINTER( instr->constant ).memory_space == GLOBAL_MEMORY ? "-global" :
+		    V_POINTER( instr->constant ).memory_space == RELATIVE_LOCAL_MEMORY ? "-local" : "",
+		    V_POINTER( instr->constant ).offset );
 	break;
       case INSTR_VARIABLE:
-	clientff( C_r "variable (%s)", instr->var_name );
-	if ( instr->pointer.memory_space )
-	  clientff( C_r " (linked - %s (%d))",
-		    instr->pointer.memory_space == RELATIVE_LOCAL_MEMORY ? "defined as local" :
-		    instr->pointer.memory_space == GLOBAL_MEMORY ? "defined as global" :
-		    instr->pointer.memory_space == SCRIPT_MEMORY ? "defined as script-wide" : C_B "Huh?!" C_r,
-		    instr->pointer.offset );
-	else if ( instr->sys_function )
-	  clientff( C_r " (sys function)" );
+	clientff( C_r "variable (%s)", ( instr->symbol && instr->symbol->name ) ? instr->symbol->name : "no symbol" );
+        if ( instr->sys_function )
+          clientff( C_r " (sys function)" );
+	if ( instr->symbol && instr->symbol->name )
+	  clientff( C_r " (%s (%d))",
+		    instr->symbol->pointer.memory_space == RELATIVE_LOCAL_MEMORY ? "local" :
+		    instr->symbol->pointer.memory_space == GLOBAL_MEMORY ? "global" :
+		    instr->symbol->pointer.memory_space == SCRIPT_MEMORY ? "script-wide" : C_B "unknown memory space" C_r,
+		    instr->symbol->pointer.offset );
 	else
 	  clientff( C_r " (not linked)" );
 	break;
@@ -2517,7 +3196,7 @@ void show_instr( INSTR *instr, int space )
       default: clientff( C_R "unknown" ); break;
      }
    
-   clientff( C_0 "\n" );
+   clientff( C_0 "\r\n" );
    
    for ( i = 0; i < instr->links; i++ )
      show_instr( instr->link[i], space+1 );
@@ -2525,39 +3204,403 @@ void show_instr( INSTR *instr, int space )
 
 
 
+// fixme
+#if 0
 void do_show( int full )
 {
    SCRIPT *s;
    FUNCTION *f;
-   int i;
-   
-   for ( i = 0; i < symbol_table.nr; i++ )
-     clientff( C_Y "GSym: %s\n" C_0, symbol_table.symbol[i].name );
    
    for ( s = scripts; s; s = s->next )
      {
-	clientff( C_Y "\n\nSCRIPT: " C_B "%s\n" C_0, s->name );
-	
-	for ( i = 0; i < s->symbol_table.nr; i++ )
-	  clientff( C_Y "SSym: %s\n" C_0, s->symbol_table.symbol[i].name );
+	clientff( C_Y "\r\n\r\nSCRIPT: " C_B "%s\r\n" C_0, s->name );
 	
 	for ( f = s->functions; f; f = f->next )
 	  {
-	     clientff( C_B "\n%s - %s.\n", f->alias ? "Alias" : "Function", f->name );
-	     
-	     for ( i = 0; i < s->codes[f->code_offset].symbol_table.nr; i++ )
-	       clientff( C_Y "LSym: %s\n" C_0, s->codes[f->code_offset].symbol_table.symbol[i].name );
+	     clientff( C_B "\r\n%s - %s.\r\n", f->alias ? "Alias" : "Function", f->name );
 	     
 	     if ( full )
 	       show_instr( s->codes[f->code_offset].first_instruction, 0 );
 	  }
      }
 }
+#endif
+
+
+
+void free_memory( VALUE *memory, int size )
+{
+   int i;
+   
+   for ( i = 0; i < size; i++ )
+     {
+        FREE_VALUE( *(memory+i) );
+     }
+   
+   free( memory );
+}
+
+
+void free_vars( VARIABLE *memory, int size )
+{
+   int i;
+   
+   for ( i = 0; i < size; i++ )
+     {
+        FREE_VARIABLE( *(memory+i) );
+     }
+   
+   free( memory );
+}
+
+
+
+SCRIPT *find_script( char *group_name, char *path, char *name )
+{
+   SCRIPT_GROUP *group;
+   SCRIPT *script;
+   
+   for ( group = groups; group; group = group->next )
+     if ( !strcmp( group->name, group_name ) )
+       break;
+   
+   if ( !group )
+     return NULL;
+   
+   for ( script = group->scripts; script; script = script->next )
+     if ( !strcmp( script->name, name ) && !strcmp( script->path, path ) )
+       return script;
+   
+   return NULL;
+}
+
+
+
+void scan_for_scripts( SCRIPT_GROUP *group, char *current, DIR *dir )
+{
+   SCRIPT *script;
+   DIR *dir2;
+   struct dirent *dp;
+   struct stat st;
+   
+   //clientff( "Scanning %s\n", current );
+   
+   while ( ( dp = readdir( dir ) ) )
+     {
+        char path[PATH_MAX];
+        
+        /* Ignore not only "." and "..", but also hidden UNIX files. */
+        if ( dp->d_name[0] == '.' )
+          continue;
+        
+        snprintf( path, PATH_MAX, "%s/%s", current, dp->d_name );
+        //clientff( "Trying %s\n", path );
+        dir2 = opendir( path );
+        if ( !dir2 )
+          {
+             if ( stat( path, &st ) < 0)
+               continue;
+             
+             /* A file! */
+             if ( strlen( path ) < 4 ||
+                  strcmp( path + strlen( path ) - 3, ".is" ) ||
+                  dp->d_name[0] == '.' )
+               continue;
+             
+             script = calloc( 1, sizeof( SCRIPT ) );
+             script->name = strdup( dp->d_name );
+             script->path = strdup( current +
+                                    strlen( "iscripts/" ) +
+                                    strlen( group->name ) );
+             script->modified_date = st.st_mtime;
+             script->parent_group = group;
+             link_to_list( script, &group->scripts, &group->scripts_last );
+             continue;
+          }
+        
+        /* Another directory. */
+        scan_for_scripts( group, path, dir2 );
+        closedir( dir2 );
+     }
+}
+
+
+
+void link_symbols_in_instruction( INSTR *instr )
+{
+   int i;
+   
+   for ( i = 0; i < instr->links; i++ )
+     link_symbols_in_instruction( instr->link[i] );
+   
+   if ( instr->instruction == INSTR_VARIABLE )
+     if ( instr->symbol->pointer.memory_space == SCRIPT_MEMORY )
+       instr->pointer = instr->symbol->symbol->pointer;
+}
+
+
+
+void link_symbols_in_group( SCRIPT_GROUP *group )
+{
+   SCRIPT *script;
+   SYMBOL *symbol;
+   CODE *code;
+   
+   /* Reset the memory. */
+   if ( group->script_memory )
+     free_memory( group->script_memory, group->group_symbol_table.memory_size );
+   
+   destroy_symbols( &group->group_symbol_table );
+   group->group_symbol_table.memory_size = 0;
+   
+   /* Add all symbols from all scripts. */
+   for ( script = group->scripts; script; script = script->next )
+     for ( symbol = script->script_symbol_table.symbol; symbol; symbol = symbol->next )
+       {
+          symbol->symbol = add_symbol_to_table( symbol->name, -1, &group->group_symbol_table, SCRIPT_MEMORY );
+          
+          if ( symbol->is_constant )
+            {
+               if ( symbol->symbol->is_constant )
+                 script_warning( "Can not initialize variable '%s' more than once.", symbol->name );
+               else
+                 copy_value( &symbol->constant, &symbol->symbol->constant );
+               symbol->symbol->is_constant = 1;
+            }
+       }
+   
+   /* And then make all variables point in the right direction. */
+   for ( script = group->scripts; script; script = script->next )
+     for ( code = script->codes; code; code = code->next )
+       link_symbols_in_instruction( code->first_instruction );
+   
+   group->script_memory = calloc( group->group_symbol_table.memory_size, sizeof( VALUE ) );
+   group->script_memory_top = group->script_memory + group->group_symbol_table.memory_size;
+   
+   /* Fill the memory with the initial values. */
+   for ( symbol = group->group_symbol_table.symbol; symbol; symbol = symbol->next )
+     {
+        /* By "is_constant", I mean has_value. Maybe I'll change it later. */
+        if ( symbol->is_constant && symbol->pointer.memory_space == SCRIPT_MEMORY )
+          copy_value( &symbol->constant, group->script_memory + symbol->pointer.offset );
+     }
+}
+
+
+
+void new_load_scripts( )
+{
+   static SCRIPT_GROUP *groups_under_construction, *guc_last;
+   SCRIPT_GROUP *group, *prev_group, *g, *g_next;
+   SCRIPT *script, *s, *s_next;
+   DIR *dir, *dir2;
+   struct dirent *dp;
+   
+   clientf( "Checking scripts...\r\n" );
+   
+   /* Level 1 - scan "iscripts" dir, create as many groups as dirs found. */
+   //  if not rebuilding - copy symbol table here.
+   /* Level 2 - recursively scan each group, create empty scripts. */
+   //  if not rebuilding - check deps, mark which scripts can be copied.
+   /* Level 3 - back here, start compiling. */
+   //  ..and then what?
+   
+   // Get to work!
+   
+   if ( groups_under_construction )
+     {
+        clientfr( "Something is apparently wrong... Already rebuilding?" );
+        return;
+     }
+   
+   dir = opendir( "iscripts" );
+   if ( !dir )
+     {
+        clientff( C_R "[Unable to open directory iscripts: %s]\r\n" C_0,
+                  strerror( errno ) );
+        return;
+     }
+   
+   while ( ( dp = readdir( dir ) ) )
+     {
+        char path[PATH_MAX];
+        
+        /* Ignore not only "." and "..", but also hidden UNIX files. */
+        if ( dp->d_name[0] == '.' )
+          continue;
+        
+        snprintf( path, PATH_MAX, "iscripts/%s", dp->d_name );
+        dir2 = opendir( path );
+        if ( !dir2 )
+          continue;
+        
+        group = calloc( 1, sizeof( SCRIPT_GROUP ) );
+        group->name = strdup( dp->d_name );
+        link_to_list( group, &groups_under_construction, &guc_last );
+        scan_for_scripts( group, path, dir2 );
+        closedir( dir2 );
+     }
+   closedir( dir );
+   
+   prev_group = current_group;
+   
+   /* Tree ready. Start compiling new or changed scripts. */
+   for ( group = groups_under_construction; group; group = group->next )
+     {
+        current_group = group;
+        group->changed = 0;
+        
+        for ( script = group->scripts; script; script = script->next )
+          {
+             char full_name[PATH_MAX];
+             
+             /* See if we already have it compiled. */
+             s = find_script( group->name, script->path, script->name );
+             if ( s && script->modified_date == s->modified_date )
+               continue;
+             
+             /* This group is changed. Reset it! */
+             group->changed = 1;
+             
+             snprintf( full_name, PATH_MAX, "iscripts/%s%s/%s",
+                       group->name, script->path, script->name );
+             clientff( "Opening %s\n", full_name );
+             if ( !compile_script( script, full_name ) )
+               continue;
+             
+             /* Failed! Abort. */
+             
+             while ( groups_under_construction )
+               {
+                  group = groups_under_construction;
+                  unlink_from_list( group, &groups_under_construction, &guc_last );
+                  destroy_group( group );
+               }
+             
+             clientfr( "Existing scripts left unchanged." );
+             current_group = prev_group;
+             return;
+          }
+        
+        /* See if there's any missing (removed) scripts, too. */
+        for ( g = groups; g; g = g->next )
+          if ( !strcmp( g->name, group->name ) )
+            {
+               for ( s = g->scripts; s; s = s->next )
+                 {
+                    for ( script = group->scripts; script; script = script->next )
+                      if ( !strcmp( script->name, s->name ) )
+                        break;
+                    
+                    /* Missing! */
+                    if ( !script )
+                      {
+                         clientff( "Script %s was apparently removed.\r\n", s->name );
+                         group->changed = 1;
+                         break;
+                      }
+                 }
+            }
+     }
+   current_group = prev_group;
+   
+   /* From this moment on, errors may not occur. */
+   
+   /* Copy all old, already-compiled scripts, and linkify groups. */
+   for ( group = groups_under_construction; group; group = group->next )
+     {
+        if ( !group->changed )
+          continue;
+        
+        for ( script = group->scripts; script; script = s_next )
+          {
+             s_next = script->next;
+             
+             /* The opposite of above. */
+             s = find_script( group->name, script->path, script->name );
+             if ( !s || script->modified_date != s->modified_date )
+               continue;
+             
+             unlink_from_list( s, &s->parent_group->scripts, &s->parent_group->scripts_last );
+             replace_link_in_list( s, script, &group->scripts, &group->scripts_last );
+             s->parent_group = group;
+             
+             destroy_script( script );
+          }
+        
+        clientff( "Relinking symbols and resetting memory in group %s.\r\n", group->name );
+        
+        link_symbols_in_group( group );
+     }
+   
+   /* First replace the current ones.. for the sake of their order in the list. */
+   for ( group = groups; group; group = g_next )
+     {
+        g_next = group->next;
+        
+        for ( g = groups_under_construction; g; g = g->next )
+          if ( !strcmp( g->name, group->name ) )
+            break;
+        
+        if ( !g )
+          {
+             clientff( "Removing group %s.\r\n", group->name );
+             unlink_from_list( group, &groups, &groups_last );
+             destroy_group( group );
+             continue;
+          }
+        
+        if ( !g->changed )
+          {
+             unlink_from_list( g, &groups_under_construction, &guc_last );
+             destroy_group( g );
+             continue;
+          }
+        
+        clientff( "Replacing group %s.\r\n", group->name );
+        unlink_from_list( g, &groups_under_construction, &guc_last );
+        replace_link_in_list( g, group, &groups, &groups_last );
+        destroy_group( group );
+     }
+   
+   /* And add the rest. */
+   for ( group = groups_under_construction; group; group = g_next )
+     {
+        g_next = group->next;
+        
+        for ( g = groups; g; g = g->next )
+          if ( !strcmp( g->name, group->name ) )
+            break;
+        
+        if ( g )
+          continue;
+        
+        unlink_from_list( group, &groups_under_construction, &guc_last );
+        link_to_list( group, &groups, &groups_last );
+     }
+   
+   if ( groups_under_construction )
+     {
+        clientff( "Impossible error! This shouldn't happen!\r\n" );
+     }
+   
+   /* Clean up the mess. */
+   while ( groups_under_construction )
+     {
+        group = groups_under_construction;
+     }
+   
+   resize_global_memory( global_symbol_table.memory_size );
+}
 
 
 
 void load_scripts( )
 {
+   new_load_scripts( );
+   return;
+   
+#if 0
    FUNCTION *f;
    SCRIPT *s;
    
@@ -2577,88 +3620,7 @@ void load_scripts( )
 	     break;
 	  }
      }
-}
-
-
-
-/*** Linker. ***/
-
-void abort_linker( INSTR *instr, char *error, ... )
-{
-   char error_buf[1024];
-   
-   va_list args;
-   error_buf[0] = 0;
-   if ( error )
-     {
-	va_start( args, error );
-	vsnprintf( error_buf, 1024, error, args );
-	va_end( args );
-     }
-   
-   clientff( C_0 "(" C_W "iScript" C_0 "): " C_R "Linker error: %s\r\n" C_0, error_buf );
-}
-
-
-
-int link_symbols( CODE *code, INSTR *instr )
-{
-   int i;
-   
-   if ( instr->instruction == INSTR_VARIABLE )
-     {
-	if ( instr->defined_as_local )
-	  {
-	     i = add_local_variable( code, instr->var_name, NULL );
-	     
-	     if ( i < 0 )
-	       return 1;
-	     
-	     if ( code->symbol_table.symbol[i].is_constant )
-	       {
-		  copy_value( &code->symbol_table.symbol[i].constant, &instr->constant, 0 );
-		  instr->instruction = INSTR_CONSTANT;
-	       }
-	     else
-	       instr->pointer = code->symbol_table.symbol[i].pointer;
-	  }
-	else if ( instr->defined_as_global )
-	  {
-	     i = add_global_variable( instr->var_name, NULL );
-	     
-	     if ( i < 0 )
-	       return 1;
-	     
-	     if ( symbol_table.symbol[i].is_constant )
-	       {
-		  copy_value( &symbol_table.symbol[i].constant, &instr->constant, 0 );
-		  instr->instruction = INSTR_CONSTANT;
-	       }
-	     else
-	       instr->pointer = symbol_table.symbol[i].pointer;
-	  }
-	else
-	  {
-	     i = add_script_variable( current_script, instr->var_name, NULL );
-	     
-	     if ( i < 0 )
-	       return 1;
-	     
-	     if ( current_script->symbol_table.symbol[i].is_constant )
-	       {
-		  copy_value( &current_script->symbol_table.symbol[i].constant, &instr->constant, 0 );
-		  instr->instruction = INSTR_CONSTANT;
-	       }
-	     else
-	       instr->pointer = current_script->symbol_table.symbol[i].pointer;
-	  }
-     }
-   
-   for ( i = 0; i < instr->links; i++ )
-     if ( link_symbols( code, instr->link[i] ) )
-       return 1;
-   
-   return 0;
+#endif
 }
 
 
@@ -2666,13 +3628,19 @@ int link_symbols( CODE *code, INSTR *instr )
 /*** Optimizer. ***/
 
 
+void optimize_constants( INSTR *instr )
+{
+   
+   
+   
+}
 
 
-/*** Runner. These -must- be optimized for speed! ***/
 
 
-#define CLEAR_VALUE( var ) (var).type = VAR_NUMBER, (var).nr = 0, (var).address.memory_space = NULL_POINTER;
-#define FREE_VALUE( var ) if ( (var).type == VAR_STRING && (var).string ) free( (var).string );
+/*** Runner. These -must- be optimized for speed and nothing else but speed! ***/
+
+
 
 
 void shrink_local_memory( )
@@ -2688,7 +3656,7 @@ void shrink_local_memory( )
    
    b_size = current_local_bottom - local_memory;
    t_size = current_local_top - local_memory;
-   local_memory = realloc( local_memory, 32 * sizeof( VARIABLE ) );
+   local_memory = realloc( local_memory, 32 * sizeof( VALUE ) );
    current_local_bottom = local_memory + b_size;
    current_local_top = local_memory + t_size;
    top_of_allocated_memory_for_locals = local_memory + 32;
@@ -2701,24 +3669,15 @@ void end_code_call( struct prev_data *prev )
    current_local_bottom = local_memory + prev->bottom;
    current_local_top = local_memory + prev->top;
    
-   current_script->in_use = prev->script_in_use;
-   current_script = prev->script;
-   
    function_return_value = prev->function_return_value;
 }
 
 
 
-int prepare_code_call( int size, SCRIPT *script, VARIABLE *returns, struct prev_data *prev )
+int prepare_code_call( int size, VARIABLE *returns, struct prev_data *prev )
 {
    prev->function_return_value = function_return_value;
    function_return_value = returns;
-   
-   prev->script = current_script;
-   current_script = script;
-   
-   prev->script_in_use = script->in_use;
-   script->in_use = 1;
    
    /* Local memory. */
    prev->bottom = current_local_bottom - local_memory;
@@ -2735,10 +3694,10 @@ int prepare_code_call( int size, SCRIPT *script, VARIABLE *returns, struct prev_
 	t_size = current_local_top - local_memory;
 	l_size = ( top_of_allocated_memory_for_locals - local_memory );
 	
-	local_memory = realloc( local_memory, ( l_size + 32 ) * sizeof( VARIABLE ) );
+	local_memory = realloc( local_memory, ( l_size + 32 ) * sizeof( VALUE ) );
 	current_local_bottom = local_memory + b_size;
 	current_local_top = local_memory + t_size;
-	memset( local_memory + l_size, 0, 32 * sizeof( VARIABLE ) );
+	memset( local_memory + l_size, 0, 32 * sizeof( VALUE ) );
 	top_of_allocated_memory_for_locals = local_memory + l_size + 32;
 	
 	if ( l_size >= 8192 )
@@ -2758,8 +3717,8 @@ int prepare_code_call( int size, SCRIPT *script, VARIABLE *returns, struct prev_
 int run_function_with_args( FUNCTION *function, char *args )
 {
    CODE *code;
-   VARIABLE *v, returned_value, function_value;
-   VARIABLE *locals = NULL;
+   VARIABLE returned_value, function_value;
+   VALUE *v, *locals = NULL;
    struct prev_data prev;
    char buf[2048];
    int i;
@@ -2769,14 +3728,14 @@ int run_function_with_args( FUNCTION *function, char *args )
    
    gettimeofday( &call_start, NULL );
    
-   CLEAR_VALUE( returned_value );
-   CLEAR_VALUE( function_value );
+   INIT_VARIABLE( returned_value );
+   INIT_VARIABLE( function_value );
    
-   code = &function->parent->codes[function->code_offset];
+   code = (CODE*)function->pointer.memory_section;
    
    if ( function->args_nr )
      {
-	locals = calloc( function->args_nr, sizeof( VARIABLE ) );
+	locals = calloc( function->args_nr, sizeof( VALUE ) );
 	
 	/* Fill function arguments. */
 	for ( i = 0; i < function->args_nr; i++ )
@@ -2786,18 +3745,18 @@ int run_function_with_args( FUNCTION *function, char *args )
 	       break;
 	     
 	     v = locals + i;
-	     v->type = VAR_STRING;
-	     v->string = strdup( buf );
+             V_TYPE( *v ) = VAR_STRING;
+             V_STR( *v ) = strdup( buf );
 	  }
      }
    
    /* Prepare memory. */
-   if ( !prepare_code_call( code->symbol_table.memory_size, function->parent, &function_value, &prev ) )
+   if ( !prepare_code_call( code->local_symbol_table.memory_size, &function_value, &prev ) )
      {
 	/* Copy locals. */
 	// Fix meeee! I'm a huge performance problem!
 	if ( locals )
-	  memcpy( current_local_bottom, locals, function->args_nr * sizeof( VARIABLE ) );
+	  memcpy( current_local_bottom, locals, function->args_nr * sizeof( VALUE ) );
 	
 	/* Prepared. Run! */
 	
@@ -2807,21 +3766,21 @@ int run_function_with_args( FUNCTION *function, char *args )
 	i = i && !returning_successful;
 	returning_successful = 0;
 	
-	FREE_VALUE( returned_value );
-	FREE_VALUE( function_value );
+	FREE_VARIABLE( returned_value );
+	FREE_VARIABLE( function_value );
 	
 	if ( i )
 	  clientf( "Failed!\r\n" );
 	else
 	  {
 	     clientf( "Returned value: " );
-	     if ( function_value.type == VAR_STRING )
-	       clientff( "%s\r\n", function_value.string );
-	     if ( function_value.type == VAR_NUMBER )
-	       clientff( "%d\r\n", function_value.nr );
-	     if ( function_value.type == VAR_POINTER )
-	       clientff( "@%d-%d\r\n", function_value.pointer.memory_space,
-			 function_value.pointer.offset );
+	     if ( V_TYPE( function_value.value ) == VAR_STRING )
+	       clientff( "%s\r\n", V_STR( function_value.value ) );
+	     if ( V_TYPE( function_value.value ) == VAR_NUMBER )
+	       clientff( "%d\r\n", V_NR( function_value.value ) );
+	     if ( V_TYPE( function_value.value ) == VAR_POINTER )
+	       clientff( "@%d-%d\r\n", V_POINTER( function_value.value ).memory_space,
+			 V_POINTER( function_value.value ).offset );
 	     
 	  }
 	
@@ -2853,26 +3812,24 @@ int run_function_with_args( FUNCTION *function, char *args )
      i = 1;
    
    if ( locals )
-     free( locals );
+     free_memory( locals, function->args_nr );
    
    return i;
 }
 
 
 
-int run_code( SCRIPT *script, int code_offset )
+int run_code( CODE *code )
 {
    VARIABLE returned_value, function_value;
-   CODE *code;
    struct prev_data prev;
    int i;
    
-   CLEAR_VALUE( returned_value );
-   CLEAR_VALUE( function_value );
-   code = &script->codes[code_offset];
+   INIT_VARIABLE( returned_value );
+   INIT_VARIABLE( function_value );
    
    /* Prepare memory. */
-   if ( !prepare_code_call( code->symbol_table.memory_size, script, &function_value, &prev ) ) // &prev_bottom, &prev_top ) )
+   if ( !prepare_code_call( code->local_symbol_table.memory_size, &function_value, &prev ) ) // &prev_bottom, &prev_top ) )
      {
 	/* Prepared. Run! */
 	
@@ -2880,8 +3837,8 @@ int run_code( SCRIPT *script, int code_offset )
 	i = i && !returning_successful;
 	returning_successful = 0;
 	
-	FREE_VALUE( returned_value );
-	FREE_VALUE( function_value );
+	FREE_VARIABLE( returned_value );
+	FREE_VARIABLE( function_value );
 	
 	/* Release local memory. Shrink it too, if needed. */
 	end_code_call( &prev );
@@ -2898,11 +3855,11 @@ int run_code( SCRIPT *script, int code_offset )
 int instr_function( INSTR *instr, VARIABLE *returned_value )
 {
    CODE *code;
-   VARIABLE *v, pointer, *locals = NULL, *top;
+   VARIABLE pointer, *v, *locals = NULL, *top;
    struct prev_data prev;
    int i;
    
-   CLEAR_VALUE( pointer );
+   INIT_VARIABLE( pointer );
    
 //   clientff( "instr::%sfunction\r\n", instr->sys_function ? "(sys)" : "" );
    
@@ -2911,80 +3868,76 @@ int instr_function( INSTR *instr, VARIABLE *returned_value )
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &pointer ) )
      {
-	FREE_VALUE( pointer );
+	FREE_VARIABLE( pointer );
 	return 1;
      }
    
-   if ( pointer.type != VAR_POINTER ||
-	pointer.pointer.memory_space != SCRIPT_FUNCTIONS ||
-	pointer.pointer.offset < 0 ||
-	pointer.pointer.offset >= current_script->codes_nr )
+   if ( V_TYPE( pointer.value ) != VAR_POINTER ||
+	V_POINTER( pointer.value ).memory_space != SCRIPT_FUNCTIONS ||
+	V_POINTER( pointer.value ).offset < 0 )
      {
 	clientf( C_R "*** Calling function from invalid pointer! ***\r\n" C_0 );
-	FREE_VALUE( pointer );
+	FREE_VARIABLE( pointer );
 	return 1;
      }
    
-   code = &current_script->codes[pointer.pointer.offset];
+   code = (CODE*)V_POINTER( pointer.value ).memory_section;
    
-   FREE_VALUE( pointer );
-   CLEAR_VALUE( pointer );
+   FREE_VARIABLE( pointer );
+   INIT_VARIABLE( pointer );
    
-   if ( code->symbol_table.memory_size )
+   if ( code->local_symbol_table.memory_size )
      {
-	locals = calloc( code->symbol_table.memory_size, sizeof( VARIABLE ) );
-	top = locals + code->symbol_table.memory_size;
+	locals = calloc( code->local_symbol_table.memory_size, sizeof( VARIABLE ) );
+	top = locals + code->local_symbol_table.memory_size;
+        v = locals;
 	
 	// Be careful when returning, it may have strings in it!
-	
+        
 	/* Fill function's arguments. */
-	for ( i = 1; i < instr->links; i++ )
+	for ( i = 1; i < instr->links; i++, v++ )
 	  {
-	     v = locals + i - 1;
-	     
 	     if ( v >= top )
 	       {
 		  clientf( C_R "*** Number of arguments passed exceeds function's local memory size! ***\r\n" C_0 );
-		  free( locals );
+		  free_vars( locals, code->local_symbol_table.memory_size );
 		  return 1;
 	       }
 	     
-	     FREE_VALUE( *v );
-	     CLEAR_VALUE( *v );
-	     
 	     if ( instructions[instr->link[i]->instruction]( instr->link[i], v ) )
 	       {
-		  free( locals );
+		  free_vars( locals, code->local_symbol_table.memory_size );
 		  return 1;
 	       }
 	  }
      }
    
    /* Prepare memory. */
-   if ( !prepare_code_call( code->symbol_table.memory_size, current_script, returned_value, &prev ) )
+   if ( !prepare_code_call( code->local_symbol_table.memory_size, returned_value, &prev ) )
      {
 	/* Copy locals. */
-	// Fix meeee! I'm a huge performance problem!
-	if ( locals )
-	  memcpy( current_local_bottom, locals, ( top - locals ) * sizeof( VARIABLE ) );
-	
+        for ( i = 0; i < instr->links; i++ )
+          {
+             FREE_VALUE( current_local_bottom[i] );
+             current_local_bottom[i] = locals[i].value;
+          }
+        
 	/* Prepared. Run! */
 	
 	i = instructions[code->first_instruction->instruction]( code->first_instruction, &pointer );
 	i = i && !returning_successful;
 	returning_successful = 0;
 	
-	FREE_VALUE( pointer );
+	FREE_VARIABLE( pointer );
 	
 	/* Release local memory. */
 	end_code_call( &prev );
-	
      }
    else
      i = 1;
    
    if ( locals )
-     free( locals );
+     free_vars( locals, code->local_symbol_table.memory_size );
    
    if ( returning_successful )
      {
@@ -3001,7 +3954,7 @@ int instr_doall( INSTR *instr, VARIABLE *returned_value )
    VARIABLE devnull;
    int i = 0, nr;
    
-   CLEAR_VALUE( devnull );
+   INIT_VARIABLE( devnull );
    
 //   clientf( "instr::doall\r\n" );
    
@@ -3010,11 +3963,11 @@ int instr_doall( INSTR *instr, VARIABLE *returned_value )
    while ( i < nr )
      if ( instructions[instr->link[i]->instruction]( instr->link[i++], &devnull ) )
        {
-	  FREE_VALUE( devnull );
+          FREE_VARIABLE( devnull );
 	  return 1;
        }
    
-   FREE_VALUE( devnull );
+   FREE_VARIABLE( devnull );
    return 0;
 }
 
@@ -3024,64 +3977,64 @@ int instr_operator( INSTR *instr, VARIABLE *returned_value )
    VARIABLE lvalue, rvalue;
    short i;
    
-   CLEAR_VALUE( lvalue );
+   INIT_VARIABLE( lvalue );
    
 //   clientf( "instr::operator\r\n" );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &lvalue ) )
      {
-	FREE_VALUE( lvalue );
+	FREE_VARIABLE( lvalue );
 	return 1;
      }
    
    /* Check for compatibility on lvalue. Irrelevant on some assignments. */
-   if ( lvalue.type &&
-	!( operators[instr->oper].types & lvalue.type ) &&
+   if ( V_TYPE( lvalue.value ) &&
+	!( operators[instr->oper].types & V_TYPE( lvalue.value ) ) &&
 	!operators[instr->oper].assignment == 2 )
      {
 	clientff( C_R "*** Invalid lvalue (%s) passed to operator '%s'! ***\r\n" C_0,
-		  lvalue.type == VAR_STRING ? "string" :
-		  lvalue.type == VAR_POINTER ? "pointer" :
-		  lvalue.type == VAR_NUMBER ? "number" : "unknown",
+		  V_TYPE( lvalue.value ) == VAR_STRING ? "string" :
+		  V_TYPE( lvalue.value ) == VAR_POINTER ? "pointer" :
+		  V_TYPE( lvalue.value ) == VAR_NUMBER ? "number" : "unknown",
 		  operators[instr->oper].symbol );
-	FREE_VALUE( lvalue );
+	FREE_VARIABLE( lvalue );
 	return 1;
      }
    
    /* Unary operators. */
    if ( operators[instr->oper].unary )
      {
-	i = operators[instr->oper].function( &lvalue, NULL, returned_value );
-	FREE_VALUE( lvalue );
+	i = operators[instr->oper].function( &lvalue, NULL, returned_value, instr );
+	FREE_VARIABLE( lvalue );
 	return i;
      }
    
-   CLEAR_VALUE( rvalue );
+   INIT_VARIABLE( rvalue );
    
    /* Binary operators. */
    if ( instructions[instr->link[1]->instruction]( instr->link[1], &rvalue ) )
      {
-	FREE_VALUE( lvalue );
-	FREE_VALUE( rvalue );
+	FREE_VARIABLE( lvalue );
+	FREE_VARIABLE( rvalue );
 	return 1;
      }
    
    /* Check for compatibility on rvalue. */
-   if ( rvalue.type && !( operators[instr->oper].types & rvalue.type ) )
+   if ( V_TYPE( rvalue.value ) && !( operators[instr->oper].types & V_TYPE( rvalue.value ) ) )
      {
 	clientff( C_R "*** Invalid rvalue (%s) passed to operator '%s'! ***\r\n" C_0,
-		  rvalue.type == VAR_STRING ? "string" :
-		  rvalue.type == VAR_POINTER ? "pointer" :
-		  rvalue.type == VAR_NUMBER ? "number" : "unknown",
+		  V_TYPE( rvalue.value ) == VAR_STRING ? "string" :
+		  V_TYPE( rvalue.value ) == VAR_POINTER ? "pointer" :
+		  V_TYPE( rvalue.value ) == VAR_NUMBER ? "number" : "unknown",
 		  operators[instr->oper].symbol );
-	FREE_VALUE( lvalue );
-	FREE_VALUE( rvalue );
+	FREE_VARIABLE( lvalue );
+	FREE_VARIABLE( rvalue );
 	return 1;
      }
    
-   i = operators[instr->oper].function( &lvalue, &rvalue, returned_value );
-   FREE_VALUE( lvalue );
-   FREE_VALUE( rvalue );
+   i = operators[instr->oper].function( &lvalue, &rvalue, returned_value, instr );
+   FREE_VARIABLE( lvalue );
+   FREE_VARIABLE( rvalue );
    return i;
 }
 
@@ -3090,7 +4043,9 @@ int instr_constant( INSTR *instr, VARIABLE *returned_value )
 {
 //   clientf( "instr::constant\r\n" );
    
-   copy_value( &instr->constant, returned_value, 0 );
+   returned_value->value = instr->constant;
+   if ( V_TYPE( returned_value->value ) == VAR_STRING )
+     V_STR( returned_value->value ) = strdup( V_STR( returned_value->value ) );
    
    returned_value->address.memory_space = NULL_POINTER;
    
@@ -3098,14 +4053,14 @@ int instr_constant( INSTR *instr, VARIABLE *returned_value )
 }
 
 
-VARIABLE *dereference_pointer( POINTER pointer )
+VALUE *dereference_pointer( POINTER pointer, SCRIPT_GROUP *group )
 {
-   VARIABLE *v;
+   VALUE *v;
    
    if ( pointer.memory_space == SCRIPT_MEMORY )
      {
-	v = current_script->script_memory + pointer.offset;
-	if ( v >= current_script->script_memory && v < current_script->script_memory_top )
+	v = group->script_memory + pointer.offset;
+	if ( v >= group->script_memory && v < group->script_memory_top )
 	  return v;
 	
 	clientff( C_R "*** Segmentation Fault! ***\r\n" C_0 );
@@ -3125,7 +4080,7 @@ VARIABLE *dereference_pointer( POINTER pointer )
    else if ( pointer.memory_space == GLOBAL_MEMORY )
      {
 	v = global_memory + pointer.offset;
-	if ( v >= global_memory && v < global_memory + symbol_table.memory_size )
+	if ( v >= global_memory && v < global_memory + global_symbol_table.memory_size )
 	  return v;
 	
 	clientff( C_R "*** Segmentation Fault! ***\r\n" C_0 );
@@ -3156,18 +4111,22 @@ VARIABLE *dereference_pointer( POINTER pointer )
 
 int instr_variable( INSTR *instr, VARIABLE *returned_value )
 {
-   VARIABLE *v;
+   VALUE *v;
    
 //   clientf( "instr::variable\r\n" );
    
    /* Copy its value. */
    
-   v = dereference_pointer( instr->pointer );
+   v = dereference_pointer( instr->pointer, instr->parent_script->parent_group );
    
    if ( !v )
-     return 1;
+     {
+        if ( instr->symbol && instr->symbol->name )
+          clientff( C_R "*** Attempt to access variable '%s' failed ***\r\n" C_0, instr->symbol->name );
+        return 1;
+     }
    
-   copy_value( v, returned_value, 0 );
+   copy_value( v, &returned_value->value );
    
    /* And also its address. */
    
@@ -3182,7 +4141,8 @@ int instr_return( INSTR *instr, VARIABLE *returned_value )
 //   clientf( "instr::return\r\n" );
    
    if ( instr->links )
-     instructions[instr->link[0]->instruction]( instr->link[0], function_return_value );
+     if ( instructions[instr->link[0]->instruction]( instr->link[0], function_return_value ) )
+       return 1;
    
    returning_successful = 1;
    return 1;
@@ -3194,34 +4154,76 @@ int instr_if( INSTR *instr, VARIABLE *returned_value )
    VARIABLE var;
    short i;
    
-   CLEAR_VALUE( var );
+   INIT_VARIABLE( var );
    
 //   clientf( "instr::if\r\n" );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &var ) )
      {
-	FREE_VALUE( var );
+	FREE_VARIABLE( var );
 	return 1;
      }
    
    /* If true... */
-   if ( ( var.type == VAR_STRING && var.string[0] ) ||
-	( var.type == VAR_NUMBER && var.nr ) ||
-	( var.type == VAR_POINTER && var.pointer.memory_space != NULL_POINTER ) )
+   if ( V_TRUE( var.value ) )
      {
-	i = instructions[instr->link[1]->instruction]( instr->link[1], &var );
+        FREE_VARIABLE( var );
+        INIT_VARIABLE( var );
+        i = instructions[instr->link[1]->instruction]( instr->link[1], &var );
      }
    /* Else, false. */
    else if ( instr->links == 3 )
      {
-	i = instructions[instr->link[2]->instruction]( instr->link[2], &var );
+        FREE_VARIABLE( var );
+        INIT_VARIABLE( var );
+        i = instructions[instr->link[2]->instruction]( instr->link[2], &var );
      }
    else
      i = 0;
    
-   FREE_VALUE( var );
+   FREE_VARIABLE( var );
    
    return i;
+}
+
+
+
+int instr_while( INSTR *instr, VARIABLE *returned_value )
+{
+   VARIABLE var;
+   
+   INIT_VARIABLE( var );
+   
+//   clientf( "instr::while\r\n" );
+   
+   /* Since it's a while.. put it in a while! */
+   while ( 1 )
+     {
+        if ( instructions[instr->link[0]->instruction]( instr->link[0], &var ) )
+          {
+             FREE_VARIABLE( var );
+             return 1;
+          }
+        
+        /* If true... */
+        if ( V_TRUE( var.value ) )
+          {
+             FREE_VARIABLE( var );
+             INIT_VARIABLE( var );
+             if ( instructions[instr->link[1]->instruction]( instr->link[1], &var ) )
+               {
+                  FREE_VARIABLE( var );
+                  return 1;
+               }
+          }
+        /* Else, goodbye. */
+        else
+          break;
+     }
+   
+   FREE_VARIABLE( var );
+   
+   return 0;
 }
 
 
@@ -3244,20 +4246,20 @@ SYSFUNC( sysfunc_echo )
 {
    VARIABLE value;
    
-   CLEAR_VALUE( value );
+   INIT_VARIABLE( value );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &value ) )
      return 1;
    
-   if ( value.type != VAR_STRING )
+   if ( V_TYPE( value.value ) != VAR_STRING )
      {
 	clientff( C_R "*** sysfunc_echo: invalid argument ***\r\n" C_0 );
 	return 1;
      }
    
-   clientf( value.string );
+   clientf( V_STR( value.value ) );
    clientf( "\r\n" );
-   FREE_VALUE( value );
+   FREE_VARIABLE( value );
    return 0;
 }
 
@@ -3267,19 +4269,19 @@ SYSFUNC( sysfunc_send )
    VARIABLE value;
    char *buf, *p;
    
-   CLEAR_VALUE( value );
+   INIT_VARIABLE( value );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &value ) )
      return 1;
    
-   if ( value.type != VAR_STRING )
+   if ( V_TYPE( value.value ) != VAR_STRING )
      {
 	clientff( C_R "*** sysfunc_send: invalid argument ***\r\n" C_0 );
 	return 1;
      }
    
    /* Translate all semicolons into new lines. */
-   buf = strdup( value.string );
+   buf = strdup( V_STR( value.value ) );
    for ( p = buf; *p; p++ )
      if ( *p == ';' )
        *p = '\n';
@@ -3287,7 +4289,7 @@ SYSFUNC( sysfunc_send )
    send_to_server( buf );
    send_to_server( "\r\n" );
    free( buf );
-   FREE_VALUE( value );
+   FREE_VARIABLE( value );
    return 0;
 }
 
@@ -3296,19 +4298,19 @@ SYSFUNC( sysfunc_necho )
 {
    VARIABLE value;
    
-   CLEAR_VALUE( value );
+   INIT_VARIABLE( value );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &value ) )
      return 1;
    
-   if ( value.type != VAR_STRING )
+   if ( V_TYPE( value.value ) != VAR_STRING )
      {
 	clientff( C_R "*** sysfunc_necho: invalid argument ***\r\n" C_0 );
 	return 1;
      }
    
-   clientf( value.string );
-   FREE_VALUE( value );
+   clientf( V_STR( value.value ) );
+   FREE_VARIABLE( value );
    return 0;
 }
 
@@ -3318,26 +4320,26 @@ SYSFUNC( sysfunc_nsend )
    VARIABLE value;
    char *buf, *p;
    
-   CLEAR_VALUE( value );
+   INIT_VARIABLE( value );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &value ) )
      return 1;
    
-   if ( value.type != VAR_STRING )
+   if ( V_TYPE( value.value ) != VAR_STRING )
      {
 	clientff( C_R "*** sysfunc_nsend: invalid argument ***\r\n" C_0 );
 	return 1;
      }
    
    /* Translate all semicolons into new lines. */
-   buf = strdup( value.string );
+   buf = strdup( V_STR( value.value ) );
    for ( p = buf; *p; p++ )
      if ( *p == ';' )
        *p = '\n';
    
    send_to_server( buf );
    free( buf );
-   FREE_VALUE( value );
+   FREE_VARIABLE( value );
    return 0;
 }
 
@@ -3348,18 +4350,18 @@ SYSFUNC( sysfunc_arg )
    char *p;
    int nr, size;
    
-   CLEAR_VALUE( value );
+   INIT_VARIABLE( value );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &value ) )
      return 1;
    
-   if ( value.type == VAR_NUMBER )
+   if ( V_TYPE( value.value ) == VAR_NUMBER )
      {
-	nr = value.nr;
+	nr = V_NR( value.value );
      }
-   else if ( value.type == VAR_STRING )
+   else if ( V_TYPE( value.value ) == VAR_STRING )
      {
-	nr = value.string[0] - '0';
+	nr = V_STR( value.value )[0] - '0';
      }
    else
      {
@@ -3367,9 +4369,9 @@ SYSFUNC( sysfunc_arg )
 	return 1;
      }
    
-   FREE_VALUE( value );
+   FREE_VARIABLE( value );
    
-   returns->type = VAR_STRING;
+   V_TYPE( returns->value ) = VAR_STRING;
    
    if ( nr < 0 )
      p = "", size = 0;
@@ -3400,9 +4402,9 @@ SYSFUNC( sysfunc_arg )
 	  }
      }
    
-   returns->string = malloc( size + 1 );
-   memcpy( returns->string, p, size );
-   returns->string[size] = 0;
+   V_STR( returns->value ) = malloc( size + 1 );
+   memcpy( V_STR( returns->value ), p, size );
+   V_STR( returns->value )[size] = 0;
    
    return 0;
 }
@@ -3414,15 +4416,15 @@ SYSFUNC( sysfunc_args )
    char *p;
    int nr1, nr2, start_offset, end_offset, size;
    
-   CLEAR_VALUE( value );
+   INIT_VARIABLE( value );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &value ) )
      return 1;
    
-   nr1 = value.nr;
-   FREE_VALUE( value );
+   nr1 = V_NR( value.value );
+   FREE_VARIABLE( value );
    
-   if ( value.type != VAR_NUMBER )
+   if ( V_TYPE( value.value ) != VAR_NUMBER )
      {
 	clientff( C_R "*** sysfunc_args: first argument is invalid ***\r\n" C_0 );
 	return 1;
@@ -3431,16 +4433,16 @@ SYSFUNC( sysfunc_args )
    if ( instructions[instr->link[1]->instruction]( instr->link[1], &value ) )
      return 1;
    
-   nr2 = value.nr;
-   FREE_VALUE( value );
+   nr2 = V_NR( value.value );
+   FREE_VARIABLE( value );
    
-   if ( value.type != VAR_NUMBER )
+   if ( V_TYPE( value.value ) != VAR_NUMBER )
      {
 	clientff( C_R "*** sysfunc_args: second argument is invalid ***\r\n" C_0 );
 	return 1;
      }
    
-   returns->type = VAR_STRING;
+   V_TYPE( returns->value ) = VAR_STRING;
    
    if ( regex_callbacks )
      {
@@ -3470,9 +4472,9 @@ SYSFUNC( sysfunc_args )
 	size = end_offset - start_offset;
      }
    
-   returns->string = malloc( size + 1 );
-   memcpy( returns->string, p, size );
-   returns->string[size] = 0;
+   V_STR( returns->value ) = malloc( size + 1 );
+   memcpy( V_STR( returns->value ), p, size );
+   V_STR( returns->value )[size] = 0;
    
    return 0;
 }
@@ -3486,24 +4488,28 @@ SYSFUNC( sysfunc_show_prompt )
 }
 
 
+#if 0
+// deprecated
 SYSFUNC( sysfunc_load_script )
 {
    VARIABLE name;
    
-   CLEAR_VALUE( name );
+   INIT_VARIABLE( name );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &name ) )
      return 1;
    
-   if ( name.type != VAR_STRING )
+   // fix me.
+   
+   if ( V_TYPE( name.value ) != VAR_STRING )
      {
 	clientff( C_R "*** sysfunc_load_script: invalid argument ***\r\n" C_0 );
 	return 1;
      }
    
-   returns->type = VAR_NUMBER;
-   returns->nr = !( load_script( name.string ) == NULL );
-   FREE_VALUE( name );
+   V_TYPE( returns->value ) = VAR_NUMBER;
+//   V_NR( returns->value ) = !( load_script( V_STR( name.value ) ) == NULL );
+   FREE_VARIABLE( name );
    
    return 0;
 }
@@ -3515,32 +4521,33 @@ SYSFUNC( sysfunc_unload_script )
    VARIABLE name;
    SCRIPT *s;
    
-   CLEAR_VALUE( name );
+   INIT_VARIABLE( name );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &name ) )
      return 1;
    
-   if ( name.type != VAR_STRING )
+   if ( V_TYPE( name.value ) != VAR_STRING )
      {
 	clientff( C_R "*** sysfunc_unload_script: invalid argument ***\r\n" C_0 );
 	return 1;
      }
    
-   returns->type = VAR_NUMBER;
+   V_TYPE( returns->value ) = VAR_NUMBER;
    
    for ( s = scripts; s; s = s->next )
      {
-	if ( !strcmp( s->name, name.string ) && !s->in_use )
+	if ( !strcmp( s->name, name.string ) )
 	  {
+             // unlink if redone
 	     destroy_script( s );
-	     returns->nr = 0;
-	     FREE_VALUE( name );
+	     V_NR( returns->value ) = 0;
+	     FREE_VARIABLE( name );
 	     return 0;
 	  }
      }
    
-   returns->nr = 1;
-   FREE_VALUE( name );
+   V_NR( returns->value ) = 1;
+   FREE_VARIABLE( name );
    return 0;
 }
 
@@ -3553,8 +4560,8 @@ SYSFUNC( sysfunc_call )
    FUNCTION *f;
    int found = 0;
    
-   CLEAR_VALUE( func_name );
-   CLEAR_VALUE( script_name );
+   INIT_VARIABLE( func_name );
+   INIT_VARIABLE( script_name );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &func_name ) )
      return 1;
@@ -3571,7 +4578,7 @@ SYSFUNC( sysfunc_call )
    if ( script_name.type != VAR_STRING )
      {
 	clientff( C_R "*** sysfunc_call: invalid script argument ***\r\n" C_0 );
-	FREE_VALUE( func_name );
+	FREE_VARIABLE( func_name );
 	return 1;
      }
    
@@ -3593,58 +4600,71 @@ SYSFUNC( sysfunc_call )
 	  }
      }
    
-   returns->type = VAR_NUMBER;
-   returns->nr = !found;
+   V_TYPE( returns->value ) = VAR_NUMBER;
+   V_NR( returns->value ) = !found;
    
    return 0;
 }
+#endif
 
 
 
-inline void debug_show_value( VARIABLE *v, int i, char *c )
+inline void debug_show_value( VALUE *v, char *name, int i, char *c )
 {
    const char mem_space[ ] = { 'n', 'r', 'a', 's', 'g', 'f' };
    
-   clientff( "%s%2d:" C_0 " " C_D, c, i );
-   if ( v->type == VAR_NUMBER )
-     clientff( "(n)" C_0 " %d\r\n", v->nr );
-   else if ( v->type == VAR_STRING )
-     clientff( "(s)" C_0 " \"%s\" (%d)\r\n", v->string, strlen( v->string ) );
-   else if ( v->type == VAR_POINTER )
+   clientff( "%s%2d (%s):" C_0 " " C_D, c, i, name );
+   if ( V_TYPE( *v ) == VAR_NUMBER )
+     clientff( "(n)" C_0 " %d\r\n", V_NR( *v ) );
+   else if ( V_TYPE( *v ) == VAR_STRING )
+     clientff( "(s)" C_0 " \"%s\" (%d)\r\n", V_STR( *v ), strlen( V_STR( *v ) ) );
+   else if ( V_TYPE( *v ) == VAR_POINTER )
      clientff( "(p)" C_0 " @%c%d\r\n",
-	       mem_space[v->pointer.memory_space],
-	       v->pointer.offset );
+	       mem_space[V_POINTER( *v ).memory_space],
+	       V_POINTER( *v ).offset );
    else
      clientff( "(uninitialized)\r\n" C_0 );
 }
 
 SYSFUNC( sysfunc_debug )
 {
-   VARIABLE *v;
+   SCRIPT_GROUP *group;
+   SYMBOL *s;
+   VALUE *v;
    int i;
    
    clientff( C_Y "\r\nGlobal Memory (%d variables)\r\n" C_0,
-	     symbol_table.memory_size );
+	     global_symbol_table.memory_size );
    
-   for ( i = 0; i < 64; i++ )
+   for ( s = global_symbol_table.symbol; s; s = s->next )
      {
-	v = global_memory + i;
-	if ( v >= global_memory + symbol_table.memory_size )
-	  break;
-	debug_show_value( v, i, C_Y );
+        if ( s->pointer.offset < 0 || s->pointer.offset >= global_symbol_table.memory_size )
+          {
+             clientff( C_R "%s out of bounds.\r\n" C_0, s->name );
+             continue;
+          }
+        
+        v = global_memory + s->pointer.offset;
+	if ( V_TYPE( *v ) != VAR_NUMBER || V_NR( *v ) != 0 )
+          debug_show_value( v, s->name, s->pointer.offset, C_Y );
      }
    
-   clientff( C_Y "\r\nScript Memory (%d variables)\r\n" C_0,
-	     current_script->script_memory_top - current_script->script_memory );
+   group = instr->parent_script->parent_group;
    
-   for ( i = 0; i < 64; i++ )
+   clientff( C_Y "\r\nScript Group Memory (%d variables)\r\n" C_0,
+	     group->script_memory_top - group->script_memory );
+   
+   for ( s = group->group_symbol_table.symbol; s; s = s->next )
      {
-	v = current_script->script_memory + i;
-	if ( v >= current_script->script_memory_top )
-	  break;
-	
-	if ( v->type != VAR_NUMBER || v->nr != 0 )
-	  debug_show_value( v, i, C_Y );
+        if ( s->pointer.offset < 0 || s->pointer.offset >= group->group_symbol_table.memory_size )
+          {
+             clientff( C_R "%s out of bounds.\r\n" C_0, s->name );
+             continue;
+          }
+        
+        v = group->script_memory + s->pointer.offset;
+	if ( V_TYPE( *v ) != VAR_NUMBER || V_NR( *v ) != 0 )
+          debug_show_value( v, s->name, s->pointer.offset, C_Y );
      }
    
    clientff( C_Y "\r\nLocal Memory (%d variables, %d total)\r\n" C_0,
@@ -3657,8 +4677,8 @@ SYSFUNC( sysfunc_debug )
 	if ( v >= current_local_top )
 	  break;
 	
-	if ( v >= current_local_bottom || v->type != VAR_NUMBER || v->nr != 0 )
-	  debug_show_value( v, i, v >= current_local_bottom ? C_Y : C_D );
+	if ( v >= current_local_bottom || V_TYPE( *v ) != VAR_NUMBER || V_NR( *v ) != 0 )
+	  debug_show_value( v, "unknown", i, v >= current_local_bottom ? C_Y : C_D );
      }
    
    return 0;
@@ -3669,21 +4689,21 @@ SYSFUNC( sysfunc_nr )
 {
    VARIABLE nr;
    
-   CLEAR_VALUE( nr );
+   INIT_VARIABLE( nr );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &nr ) )
      return 1;
    
-   if ( nr.type == VAR_NUMBER )
+   if ( V_TYPE( nr.value ) == VAR_NUMBER )
      {
-	returns->nr = nr.nr;
+	V_NR( returns->value ) = V_NR( nr.value );
      }
-   else if ( nr.type == VAR_STRING )
+   else if ( V_TYPE( nr.value ) == VAR_STRING )
      {
 	char *p;
 	int i = 0, neg = 0;
 	
-	p = nr.string;
+	p = V_STR( nr.value );
 	
 	while ( *p == ' ' )
 	  p++;
@@ -3697,14 +4717,14 @@ SYSFUNC( sysfunc_nr )
 	if ( neg )
 	  i = -i;
 	
-	returns->nr = i;
+	V_NR( returns->value ) = i;
      }
    else
-     returns->nr = 0;
+     V_NR( returns->value ) = 0;
    
-   FREE_VALUE( nr );
+   FREE_VARIABLE( nr );
    
-   returns->type = VAR_NUMBER;
+   V_TYPE( returns->value ) = VAR_NUMBER;
    
    return 0;
 }
@@ -3714,31 +4734,31 @@ SYSFUNC( sysfunc_str )
 {
    VARIABLE str;
    
-   CLEAR_VALUE( str );
+   INIT_VARIABLE( str );
    
    if ( instructions[instr->link[0]->instruction]( instr->link[0], &str ) )
      return 1;
    
-   if ( str.type == VAR_STRING )
+   if ( V_TYPE( str.value ) == VAR_STRING )
      {
-	returns->string = strdup( str.string );
+	V_STR( returns->value ) = strdup( V_STR( str.value ) );
      }
-   else if ( str.type == VAR_NUMBER )
+   else if ( V_TYPE( str.value ) == VAR_NUMBER )
      {
 	// Optimize me!
 	
 	char buf[256];
 	
-	sprintf( buf, "%d", str.nr );
+	sprintf( buf, "%d", V_NR( str.value ) );
 	
-	returns->string = strdup( buf );
+	V_STR( returns->value ) = strdup( buf );
      }
    else
-     returns->string = strdup( "(null)" );
+     V_STR( returns->value ) = strdup( "(null)" );
    
-   FREE_VALUE( str );
+   FREE_VARIABLE( str );
    
-   returns->type = VAR_STRING;
+   V_TYPE( returns->value ) = VAR_STRING;
    
    return 0;
 }
@@ -3747,7 +4767,7 @@ SYSFUNC( sysfunc_str )
 
 /** Operators. **/
 
-#define OPER( oper ) int (oper)( VARIABLE *lvalue, VARIABLE *rvalue, VARIABLE *returns )
+#define OPER( oper ) int (oper)( VARIABLE *lvalue, VARIABLE *rvalue, VARIABLE *returns, INSTR *instr )
 
 OPER( oper_not_implemented )
 {
@@ -3761,21 +4781,21 @@ OPER( oper_not_implemented )
 
 OPER( oper_dereference )
 {
-   VARIABLE *v;
+   VALUE *v;
    
-   if ( lvalue->type != VAR_POINTER )
+   if ( V_TYPE( lvalue->value ) != VAR_POINTER )
      {
 	clientf( C_R "*** Invalid operand passed to operator '*' ***\r\n" C_0 );
 	return 1;
      }
    
-   v = dereference_pointer( lvalue->pointer );
+   v = dereference_pointer( V_POINTER( lvalue->value ), instr->parent_script->parent_group );
    
    if ( !v )
      return 1;
    
-   copy_value( v, returns, 0 );
-   copy_address( lvalue->pointer, returns );
+   copy_value( v, &returns->value );
+   copy_address( V_POINTER( lvalue->value ), returns );
    
    return 0;
 }
@@ -3789,16 +4809,16 @@ OPER( oper_address_of )
 	return 1;
      }
    
-   returns->type = VAR_POINTER;
+   V_TYPE( returns->value ) = VAR_POINTER;
    if ( lvalue->address.memory_space == RELATIVE_LOCAL_MEMORY )
      {
-	returns->pointer.memory_space = ABSOLUTE_LOCAL_MEMORY;
-	returns->pointer.offset = lvalue->address.offset + ( current_local_bottom - local_memory );
+	V_POINTER( returns->value ).memory_space = ABSOLUTE_LOCAL_MEMORY;
+	V_POINTER( returns->value ).offset = lvalue->address.offset + ( current_local_bottom - local_memory );
      }
    else
      {
-	returns->pointer.memory_space = lvalue->address.memory_space;
-	returns->pointer.offset = lvalue->address.offset;
+	V_POINTER( returns->value ).memory_space = lvalue->address.memory_space;
+	V_POINTER( returns->value ).offset = lvalue->address.offset;
      }
    
    return 0;
@@ -3807,17 +4827,17 @@ OPER( oper_address_of )
 
 OPER( oper_assignment )
 {
-   VARIABLE *v;
+   VALUE *v;
    
-   v = dereference_pointer( lvalue->address );
+   v = dereference_pointer( lvalue->address, instr->parent_script->parent_group );
    
    if ( !v )
      return 1;
    
-   copy_value( rvalue, v, 0 );
+   copy_value( &rvalue->value, v );
    
-   copy_value( rvalue, returns, 0 );
-   copy_address( lvalue->pointer, returns );
+   copy_value( &rvalue->value, &returns->value );
+   copy_address( V_POINTER( lvalue->value ), returns );
    
    return 0;
 }
@@ -3825,9 +4845,9 @@ OPER( oper_assignment )
 
 OPER( oper_modulus )
 {
-   returns->type = VAR_NUMBER;
+   V_TYPE( returns->value ) = VAR_NUMBER;
    
-   returns->nr = lvalue->nr % rvalue->nr;
+   V_NR( returns->value ) = V_NR( lvalue->value ) % V_NR( rvalue->value );
    
    return 0;
 }
@@ -3835,21 +4855,21 @@ OPER( oper_modulus )
 
 OPER( oper_addition )
 {
-   if ( lvalue->type != rvalue->type )
+   if ( V_TYPE( lvalue->value ) != V_TYPE( rvalue->value ) )
      {
 	/* Consider uninitialized variables as empty strings. */
-	if ( lvalue->type == VAR_STRING && rvalue->type == VAR_NUMBER &&
-	     rvalue->nr == 0 )
+	if ( V_TYPE( lvalue->value ) == VAR_STRING && V_TYPE( rvalue->value ) == VAR_NUMBER &&
+	     V_NR( rvalue->value ) == 0 )
 	  {
-	     returns->type = VAR_STRING;
-	     returns->string = strdup( lvalue->string );
+	     V_TYPE( returns->value ) = VAR_STRING;
+	     V_STR( returns->value ) = strdup( V_STR( lvalue->value ) );
 	     return 0;
 	  }
-	else if ( rvalue->type == VAR_STRING && lvalue->type == VAR_NUMBER &&
-		  lvalue->nr == 0 )
+	else if ( V_TYPE( rvalue->value ) == VAR_STRING && V_TYPE( lvalue->value ) == VAR_NUMBER &&
+		  V_NR( lvalue->value ) == 0 )
 	  {
-	     returns->type = VAR_STRING;
-	     returns->string = strdup( rvalue->string );
+	     V_TYPE( returns->value ) = VAR_STRING;
+	     V_STR( returns->value ) = strdup( V_STR( rvalue->value ) );
 	     return 0;
 	  }
 	
@@ -3857,22 +4877,22 @@ OPER( oper_addition )
 	return 1;
      }
    
-   if ( lvalue->type == VAR_NUMBER )
+   if ( V_TYPE( lvalue->value ) == VAR_NUMBER )
      {
-	returns->type = VAR_NUMBER;
-	returns->nr = lvalue->nr + rvalue->nr;
+	V_TYPE( returns->value ) = VAR_NUMBER;
+	V_NR( returns->value ) = V_NR( lvalue->value ) + V_NR( rvalue->value );
 	
 	return 0;
      }
    
-   if ( lvalue->type == VAR_STRING )
+   if ( V_TYPE( lvalue->value ) == VAR_STRING )
      {
-	returns->type = VAR_STRING;
+	V_TYPE( returns->value ) = VAR_STRING;
 	
 	// Not nice. Too many external functions called.
-	returns->string = calloc( 1, strlen( lvalue->string ) + strlen( rvalue->string ) + 1 );
-	strcpy( returns->string, lvalue->string );
-	strcat( returns->string, rvalue->string );
+	V_STR( returns->value ) = calloc( 1, strlen( V_STR( lvalue->value ) ) + strlen( V_STR( rvalue->value ) ) + 1 );
+	strcpy( V_STR( returns->value ), V_STR( lvalue->value ) );
+	strcat( V_STR( returns->value ), V_STR( rvalue->value ) );
 	
 	return 0;
      }
@@ -3884,9 +4904,9 @@ OPER( oper_addition )
 
 OPER( oper_substraction )
 {
-   returns->type = VAR_NUMBER;
+   V_TYPE( returns->value ) = VAR_NUMBER;
    
-   returns->nr = lvalue->nr - rvalue->nr;
+   V_NR( returns->value ) = V_NR( lvalue->value ) - V_NR( rvalue->value );
    
    return 0;
 }
@@ -3894,25 +4914,25 @@ OPER( oper_substraction )
 
 OPER( oper_equal_to )
 {
-   returns->type = VAR_NUMBER;
+   V_TYPE( returns->value ) = VAR_NUMBER;
    
-   if ( lvalue->type != rvalue->type )
+   if ( V_TYPE( lvalue->value ) != V_TYPE( rvalue->value ) )
      {
-	returns->nr = 0;
+	V_NR( returns->value ) = 0;
      }
-   else if ( lvalue->type == VAR_NUMBER )
+   else if ( V_TYPE( lvalue->value ) == VAR_NUMBER )
      {
-	returns->nr = ( lvalue->nr == rvalue->nr );
+	V_NR( returns->value ) = ( V_NR( lvalue->value ) == V_NR( rvalue->value ) );
      }
-   else if ( lvalue->type == VAR_POINTER )
+   else if ( V_TYPE( lvalue->value ) == VAR_POINTER )
      {
 	// watch out for relative vs absolute
-	returns->nr = ( ( lvalue->pointer.memory_space == rvalue->pointer.memory_space ) &&
-		       ( lvalue->pointer.offset == rvalue->pointer.offset ) );
+	V_NR( returns->value ) = ( ( V_POINTER( lvalue->value ).memory_space == V_POINTER( rvalue->value ).memory_space ) &&
+		       ( V_POINTER( lvalue->value ).offset == V_POINTER( rvalue->value ).offset ) );
      }
-   else if ( lvalue->type == VAR_STRING )
+   else if ( V_TYPE( lvalue->value ) == VAR_STRING )
      {
-	returns->nr = !strcmp( lvalue->string, rvalue->string );
+	V_NR( returns->value ) = !strcmp( V_STR( lvalue->value ), V_STR( rvalue->value ) );
      }
    
    return 0;
@@ -3921,9 +4941,9 @@ OPER( oper_equal_to )
 
 OPER( oper_not_equal_to )
 {
-   oper_equal_to( lvalue, rvalue, returns );
+   oper_equal_to( lvalue, rvalue, returns, instr );
    
-   returns->nr = !returns->nr;
+   V_NR( returns->value ) = !V_NR( returns->value );
    
    return 0;
 }
@@ -3931,137 +4951,121 @@ OPER( oper_not_equal_to )
 
 OPER( oper_less_than )
 {
-   if ( lvalue->type != rvalue->type )
+   if ( V_TYPE( lvalue->value ) != V_TYPE( rvalue->value ) )
      {
 	clientff( C_R "*** Invalid operands passed to operator '<' ***\r\n" C_0 );
 	return 1;
      }
    
-   returns->type = VAR_NUMBER;
+   V_TYPE( returns->value ) = VAR_NUMBER;
    
-   if ( lvalue->type == VAR_POINTER )
+   if ( V_TYPE( lvalue->value ) == VAR_POINTER )
      {
-	if ( lvalue->pointer.memory_space != rvalue->pointer.memory_space )
-	  returns->nr = 0;
+	if ( V_POINTER( lvalue->value ).memory_space != V_POINTER( rvalue->value ).memory_space )
+	  V_NR( returns->value ) = 0;
 	else
-	  returns->nr = lvalue->pointer.offset < rvalue->pointer.offset;
+	  V_NR( returns->value ) = V_POINTER( lvalue->value ).offset < V_POINTER( rvalue->value ).offset;
 	return 0;
      }
    
    /* VAR_NUMBER. */
-   returns->nr = lvalue->nr < rvalue->nr;
+   V_NR( returns->value ) = V_NR( lvalue->value ) < V_NR( rvalue->value );
    return 0;
 }
 
 
 OPER( oper_greater_than )
 {
-   if ( lvalue->type != rvalue->type )
+   if ( V_TYPE( lvalue->value ) != V_TYPE( rvalue->value ) )
      {
 	clientff( C_R "*** Invalid operands passed to operator '>' ***\r\n" C_0 );
 	return 1;
      }
    
-   returns->type = VAR_NUMBER;
+   V_TYPE( returns->value ) = VAR_NUMBER;
    
-   if ( lvalue->type == VAR_POINTER )
+   if ( V_TYPE( lvalue->value ) == VAR_POINTER )
      {
-	if ( lvalue->pointer.memory_space != rvalue->pointer.memory_space )
-	  returns->nr = 0;
+	if ( V_POINTER( lvalue->value ).memory_space != V_POINTER( rvalue->value ).memory_space )
+	  V_NR( returns->value ) = 0;
 	else
-	  returns->nr = lvalue->pointer.offset > rvalue->pointer.offset;
+	  V_NR( returns->value ) = V_POINTER( lvalue->value ).offset > V_POINTER( rvalue->value ).offset;
 	return 0;
      }
    
    /* VAR_NUMBER. */
-   returns->nr = lvalue->nr > rvalue->nr;
+   V_NR( returns->value ) = V_NR( lvalue->value ) > V_NR( rvalue->value );
    return 0;
 }
 
 
 OPER( oper_less_than_or_equal_to )
 {
-   if ( lvalue->type != rvalue->type )
+   if ( V_TYPE( lvalue->value ) != V_TYPE( rvalue->value ) )
      {
 	clientff( C_R "*** Invalid operands passed to operator '<=' ***\r\n" C_0 );
 	return 1;
      }
    
-   returns->type = VAR_NUMBER;
+   V_TYPE( returns->value ) = VAR_NUMBER;
    
-   if ( lvalue->type == VAR_POINTER )
+   if ( V_TYPE( lvalue->value ) == VAR_POINTER )
      {
-	if ( lvalue->pointer.memory_space != rvalue->pointer.memory_space )
-	  returns->nr = 0;
+	if ( V_POINTER( lvalue->value ).memory_space != V_POINTER( rvalue->value ).memory_space )
+	  V_NR( returns->value ) = 0;
 	else
-	  returns->nr = lvalue->pointer.offset <= rvalue->pointer.offset;
+	  V_NR( returns->value ) = V_POINTER( lvalue->value ).offset <= V_POINTER( rvalue->value ).offset;
 	return 0;
      }
    
    /* VAR_NUMBER. */
-   returns->nr = lvalue->nr <= rvalue->nr;
+   V_NR( returns->value ) = V_NR( lvalue->value ) <= V_NR( rvalue->value );
    return 0;
 }
 
 
 OPER( oper_greater_than_or_equal_to )
 {
-   if ( lvalue->type != rvalue->type )
+   if ( V_TYPE( lvalue->value ) != V_TYPE( rvalue->value ) )
      {
 	clientff( C_R "*** Invalid operands passed to operator '>=' ***\r\n" C_0 );
 	return 1;
      }
    
-   returns->type = VAR_NUMBER;
+   V_TYPE( returns->value ) = VAR_NUMBER;
    
-   if ( lvalue->type == VAR_POINTER )
+   if ( V_TYPE( lvalue->value ) == VAR_POINTER )
      {
-	if ( lvalue->pointer.memory_space != rvalue->pointer.memory_space )
-	  returns->nr = 0;
+	if ( V_POINTER( lvalue->value ).memory_space != V_POINTER( rvalue->value ).memory_space )
+	  V_NR( returns->value ) = 0;
 	else
-	  returns->nr = lvalue->pointer.offset >= rvalue->pointer.offset;
+	  V_NR( returns->value ) = V_POINTER( lvalue->value ).offset >= V_POINTER( rvalue->value ).offset;
 	return 0;
      }
    
    /* VAR_NUMBER. */
-   returns->nr = lvalue->nr >= rvalue->nr;
+   V_NR( returns->value ) = V_NR( lvalue->value ) >= V_NR( rvalue->value );
    return 0;
 }
 
 
 OPER( oper_not )
 {
-   returns->type = lvalue->type;
+   V_TYPE( returns->value ) = V_TYPE( lvalue->value );
    
-   if ( lvalue->type == VAR_NUMBER )
-     returns->nr = !lvalue->nr;
-   else if ( lvalue->type == VAR_STRING )
-     returns->string = strdup( lvalue->string[0] ? "" : "true" );
+   if ( V_TYPE( lvalue->value ) == VAR_NUMBER )
+     V_NR( returns->value ) = !V_NR( lvalue->value );
+   else if ( V_TYPE( lvalue->value ) == VAR_STRING )
+     V_STR( returns->value ) = strdup( V_STR( lvalue->value )[0] ? "" : "true" );
    
    return 0;
 }
 
 
-#define TRUTH_VALUE( variable, truth ) \
-   if ( (variable)->type == VAR_NUMBER ) \
-     truth = (variable)->nr != 0; \
-   else if ( (variable)->type == VAR_STRING ) \
-     truth = (variable)->string[0] != 0; \
-   else if ( (variable)->type == VAR_POINTER ) \
-     truth = (variable)->pointer.memory_space != NULL_POINTER; \
-   else \
-     truth = 0;
-
-
 OPER( oper_logical_and )
 {
-   short ltruth, rtruth;
-   
-   TRUTH_VALUE( lvalue, ltruth );
-   TRUTH_VALUE( rvalue, rtruth );
-   
-   returns->type = VAR_NUMBER;
-   returns->nr = ltruth && rtruth;
+   V_TYPE( returns->value ) = VAR_NUMBER;
+   V_NR( returns->value ) = V_TRUE( lvalue->value ) && V_TRUE( rvalue->value );
    
    return 0;
 }
@@ -4069,13 +5073,8 @@ OPER( oper_logical_and )
 
 OPER( oper_logical_or )
 {
-   short ltruth, rtruth;
-   
-   TRUTH_VALUE( lvalue, ltruth );
-   TRUTH_VALUE( rvalue, rtruth );
-   
-   returns->type = VAR_NUMBER;
-   returns->nr = ltruth || rtruth;
+   V_TYPE( returns->value ) = VAR_NUMBER;
+   V_NR( returns->value ) = V_TRUE( lvalue->value ) || V_TRUE( rvalue->value );
    
    return 0;
 }
