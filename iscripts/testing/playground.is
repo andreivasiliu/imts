@@ -1,0 +1,16 @@
+script "Sandbox";
+
+
+asd = "asd";
+local asd2;
+
+alias test
+{
+   local asd = asd + "2";
+   debug( );
+   echo "asd: " + asd;
+   echo "asd2: " + asd2;
+   echo "f: " + str( func(2) );
+   show_prompt;
+}
+
