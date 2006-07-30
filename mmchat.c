@@ -39,7 +39,7 @@ char *mmchat_id = MMCHAT_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
 MODULE *mm_self;
 
-char *chat_name = "Whyte";
+char *chat_name = "MBUser";
 char *chat_ip = "127.0.0.1";
 int chat_port = 4050;
 
