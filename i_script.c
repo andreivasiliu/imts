@@ -102,13 +102,7 @@ typedef struct script_group_data SCRIPT_GROUP;
 
 
 
-#define LINKED_LIST void *next, *prev
-
-struct list_data
-{
-   LINKED_LIST;
-};
-
+#define LINKED_LIST( type ) type *next, *prev
 
 
 /* Currently, 16 bytes. A nice number. */
@@ -150,7 +144,7 @@ struct variable_data
 
 struct symbol_data
 {
-   LINKED_LIST;
+   LINKED_LIST( SYMBOL );
    
    char *name;
    
@@ -210,7 +204,7 @@ struct instr_data
 
 struct code_data
 {
-   LINKED_LIST;
+   LINKED_LIST( CODE );
    
    SYMBOL_TABLE local_symbol_table;
    
@@ -221,7 +215,7 @@ struct code_data
 
 struct function_data
 {
-   LINKED_LIST;
+   LINKED_LIST( FUNCTION );
    
    char *name;
    short alias;
@@ -236,7 +230,7 @@ struct function_data
 
 struct script_data
 {
-   LINKED_LIST;
+   LINKED_LIST( SCRIPT );
    
    char *name;
    char *path;
@@ -262,7 +256,7 @@ struct script_data
 // FIXME: don't forget about destroying
 struct script_group_data
 {
-   LINKED_LIST;
+   LINKED_LIST( SCRIPT_GROUP );
    
    char *name;
    
@@ -281,7 +275,7 @@ struct script_group_data
 
 struct trigger_data
 {
-   LINKED_LIST;
+   LINKED_LIST( TRIGGER );
    
    char *name;
    
@@ -578,56 +572,19 @@ ENTRANCE( scripter_module_register )
 
 
 
-/* Generic linked-list handlers. */
-#define link_to_list( object, first, last ) _link_to_list( (LIST *)object, (void **)first, (void **)last )
-void _link_to_list( LIST *object, void **first, void **last )
-{
-   if ( *last )
-     {
-        ((LIST *)*last)->next = object;
-        object->prev = (LIST *)*last;
-        object->next = NULL;
-        *last = object;
-     }
-   else
-     {
-        *first = *last = object;
-        object->next = NULL;
-        object->prev = NULL;
-     }
-}
+/* Generic linked-list handlers. Had some really neat functions, but they didn't go well with high optimization. */
+#define link_to_list( obj, first, last ) \
+{ if ( last ) { (last)->next = obj; (obj)->prev = last; (obj)->next = NULL; last = obj; } \
+		 else { first = last = obj; (obj)->next = NULL; (obj)->prev = NULL; } }
 
-#define unlink_from_list( object, first, last ) _unlink_from_list( (LIST *)object, (void **)first, (void **)last )
-void _unlink_from_list( LIST *object, void **first, void **last )
-{ 
-   if ( !object->prev )
-     *first = object->next;
-   else
-     ((LIST *)object->prev)->next = object->next;
-   
-   if ( !object->next )
-     *last = object->prev;
-   else
-     ((LIST *)object->next)->prev = object->prev;
-}
+#define unlink_from_list( obj, first, last ) \
+{ if ( (obj)->prev ) (obj)->prev->next = (obj)->next; else first = (obj)->next; \
+  if ( (obj)->next ) (obj)->next->prev = (obj)->prev; else last = (obj)->prev; }
 
-#define replace_link_in_list( src, dest, first, last ) _replace_link_in_list( (LIST *)src, (LIST *)dest, (void **)first, (void **)last )
-void _replace_link_in_list( LIST *src, LIST *dest, void **first, void **last )
-{
-   src->prev = dest->prev;
-   src->next = dest->next;
-   
-   if ( src->prev )
-     ((LIST *)src->prev)->next = src;
-   else
-     *first = src;
-   
-   if ( src->next )
-     ((LIST *)src->next)->prev = src;
-   else
-     *last = src;
-}
-
+#define replace_link_in_list( src, dest, first, last ) \
+{ (src)->prev = (dest)->prev; (src)->next = (dest)->next; \
+  if ( (src)->prev ) (src)->prev->next = src; else first = src; \
+  if ( (src)->next ) (src)->next->prev = src; else last = src; }
 
 
 void exec_trigger( TRIGGER *trigger )
@@ -1584,7 +1541,7 @@ SYMBOL *add_symbol_to_table( char *name, int unique, SYMBOL_TABLE *table, int sp
    if ( !symbol )
      {
         symbol = calloc( 1, sizeof( SYMBOL ) );
-        link_to_list( symbol, &table->symbol, &table->last );
+        link_to_list( symbol, table->symbol, table->last );
      }
    
    symbol->name = strdup( name );
@@ -2196,7 +2153,7 @@ int get_number( )
         /* Example 5e2 = 5 * pow(10,2) */
         if ( *pos == 'e' || *pos == 'E' )
           {
-             int e;
+             int e = 0;
              
              pos++;
              
@@ -2680,7 +2637,7 @@ int load_script_function( SCRIPT *script, int alias )
    
    /* Add a code in the script for it. */
    code = calloc( 1, sizeof( CODE ) );
-   link_to_list( code, &script->codes, &script->codes_last );
+   link_to_list( code, script->codes, script->codes_last );
    previous_code = current_code;
    current_code = code;
    
@@ -2726,7 +2683,7 @@ int load_script_function( SCRIPT *script, int alias )
      }
    
    /* Link it. Easier to get destroyed with the rest if something fails. */
-   link_to_list( function, &script->functions, &script->functions_last );
+   link_to_list( function, script->functions, script->functions_last );
    
    /* This scope will keep all the arguments. */
    enter_scope( script );
@@ -2826,14 +2783,14 @@ int load_script_trigger( SCRIPT *script )
    
    /* Add a code in the script for it. */
    code = calloc( 1, sizeof( CODE ) );
-   link_to_list( code, &script->codes, &script->codes_last );
+   link_to_list( code, script->codes, script->codes_last );
    
    trigger->pointer.memory_space = SCRIPT_FUNCTIONS;
    trigger->pointer.offset = 0;
    trigger->pointer.memory_section = (void*) code;
    
    /* Link it. */
-   link_to_list( trigger, &script->triggers, &script->triggers_last );
+   link_to_list( trigger, script->triggers, script->triggers_last );
    
    /* Name, if there's one. */
    if ( *pos == '\'' )
@@ -2940,7 +2897,7 @@ int compile_script( SCRIPT *script, char *flname )
    char buf[4096];
    char *old_pos, *old_beginning;
    char *body = NULL;
-   int bytes, size;
+   int bytes, size = 0;
    int aborted = 0;
    
    fl = fopen( flname, "r" );
@@ -3317,7 +3274,7 @@ void scan_for_scripts( SCRIPT_GROUP *group, char *current, DIR *dir )
                                     strlen( group->name ) );
              script->modified_date = st.st_mtime;
              script->parent_group = group;
-             link_to_list( script, &group->scripts, &group->scripts_last );
+             link_to_list( script, group->scripts, group->scripts_last );
              continue;
           }
         
@@ -3439,7 +3396,7 @@ void new_load_scripts( )
         
         group = calloc( 1, sizeof( SCRIPT_GROUP ) );
         group->name = strdup( dp->d_name );
-        link_to_list( group, &groups_under_construction, &guc_last );
+        link_to_list( group, groups_under_construction, guc_last );
         scan_for_scripts( group, path, dir2 );
         closedir( dir2 );
      }
@@ -3467,7 +3424,7 @@ void new_load_scripts( )
              
              snprintf( full_name, PATH_MAX, "iscripts/%s%s/%s",
                        group->name, script->path, script->name );
-             clientff( "Opening %s\n", full_name );
+             clientff( "Opening %s\r\n", full_name );
              if ( !compile_script( script, full_name ) )
                continue;
              
@@ -3476,7 +3433,7 @@ void new_load_scripts( )
              while ( groups_under_construction )
                {
                   group = groups_under_construction;
-                  unlink_from_list( group, &groups_under_construction, &guc_last );
+                  unlink_from_list( group, groups_under_construction, guc_last );
                   destroy_group( group );
                }
              
@@ -3524,8 +3481,8 @@ void new_load_scripts( )
              if ( !s || script->modified_date != s->modified_date )
                continue;
              
-             unlink_from_list( s, &s->parent_group->scripts, &s->parent_group->scripts_last );
-             replace_link_in_list( s, script, &group->scripts, &group->scripts_last );
+             unlink_from_list( s, s->parent_group->scripts, s->parent_group->scripts_last );
+             replace_link_in_list( s, script, group->scripts, group->scripts_last );
              s->parent_group = group;
              
              destroy_script( script );
@@ -3548,21 +3505,21 @@ void new_load_scripts( )
         if ( !g )
           {
              clientff( "Removing group %s.\r\n", group->name );
-             unlink_from_list( group, &groups, &groups_last );
+             unlink_from_list( group, groups, groups_last );
              destroy_group( group );
              continue;
           }
         
         if ( !g->changed )
           {
-             unlink_from_list( g, &groups_under_construction, &guc_last );
+             unlink_from_list( g, groups_under_construction, guc_last );
              destroy_group( g );
              continue;
           }
         
         clientff( "Replacing group %s.\r\n", group->name );
-        unlink_from_list( g, &groups_under_construction, &guc_last );
-        replace_link_in_list( g, group, &groups, &groups_last );
+        unlink_from_list( g, groups_under_construction, guc_last );
+        replace_link_in_list( g, group, groups, groups_last );
         destroy_group( group );
      }
    
@@ -3578,8 +3535,8 @@ void new_load_scripts( )
         if ( g )
           continue;
         
-        unlink_from_list( group, &groups_under_construction, &guc_last );
-        link_to_list( group, &groups, &groups_last );
+        unlink_from_list( group, groups_under_construction, guc_last );
+        link_to_list( group, groups, groups_last );
      }
    
    if ( groups_under_construction )
