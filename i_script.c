@@ -3396,8 +3396,13 @@ void new_load_scripts( )
         
         group = calloc( 1, sizeof( SCRIPT_GROUP ) );
         group->name = strdup( dp->d_name );
-        link_to_list( group, groups_under_construction, guc_last );
         scan_for_scripts( group, path, dir2 );
+		if ( group->scripts )
+		{
+          link_to_list( group, groups_under_construction, guc_last );
+		}
+		else
+		  destroy_group( group );
         closedir( dir2 );
      }
    closedir( dir );
@@ -3772,7 +3777,7 @@ int run_function_with_args( FUNCTION *function, char *args )
      i = 1;
    
    if ( locals )
-     free_memory( locals, function->args_nr );
+     free( locals );
    
    return i;
 }
@@ -3876,7 +3881,7 @@ int instr_function( INSTR *instr, VARIABLE *returned_value )
    if ( !prepare_code_call( code->local_symbol_table.memory_size, returned_value, &prev ) )
      {
 	/* Copy locals. */
-        for ( i = 0; i < instr->links; i++ )
+        for ( i = 0; i < instr->links - 1; i++ )
           {
              FREE_VALUE( current_local_bottom[i] );
              current_local_bottom[i] = locals[i].value;
@@ -3897,7 +3902,7 @@ int instr_function( INSTR *instr, VARIABLE *returned_value )
      i = 1;
    
    if ( locals )
-     free_vars( locals, code->local_symbol_table.memory_size );
+     free( locals );
    
    if ( returning_successful )
      {
