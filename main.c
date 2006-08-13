@@ -3743,7 +3743,7 @@ int process_client( void )
    static int last_client_pos = 0;
    static int in_iac;
    static int in_sb;
-   char raw_buf[4096], buf[4096];
+   char buf[4096];
    int bytes, i;
    
    DEBUG( "process_client" );
@@ -3765,13 +3765,11 @@ int process_client( void )
 	return 1;
      }
    
-   raw_buf[bytes] = '\0';
-   
    /* In case something makes it crash, this lets us know where. */
    crash_buffer = buf;
    crash_buffer_len = 4096;
    
-   log_bytes( "c->m", raw_buf, bytes );
+   log_bytes( "c->m", buf, bytes );
    
    for ( i = 0; i < bytes; i++ )
      {
