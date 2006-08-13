@@ -42,6 +42,21 @@ int scripter_version_minor = 7;
 char *i_script_id = I_SCRIPT_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
 
+/* 
+ * Roadmap:
+ *   0.8:
+ *     - dynamic memory zones
+ *     - functions to create/free/resize them
+ *     - a[] and a.elem
+ *     - include
+ *   0.9:
+ *     - timers
+ *     - rnd, gag, prefix, sf_warning, mxp, utility functions
+ *     - immortalize globals
+ *   1.0:
+ *     - ifassign/noeffect warnings, loop checks
+ */
+
 /* Script under compilation. */
 char *pos;
 char *beginning;
@@ -57,7 +72,8 @@ char *beginning;
 #define ABSOLUTE_LOCAL_MEMORY	2
 #define SCRIPT_MEMORY		3
 #define GLOBAL_MEMORY		4
-#define SCRIPT_FUNCTIONS	5
+#define DYNAMIC_MEMORY		5
+#define SCRIPT_FUNCTIONS	6
 
 #define V_TYPE( val ) ( (val).type )
 #define V_STR( val ) ( (val).u.string )
@@ -95,6 +111,7 @@ typedef struct symbol_data SYMBOL;
 typedef struct symbol_table_data SYMBOL_TABLE;
 typedef struct instr_data INSTR;
 typedef struct code_data CODE;
+typedef struct memory_data MEMORY;
 typedef struct function_data FUNCTION;
 typedef struct trigger_data TRIGGER;
 typedef struct script_data SCRIPT;
@@ -202,6 +219,16 @@ struct instr_data
 
 
 
+struct memory_data
+{
+   LINKED_LIST( MEMORY );
+   
+   int size;
+   VALUE *memory;
+};
+
+
+
 struct code_data
 {
    LINKED_LIST( CODE );
@@ -220,6 +247,32 @@ struct function_data
    char *name;
    short alias;
    int args_nr;
+   
+   POINTER pointer;
+   
+   SCRIPT *parent;
+};
+
+
+
+struct trigger_data
+{
+   LINKED_LIST( TRIGGER );
+   
+   char *name;
+   
+   short prompt;
+   short raw;
+   short regex;
+   short continuous;
+   
+   /* Each and every line, once. */
+   short everything;
+   /* Normal pattern. */
+   char *message;
+   /* Regex. */
+   pcre *pattern;
+   pcre_extra *extra;
    
    POINTER pointer;
    
@@ -262,39 +315,14 @@ struct script_group_data
    
    short changed;
    
-   SCRIPT *scripts;
-   SCRIPT *scripts_last;
+   SCRIPT *scripts, *scripts_last;
    
    SYMBOL_TABLE group_symbol_table;
    
    VALUE *script_memory;
    VALUE *script_memory_top;
-};
-
-
-
-struct trigger_data
-{
-   LINKED_LIST( TRIGGER );
    
-   char *name;
-   
-   short prompt;
-   short raw;
-   short regex;
-   short continuous;
-   
-   /* Each and every line, once. */
-   short everything;
-   /* Normal pattern. */
-   char *message;
-   /* Regex. */
-   pcre *pattern;
-   pcre_extra *extra;
-   
-   POINTER pointer;
-   
-   SCRIPT *parent;
+   MEMORY *dynamic_memory, *dm_last;
 };
 
 
@@ -358,6 +386,8 @@ operator_handler oper_not_implemented;
 operator_handler oper_dereference;
 operator_handler oper_address_of;
 operator_handler oper_assignment;
+operator_handler oper_multiplication;
+operator_handler oper_division;
 operator_handler oper_modulus;
 operator_handler oper_addition;
 operator_handler oper_substraction;
@@ -414,12 +444,12 @@ struct operator_data
      { "*",	1, 0,	1, 1,	P,	0, oper_dereference	},
      { "&",	1, 0,	1, 1,	P|S,	0, oper_address_of	},
    /* Multiplication, division, modulus. */
-     { "*",	0, 0,	0, 2,	0,	0, oper_not_implemented	},
-     { "/",	0, 0,	0, 2,	0,	0, oper_not_implemented	},
+     { "*",	0, 0,	0, 2,	0,	0, oper_multiplication	},
+     { "/",	0, 0,	0, 2,	0,	0, oper_division	},
      { "%",	0, 0,	0, 2,	0,	0, oper_modulus		},
    /* Addition, substraction. */
-     { "+",	0, 0,	0, 3,	S,	0, oper_addition	},
-     { "-",	0, 0,	0, 3,	0,	0, oper_substraction	},
+     { "+",	0, 0,	0, 3,	P|S,	0, oper_addition	},
+     { "-",	0, 0,	0, 3,	P,	0, oper_substraction	},
    /* Bitwise shift left, bitwise shift right. */
      { "<<",	0, 0,	0, 4,	0,	1, oper_not_implemented	},
      { ">>",	0, 0,	0, 4,	0,	1, oper_not_implemented	},
@@ -470,6 +500,11 @@ system_function sysfunc_show_prompt;
 system_function sysfunc_debug;
 system_function sysfunc_nr;
 system_function sysfunc_str;
+system_function sysfunc_memory;
+system_function sysfunc_resize;
+system_function sysfunc_sizeof;
+system_function sysfunc_get_mb_variable;
+system_function sysfunc_replace_line;
 
 struct sys_function_data
 {
@@ -481,16 +516,21 @@ struct sys_function_data
    system_function *function;
 } sys_functions[ ] =
 {
-     { "echo",		1, 1, sysfunc_echo		},
-     { "send",		1, 1, sysfunc_send		},
-     { "necho",		1, 1, sysfunc_necho		},
-     { "nsend",		1, 1, sysfunc_nsend		},
-     { "arg",		1, 0, sysfunc_arg		},
-     { "args",		2, 0, sysfunc_args		},
-     { "show_prompt",	0, 0, sysfunc_show_prompt	},
-     { "debug",		0, 0, sysfunc_debug		},
-     { "nr",		1, 0, sysfunc_nr		},
-     { "str",		1, 0, sysfunc_str		},
+     { "echo",			1, 1, sysfunc_echo		},
+     { "send",			1, 1, sysfunc_send		},
+     { "necho",			1, 1, sysfunc_necho		},
+     { "nsend",			1, 1, sysfunc_nsend		},
+     { "arg",			1, 0, sysfunc_arg		},
+     { "args",			2, 0, sysfunc_args		},
+     { "show_prompt",		0, 0, sysfunc_show_prompt	},
+     { "debug",			0, 0, sysfunc_debug		},
+     { "nr",			1, 0, sysfunc_nr		},
+     { "str",			1, 0, sysfunc_str		},
+     { "memory",		1, 0, sysfunc_memory		},
+     { "resize",		1, 0, sysfunc_resize		},
+     { "sizeof",		1, 0, sysfunc_sizeof		},
+     { "get_mb_variable",	1, 0, sysfunc_get_mb_variable	},
+     { "replace_line",		1, 0, sysfunc_replace_line	},
    
      { NULL }
 };
@@ -502,7 +542,7 @@ int last_system_function;
 
 char *current_line;
 int regex_callbacks;
-int regex_ovector[30];
+int regex_ovector[60];
 int alias_args_start[16];
 int alias_args_end[16];
 
@@ -629,7 +669,7 @@ void check_triggers( LINE *l, int prompt )
             
             else if ( trigger->regex )
               {
-                 rc = pcre_exec( trigger->pattern, trigger->extra, line, len, 0, 0, regex_ovector, 30 );
+                 rc = pcre_exec( trigger->pattern, trigger->extra, line, len, 0, 0, regex_ovector, 60 );
                  
                  if ( rc < 0 )
                    continue;
@@ -637,7 +677,7 @@ void check_triggers( LINE *l, int prompt )
                  /* Regex Matched. Beware of recursiveness! */
                  
                  if ( rc == 0 )
-                   regex_callbacks = 10;
+                   regex_callbacks = 20;
                  else
                    regex_callbacks = rc;
                  
@@ -773,12 +813,13 @@ void scripter_module_init_data( )
 	top_of_allocated_memory_for_locals = local_memory + 32;
      }
    
-//   get_timer( );
+   get_timer( );
    
    load_scripts( );
    
-//   debugf( "All scripts compiled. (%d microseconds)", get_timer( ) );
+   debugf( "All scripts compiled. (%d microseconds)", get_timer( ) );
 }
+
 
 
 
@@ -1395,6 +1436,7 @@ void copy_address( POINTER pointer, VARIABLE *v )
      {
 	v->address.memory_space = pointer.memory_space;
 	v->address.offset = pointer.offset;
+        v->address.memory_section = pointer.memory_section;
      }
 }
 
@@ -3429,7 +3471,7 @@ void new_load_scripts( )
              
              snprintf( full_name, PATH_MAX, "iscripts/%s%s/%s",
                        group->name, script->path, script->name );
-             clientff( "Opening %s\r\n", full_name );
+             clientff( "Loading %s\r\n", full_name );
              if ( !compile_script( script, full_name ) )
                continue;
              
@@ -4029,7 +4071,7 @@ VALUE *dereference_pointer( POINTER pointer, SCRIPT_GROUP *group )
 	  return v;
 	
 	clientff( C_R "*** Segmentation Fault! ***\r\n" C_0 );
-	clientff( C_R "*** Accessing script-wide memory out of bounds ***\r\n" C_0 );
+	clientff( C_R "*** Accessing script memory out of bounds ***\r\n" C_0 );
 	return NULL;
      }
    else if ( pointer.memory_space == RELATIVE_LOCAL_MEMORY )
@@ -4040,6 +4082,22 @@ VALUE *dereference_pointer( POINTER pointer, SCRIPT_GROUP *group )
 	
 	clientff( C_R "*** Segmentation Fault! ***\r\n" C_0 );
 	clientff( C_R "*** Accessing relative local memory out of bounds ***\r\n" C_0 );
+	return NULL;
+     }
+   else if ( pointer.memory_space == DYNAMIC_MEMORY )
+     {
+        if ( !pointer.memory_section )
+          {
+             clientff( C_R "*** Internal error: Pointer to dynamic memory has no section ***\r\n" C_0 );
+             return NULL;
+          }
+        
+        v = ((MEMORY*)pointer.memory_section)->memory + pointer.offset;
+        if ( pointer.offset >= 0 && pointer.offset < ((MEMORY*)pointer.memory_section)->size )
+          return v;
+        
+	clientff( C_R "*** Segmentation Fault! ***\r\n" C_0 );
+	clientff( C_R "*** Accessing dynamic memory out of bounds ***\r\n" C_0 );
 	return NULL;
      }
    else if ( pointer.memory_space == GLOBAL_MEMORY )
@@ -4453,130 +4511,10 @@ SYSFUNC( sysfunc_show_prompt )
 }
 
 
-#if 0
-// deprecated
-SYSFUNC( sysfunc_load_script )
-{
-   VARIABLE name;
-   
-   INIT_VARIABLE( name );
-   
-   if ( instructions[instr->link[0]->instruction]( instr->link[0], &name ) )
-     return 1;
-   
-   // fix me.
-   
-   if ( V_TYPE( name.value ) != VAR_STRING )
-     {
-	clientff( C_R "*** sysfunc_load_script: invalid argument ***\r\n" C_0 );
-	return 1;
-     }
-   
-   V_TYPE( returns->value ) = VAR_NUMBER;
-//   V_NR( returns->value ) = !( load_script( V_STR( name.value ) ) == NULL );
-   FREE_VARIABLE( name );
-   
-   return 0;
-}
-
-
-
-SYSFUNC( sysfunc_unload_script )
-{
-   VARIABLE name;
-   SCRIPT *s;
-   
-   INIT_VARIABLE( name );
-   
-   if ( instructions[instr->link[0]->instruction]( instr->link[0], &name ) )
-     return 1;
-   
-   if ( V_TYPE( name.value ) != VAR_STRING )
-     {
-	clientff( C_R "*** sysfunc_unload_script: invalid argument ***\r\n" C_0 );
-	return 1;
-     }
-   
-   V_TYPE( returns->value ) = VAR_NUMBER;
-   
-   for ( s = scripts; s; s = s->next )
-     {
-	if ( !strcmp( s->name, name.string ) )
-	  {
-             // unlink if redone
-	     destroy_script( s );
-	     V_NR( returns->value ) = 0;
-	     FREE_VARIABLE( name );
-	     return 0;
-	  }
-     }
-   
-   V_NR( returns->value ) = 1;
-   FREE_VARIABLE( name );
-   return 0;
-}
-
-
-
-SYSFUNC( sysfunc_call )
-{
-   VARIABLE func_name, script_name;
-   SCRIPT *s;
-   FUNCTION *f;
-   int found = 0;
-   
-   INIT_VARIABLE( func_name );
-   INIT_VARIABLE( script_name );
-   
-   if ( instructions[instr->link[0]->instruction]( instr->link[0], &func_name ) )
-     return 1;
-   
-   if ( func_name.type != VAR_STRING )
-     {
-	clientff( C_R "*** sysfunc_call: invalid function argument ***\r\n" C_0 );
-	return 1;
-     }
-   
-   if ( instructions[instr->link[0]->instruction]( instr->link[0], &script_name ) )
-     return 1;
-   
-   if ( script_name.type != VAR_STRING )
-     {
-	clientff( C_R "*** sysfunc_call: invalid script argument ***\r\n" C_0 );
-	FREE_VARIABLE( func_name );
-	return 1;
-     }
-   
-   for ( s = scripts; s; s = s->next )
-     {
-	if ( !strcmp( s->name, script_name.string ) )
-	  {
-	     for ( f = s->functions; f; f = f->next )
-	       {
-		  if ( !strcmp( f->name, func_name.string ) )
-		    {
-		       run_code( f->parent, f->code_offset );
-		       
-		       found = 1;
-		       break;
-		    }
-	       }
-	     break;
-	  }
-     }
-   
-   V_TYPE( returns->value ) = VAR_NUMBER;
-   V_NR( returns->value ) = !found;
-   
-   return 0;
-}
-#endif
-
-
 
 inline void debug_show_value( VALUE *v, char *name, int i, char *c )
 {
-   const char mem_space[ ] = { 'n', 'r', 'a', 's', 'g', 'f' };
+   const char mem_space[ ] = { 'n', 'r', 'a', 's', 'g', 'd', 'f' };
    
    clientff( "%s%2d (%s):" C_0 " " C_D, c, i, name );
    if ( V_TYPE( *v ) == VAR_NUMBER )
@@ -4730,6 +4668,234 @@ SYSFUNC( sysfunc_str )
 
 
 
+SYSFUNC( sysfunc_memory )
+{
+   MEMORY *memory;
+   VARIABLE var;
+   SCRIPT_GROUP *g;
+   
+   INIT_VARIABLE( var );
+   
+   if ( instructions[instr->link[0]->instruction]( instr->link[0], &var ) )
+     return 1;
+   
+   if ( V_TYPE( var.value ) != VAR_NUMBER )
+     {
+	clientff( C_R "*** sysfunc_memory: invalid argument ***\r\n" C_0 );
+	return 1;
+     }
+   
+   if ( V_NR( var.value ) < 1 || V_NR( var.value ) > 4096 )
+     {
+        clientff( C_R "*** sysfunc_memory: %d is too %s ***\r\n" C_0,
+                  V_NR( var.value ), V_NR( var.value ) < 0 ? "low" : "high" );
+        return 1;
+     }
+   
+   memory = malloc( sizeof( MEMORY ) );
+   memory->size = V_NR( var.value );
+   memory->memory = calloc( V_NR( var.value ), sizeof( VALUE ) );
+   g = instr->parent_script->parent_group;
+   link_to_list( memory, g->dynamic_memory, g->dm_last );
+   
+   V_TYPE( returns->value ) = VAR_POINTER;
+   V_POINTER( returns->value ).memory_space = DYNAMIC_MEMORY;
+   V_POINTER( returns->value ).offset = 0;
+   V_POINTER( returns->value ).memory_section = (void *)memory;
+   
+   return 0;
+}
+
+
+
+SYSFUNC( sysfunc_sizeof )
+{
+   VARIABLE var;
+   
+   INIT_VARIABLE( var );
+   
+   if ( instructions[instr->link[0]->instruction]( instr->link[0], &var ) )
+     return 1;
+   
+   if ( V_TYPE( var.value ) != VAR_POINTER &&
+        V_POINTER( var.value ).memory_space != DYNAMIC_MEMORY )
+     {
+	clientff( C_R "*** sysfunc_memory: invalid argument ***\r\n" C_0 );
+	return 1;
+     }
+   
+   V_TYPE( returns->value ) = VAR_NUMBER;
+   V_NR( returns->value ) = ((MEMORY *) V_POINTER( var.value ).memory_section)->size;
+   
+   return 0;
+}
+
+
+
+SYSFUNC( sysfunc_resize )
+{
+   VARIABLE p, size;
+   MEMORY *memory;
+   int last;
+   
+   INIT_VARIABLE( p );
+   INIT_VARIABLE( size );
+   
+   if ( instructions[instr->link[0]->instruction]( instr->link[0], &p ) )
+     return 1;
+   
+   if ( V_TYPE( p.value ) != VAR_POINTER &&
+        V_POINTER( p.value ).memory_space != DYNAMIC_MEMORY )
+     {
+	clientff( C_R "*** sysfunc_memory: invalid argument ***\r\n" C_0 );
+	return 1;
+     }
+   
+   if ( instructions[instr->link[1]->instruction]( instr->link[1], &size ) )
+     return 1;
+   
+   if ( V_TYPE( size.value ) != VAR_NUMBER )
+     {
+	clientff( C_R "*** sysfunc_memory: invalid argument ***\r\n" C_0 );
+	return 1;
+     }
+   
+   if ( V_NR( size.value ) < 1 || V_NR( size.value ) > 4096 )
+     {
+        clientff( C_R "*** sysfunc_memory: %d is too %s ***\r\n" C_0,
+                  V_NR( size.value ), V_NR( size.value ) < 0 ? "low" : "high" );
+        return 1;
+     }
+   
+   memory = (MEMORY *) V_POINTER( p.value ).memory_section;
+   
+   last = memory->size;
+   memory->size = V_NR( size.value );
+   memory->memory = realloc( memory->memory, V_NR( size.value ) * sizeof( VALUE ) );
+   if ( last < memory->size )
+     {
+        int i;
+        
+        for ( i = last; i < memory->size; i++ )
+          {
+             INIT_VALUE( *(memory->memory + i) );
+          }
+     }
+   
+   V_TYPE( returns->value ) = VAR_POINTER;
+   V_POINTER( returns->value ).memory_space = DYNAMIC_MEMORY;
+   V_POINTER( returns->value ).offset = 0;
+   V_POINTER( returns->value ).memory_section = (void *)memory;
+   
+   return 0;
+}
+
+
+
+SYSFUNC( sysfunc_get_mb_variable )
+{
+   VARIABLE var;
+   
+   INIT_VARIABLE( var );
+   
+   if ( instructions[instr->link[0]->instruction]( instr->link[0], &var ) )
+     return 1;
+   
+   if ( V_TYPE( var.value ) != VAR_STRING )
+     {
+	clientff( C_R "*** sysfunc_get_mb_variable: invalid argument ***\r\n" C_0 );
+	return 1;
+     }
+   
+   V_NR( returns->value ) = 0;
+   
+   if ( !strcmp( V_STR( var.value ), "a_hp" ) )
+     {
+        static int *a_hp;
+        if ( !a_hp )
+          a_hp = get_variable( "a_hp" );
+        if ( a_hp )
+          V_NR( returns->value ) = *a_hp / 11;
+     }
+   else if ( !strcmp( V_STR( var.value ), "a_hp" ) )
+     {
+        static int *a_hp;
+        if ( !a_hp )
+          a_hp = get_variable( "a_hp" );
+        if ( a_hp )
+          V_NR( returns->value ) = *a_hp / 11;
+     }
+   else if ( !strcmp( V_STR( var.value ), "a_max_hp" ) )
+     {
+        static int *a_max_hp;
+        if ( !a_max_hp )
+          a_max_hp = get_variable( "a_max_hp" );
+        if ( a_max_hp )
+          V_NR( returns->value ) = *a_max_hp / 11;
+     }
+   else if ( !strcmp( V_STR( var.value ), "a_mana" ) )
+     {
+        static int *a_mana;
+        if ( !a_mana )
+          a_mana = get_variable( "a_mana" );
+        if ( a_mana )
+          V_NR( returns->value ) = *a_mana / 11;
+     }
+   else if ( !strcmp( V_STR( var.value ), "a_max_mana" ) )
+     {
+        static int *a_max_mana;
+        if ( !a_max_mana )
+          a_max_mana = get_variable( "a_max_mana" );
+        if ( a_max_mana )
+          V_NR( returns->value ) = *a_max_mana / 11;
+     }
+   else if ( !strcmp( V_STR( var.value ), "a_exp" ) )
+     {
+        static int *a_exp;
+        if ( !a_exp )
+          a_exp = get_variable( "a_exp" );
+        if ( a_exp )
+          V_NR( returns->value ) = *a_exp;
+     }
+   else
+     {
+        int *a;
+        a = get_variable( V_STR( var.value ) );
+        if ( a )
+          V_NR( returns->value ) = *a;
+     }
+   
+   FREE_VARIABLE( var );
+   V_TYPE( returns->value ) = VAR_NUMBER;
+   
+   return 0;
+}
+
+
+
+SYSFUNC( sysfunc_replace_line )
+{
+   VARIABLE var;
+   
+   INIT_VARIABLE( var );
+   
+   if ( instructions[instr->link[0]->instruction]( instr->link[0], &var ) )
+     return 1;
+   
+   if ( V_TYPE( var.value ) != VAR_STRING )
+     {
+	clientff( C_R "*** sysfunc_get_mb_variable: invalid argument ***\r\n" C_0 );
+	return 1;
+     }
+   
+   replace( V_STR( var.value ) );
+   
+   return 0;
+}
+
+
+
+
 /** Operators. **/
 
 #define OPER( oper ) int (oper)( VARIABLE *lvalue, VARIABLE *rvalue, VARIABLE *returns, INSTR *instr )
@@ -4751,6 +4917,7 @@ OPER( oper_dereference )
    if ( V_TYPE( lvalue->value ) != VAR_POINTER )
      {
 	clientf( C_R "*** Invalid operand passed to operator '*' ***\r\n" C_0 );
+        clientff( "Passed type %d, r is %s.\n", V_TYPE( lvalue->value ), V_STR( lvalue->value ) );
 	return 1;
      }
    
@@ -4808,6 +4975,26 @@ OPER( oper_assignment )
 }
 
 
+OPER( oper_multiplication )
+{
+   V_TYPE( returns->value ) = VAR_NUMBER;
+   
+   V_NR( returns->value ) = V_NR( lvalue->value ) * V_NR( rvalue->value );
+   
+   return 0;
+}
+
+
+OPER( oper_division )
+{
+   V_TYPE( returns->value ) = VAR_NUMBER;
+   
+   V_NR( returns->value ) = V_NR( lvalue->value ) / V_NR( rvalue->value );
+   
+   return 0;
+}
+
+
 OPER( oper_modulus )
 {
    V_TYPE( returns->value ) = VAR_NUMBER;
@@ -4837,6 +5024,20 @@ OPER( oper_addition )
 	     V_STR( returns->value ) = strdup( V_STR( rvalue->value ) );
 	     return 0;
 	  }
+        else if ( V_TYPE( lvalue->value ) == VAR_POINTER && V_TYPE( rvalue->value ) == VAR_NUMBER )
+          {
+             V_TYPE( returns->value ) = VAR_POINTER;
+             V_POINTER( returns->value ) = V_POINTER( lvalue->value );
+             V_POINTER( returns->value ).offset += V_NR( rvalue->value );
+             return 0;
+          }
+        else if ( V_TYPE( rvalue->value ) == VAR_POINTER && V_TYPE( lvalue->value ) == VAR_NUMBER )
+          {
+             V_TYPE( returns->value ) = VAR_POINTER;
+             V_POINTER( returns->value ) = V_POINTER( rvalue->value );
+             V_POINTER( returns->value ).offset += V_NR( lvalue->value );
+             return 0;
+          }
 	
 	clientf( C_R "*** Invalid operands passed to operator '+' ***\r\n" C_0 );
 	return 1;
@@ -4862,6 +5063,12 @@ OPER( oper_addition )
 	return 0;
      }
    
+   if ( V_TYPE( lvalue->value ) == VAR_POINTER )
+     {
+        clientf( C_R "*** Invalid operands passed to operator '+' ***\r\n" C_0 );
+        return 1;
+     }
+   
    clientf( C_R "*** Internal error: unknown variable type ***\r\n" C_0 );
    return 1;
 }
@@ -4869,9 +5076,32 @@ OPER( oper_addition )
 
 OPER( oper_substraction )
 {
-   V_TYPE( returns->value ) = VAR_NUMBER;
+   if ( V_TYPE( lvalue->value ) == VAR_NUMBER && V_TYPE( rvalue->value ) == VAR_NUMBER )
+     {
+        V_TYPE( returns->value ) = VAR_NUMBER;
+        
+        V_NR( returns->value ) = V_NR( lvalue->value ) - V_NR( rvalue->value );
+     }
    
-   V_NR( returns->value ) = V_NR( lvalue->value ) - V_NR( rvalue->value );
+   if ( V_TYPE( lvalue->value ) == VAR_POINTER && V_TYPE( rvalue->value ) == VAR_POINTER )
+     {
+        clientf( C_R "*** Invalid operands passed to operator '-' ***\r\n" C_0 );
+        return 1;
+     }
+   
+   if ( V_TYPE( lvalue->value ) == VAR_POINTER )
+     {
+        V_TYPE( returns->value ) = VAR_POINTER;
+        V_POINTER( returns->value ) = V_POINTER( lvalue->value );
+        V_POINTER( returns->value ).offset += V_NR( rvalue->value );
+     }
+   
+   else if ( V_TYPE( rvalue->value ) == VAR_POINTER )
+     {
+        V_TYPE( returns->value ) = VAR_POINTER;
+        V_POINTER( returns->value ) = V_POINTER( rvalue->value );
+        V_POINTER( returns->value ).offset += V_NR( lvalue->value );
+     }
    
    return 0;
 }
