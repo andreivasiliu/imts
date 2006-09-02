@@ -352,9 +352,9 @@ void set_gags( lua_State *L, LINE *line )
      }
    
    lua_getfield( L, -1, "gag_line" );
-   line->gag_entirely = lua_toboolean( L, -1 );
+   line->gag_entirely = line->gag_entirely || lua_toboolean( L, -1 );
    lua_getfield( L, -2, "gag_ending" );
-   line->gag_ending = lua_toboolean( L, -1 );
+   line->gag_ending = line->gag_ending || lua_toboolean( L, -1 );
    
    lua_pop( L, 3 );
 }
