@@ -152,7 +152,7 @@ void close_ilua_module( ILUA_MOD *module )
 void read_ilua_config( char *file_name, char *mod_name )
 {
    FILE *fl;
-   ILUA_MOD *mod;
+   ILUA_MOD *mod = NULL;
    lua_State *L = NULL;
    struct stat stat_buf;
    const char *errmsg;
@@ -170,14 +170,14 @@ void read_ilua_config( char *file_name, char *mod_name )
         
         fprintf( fl, "# ILua configuration file.\n\n" );
         
-        fprintf( fl, "# At a later time, ILua will probably be modularized. But for now, just one\n"
-                 "# will suffice.\n\n" );
+        fprintf( fl, "# This file is sectioned in modules. Each module has its own globals, and\n"
+		 "# modules cannot communicate between them. A module may load any number of\n"
+		 "# Lua script files.\n\n");
         
-        fprintf( fl, "# Files to load for the 'main' module\n"
-                 "# There can be as many as you want. Syntax: load \"filename\"\n"
-                 "# The path is relative to mb-core. \"../LuaScripts\" would work too.\n\n" );
-        
-        fprintf( fl, "#load \"example.lua\"\n\n" );
+	fprintf( fl, "# Example of an ILua module:\n\n" );
+	fprintf( fl, "#module \"Foo\"\n"
+		 "#load \"example1.lua\"\n"
+		 "#load \"example2.lua\"\n\n" );
         
         fclose( fl );
      }
@@ -238,7 +238,7 @@ void read_ilua_config( char *file_name, char *mod_name )
         
         if ( !strcmp( cmd, "load" ) )
           {
-             if ( !L )
+             if ( !L || !mod )
                {
                   debugf( "%s: Trying to 'load' outside a module!", file_name );
                   return;
