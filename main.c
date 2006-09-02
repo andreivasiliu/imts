@@ -747,9 +747,9 @@ void generate_config( char *file_name )
    write_mod( "imperian", type, fl );
    write_mod( "i_mapper", type, fl );
    write_mod( "i_offense", type, fl );
-   write_mod( "mmchat", type, fl );
    write_mod( "voter", type, fl );
    write_mod( "i_script", type, fl );
+   write_mod( "i_lua", type, fl );
    
    fprintf( fl, "\n" );
    
@@ -1592,31 +1592,6 @@ int module_process_client_aliases( char *line )
      send_to_server( send_buffer );
    
    return used;
-}
-
-
-char *module_build_custom_prompt( )
-{
-   MODULE *module;
-   char *prompt;
-   
-   DEBUG( "module_build_custom_prompt" );
-   
-   mod_section = "Build custom prompt";
-   for ( module = modules; module; module = module->next )
-     {
-	current_mod = module;
-	if ( module->build_custom_prompt )
-	  {
-	     prompt = (module->build_custom_prompt)( );
-	     if ( prompt )
-	       return prompt;
-	  }
-	update_shared_memory( module );
-     }
-   mod_section = NULL;
-   
-   return NULL;
 }
 
 

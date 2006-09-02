@@ -49,12 +49,14 @@ char *i_script_id = I_SCRIPT_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
  *     - functions to create/free/resize them
  *     - a[] and a.elem
  *     - include
+ *     - upgrade cmp
  *   0.9:
  *     - timers
  *     - rnd, gag, prefix, sf_warning, mxp, utility functions
  *     - immortalize globals
  *   1.0:
  *     - ifassign/noeffect warnings, loop checks
+ *     - alias backtick, trigger first/last, or
  */
 
 /* Script under compilation. */
@@ -527,7 +529,7 @@ struct sys_function_data
      { "nr",			1, 0, sysfunc_nr		},
      { "str",			1, 0, sysfunc_str		},
      { "memory",		1, 0, sysfunc_memory		},
-     { "resize",		1, 0, sysfunc_resize		},
+     { "resize",		2, 0, sysfunc_resize		},
      { "sizeof",		1, 0, sysfunc_sizeof		},
      { "get_mb_variable",	1, 0, sysfunc_get_mb_variable	},
      { "replace_line",		1, 0, sysfunc_replace_line	},
@@ -600,9 +602,6 @@ ENTRANCE( scripter_module_register )
    self->process_server_prompt = scripter_process_server_prompt;
    self->process_client_command = NULL;
    self->process_client_aliases = scripter_process_client_aliases;
-   self->build_custom_prompt = NULL;
-   self->main_loop = NULL;
-   self->update_descriptors = NULL;
    
    GET_FUNCTIONS( self );
 #if defined( FOR_WINDOWS )
@@ -4720,7 +4719,7 @@ SYSFUNC( sysfunc_sizeof )
    if ( V_TYPE( var.value ) != VAR_POINTER &&
         V_POINTER( var.value ).memory_space != DYNAMIC_MEMORY )
      {
-	clientff( C_R "*** sysfunc_memory: invalid argument ***\r\n" C_0 );
+	clientff( C_R "*** sysfunc_sizeof: invalid argument ***\r\n" C_0 );
 	return 1;
      }
    
@@ -4747,7 +4746,7 @@ SYSFUNC( sysfunc_resize )
    if ( V_TYPE( p.value ) != VAR_POINTER &&
         V_POINTER( p.value ).memory_space != DYNAMIC_MEMORY )
      {
-	clientff( C_R "*** sysfunc_memory: invalid argument ***\r\n" C_0 );
+	clientff( C_R "*** sysfunc_resize: invalid first argument ***\r\n" C_0 );
 	return 1;
      }
    
@@ -4756,13 +4755,13 @@ SYSFUNC( sysfunc_resize )
    
    if ( V_TYPE( size.value ) != VAR_NUMBER )
      {
-	clientff( C_R "*** sysfunc_memory: invalid argument ***\r\n" C_0 );
+	clientff( C_R "*** sysfunc_resize: invalid second argument ***\r\n" C_0 );
 	return 1;
      }
    
    if ( V_NR( size.value ) < 1 || V_NR( size.value ) > 4096 )
      {
-        clientff( C_R "*** sysfunc_memory: %d is too %s ***\r\n" C_0,
+        clientff( C_R "*** sysfunc_resize: %d is too %s ***\r\n" C_0,
                   V_NR( size.value ), V_NR( size.value ) < 0 ? "low" : "high" );
         return 1;
      }
@@ -4917,7 +4916,6 @@ OPER( oper_dereference )
    if ( V_TYPE( lvalue->value ) != VAR_POINTER )
      {
 	clientf( C_R "*** Invalid operand passed to operator '*' ***\r\n" C_0 );
-        clientff( "Passed type %d, r is %s.\n", V_TYPE( lvalue->value ), V_STR( lvalue->value ) );
 	return 1;
      }
    
@@ -5093,14 +5091,14 @@ OPER( oper_substraction )
      {
         V_TYPE( returns->value ) = VAR_POINTER;
         V_POINTER( returns->value ) = V_POINTER( lvalue->value );
-        V_POINTER( returns->value ).offset += V_NR( rvalue->value );
+        V_POINTER( returns->value ).offset -= V_NR( rvalue->value );
      }
    
    else if ( V_TYPE( rvalue->value ) == VAR_POINTER )
      {
         V_TYPE( returns->value ) = VAR_POINTER;
         V_POINTER( returns->value ) = V_POINTER( rvalue->value );
-        V_POINTER( returns->value ).offset += V_NR( lvalue->value );
+        V_POINTER( returns->value ).offset -= V_NR( lvalue->value );
      }
    
    return 0;
@@ -5252,7 +5250,11 @@ OPER( oper_not )
      V_NR( returns->value ) = !V_NR( lvalue->value );
    else if ( V_TYPE( lvalue->value ) == VAR_STRING )
      V_STR( returns->value ) = strdup( V_STR( lvalue->value )[0] ? "" : "true" );
-   
+   else if ( V_TYPE( lvalue->value ) == VAR_POINTER )
+     {
+	V_NR( returns->value ) = V_POINTER( lvalue->value ).memory_space == NULL_POINTER;
+	V_TYPE( returns->value ) = VAR_NUMBER;
+     }
    return 0;
 }
 

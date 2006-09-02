@@ -240,11 +240,7 @@ ENTRANCE( i_mapper_module_register )
    self->unload = i_mapper_module_unload;
    self->process_server_line = i_mapper_process_server_line;
    self->process_server_prompt = i_mapper_process_server_prompt;
-   self->process_client_command = NULL;
    self->process_client_aliases = i_mapper_process_client_aliases;
-   self->build_custom_prompt = NULL;
-   self->main_loop = NULL;
-   self->update_descriptors = NULL;
    self->mxp_enabled = i_mapper_mxp_enabled;
    
    GET_FUNCTIONS( self );

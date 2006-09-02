@@ -134,11 +134,7 @@ ENTRANCE( offensive_module_register )
    self->init_data = offensive_module_init_data;
    self->process_server_line = offensive_process_server_line;
    self->process_server_prompt = offensive_process_server_prompt;
-   self->process_client_command = NULL;
    self->process_client_aliases = offensive_process_client_aliases;
-   self->build_custom_prompt = NULL;
-   self->main_loop = NULL;
-   self->update_descriptors = NULL;
    
    GET_FUNCTIONS( self );
 #if defined( FOR_WINDOWS )

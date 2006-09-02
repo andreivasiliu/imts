@@ -33,7 +33,6 @@ ENTRANCE( blank_module_register )
    self->process_server_prompt = blank_process_server_prompt;
    self->process_client_command = NULL;
    self->process_client_aliases = NULL;
-   self->build_custom_prompt = NULL;
    
    self->main_loop = NULL;
    self->update_descriptors = NULL;
@@ -98,17 +97,6 @@ int blank_process_client_command( char *cmd )
  *          0 = Check it with other modules, and send it to the server.
  *
 int blank_process_client_aliases( char *cmd )
-{
-   
-   
-}
-*/
-
-/* Called before a prompt, but after process_prompt_informative.
- * Returns: NULL = Use the normal prompt.
- *          string = Use this instead of the normal prompt.
- *
-char *blank_build_custom_prompt( )
 {
    
    

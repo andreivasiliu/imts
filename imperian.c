@@ -172,7 +172,7 @@ int locust_value;
 /* Some prompt and player data. */
 int p_hp, p_mana, p_end, p_will, p_kai;
 int p_balance, p_equilibrium, p_prone, p_flying;
-int p_blind, p_deaf, p_stunned;
+int p_blind, p_deaf, p_stunned, p_extradimensional;
 int p_heal, p_toad_heal, p_toad_mana, p_heal_mana, p_heal_kai, p_heal_transmute;
 char p_color_hp[16], p_color_mana[16], p_color_end[16];
 char p_color_will[16], p_color_kai[16];
@@ -238,11 +238,8 @@ ENTRANCE( imperian_module_register )
    self->init_data = imperian_module_init_data;
    self->process_server_line = imperian_process_server_line;
    self->process_server_prompt = imperian_process_server_prompt;
-   self->process_server_prompt_informative = imperian_process_server_prompt_informative;
-   self->process_server_prompt_action = imperian_process_server_prompt_action;
    self->process_client_command = imperian_process_client_command;
    self->process_client_aliases = imperian_process_client_aliases;
-   self->build_custom_prompt = imperian_build_custom_prompt;
    self->main_loop = NULL;
    self->update_descriptors = NULL;
    self->mxp_enabled = imperian_mxp_enabled;
@@ -4535,7 +4532,7 @@ void imperian_process_server_prompt_informative( char *line, char *rawline )
 	  }
 	
 	p_equilibrium = 0, p_balance = 0, p_prone = 0, p_flying = 0,
-	  p_blind = 0, p_deaf = 0, p_stunned = 0;
+	  p_blind = 0, p_deaf = 0, p_stunned = 0, p_extradimensional = 0;
 	for ( p = line; *p != '<'; p++ );
 	while( *p != '>' )
 	  {
@@ -4553,6 +4550,7 @@ void imperian_process_server_prompt_informative( char *line, char *rawline )
 		case 'f': p_flying = 1; break;
 		case 'd': p_deaf = 1; break;
 		case 's': p_stunned = 1; break;
+		case '@': p_extradimensional = 1; break;
 		case ' ': to_blindness = 1; break;
 	       }
 	     p++;
@@ -6102,12 +6100,14 @@ char *imperian_build_custom_prompt( )
 		  truth_value = p_deaf; break;
 		case 's':
 		  truth_value = p_stunned; break;
+		case '@':
+		  truth_value = p_extradimensional; break;
 		case 'L': /* Locked */
 		  truth_value = mind_locked == 1; break;
 		case 'M': /* Locking */
 		  truth_value = mind_locked == 2; break;
 		case 'a':
-		  truth_value = ( p_prone || p_flying || p_blind || p_deaf || p_stunned || mind_locked || taekate_stance );
+		  truth_value = ( p_prone || p_flying || p_blind || p_deaf || p_stunned || p_extradimensional || mind_locked || taekate_stance );
 		  break;
 		  
 		case 'H': // h s p c t

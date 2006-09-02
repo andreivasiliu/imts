@@ -3,7 +3,7 @@
 # Export BUILDTYPE as: nothing, or "dist"
 
 # Files to be built.
-SO_FILES = imperian.so i_mapper.so i_offense.so mmchat.so voter.so i_script.so
+SO_FILES = imperian.so i_mapper.so i_offense.so voter.so i_script.so i_lua.so
 BIN_FILES = bot
 DIST_FILES = ChangeLog characters COPYING data IMap mhelp options *.is
 
@@ -53,9 +53,11 @@ SRC     = *.c *.h
 # External library dependences.
 ifeq ($(BUILDTYPE),dist)
 LIBS_i_script.so = deps/$(OS)/libpcre.a
+LIBS_i_lua.so = deps/$(OS)/liblua.a
 LIBS_bot = deps/$(OS)/libz.a -ldl
 else
 LIBS_i_script.so = -lpcre
+LIBS_i_lua.so = -llua -lm
 LIBS_bot = -lz -ldl
 endif
 

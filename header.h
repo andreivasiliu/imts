@@ -43,6 +43,7 @@
 #define C_G "\33[1;32m"
 #define C_Y "\33[1;33m"
 #define C_B "\33[1;34m"
+#define C_M "\33[1;35m"
 #define C_C "\33[1;36m"
 #define C_W "\33[1;37m"
 
@@ -130,13 +131,8 @@ struct module_data
    void (*show_notice)( );
    void (*process_server_line)( LINE *line );
    void (*process_server_prompt)( LINE *line );
-   void (*process_server_line_prefix)( char *colorless_line, char *colorful_line, char *raw_line );
-   void (*process_server_line_suffix)( char *colorless_line, char *colorful_line, char *raw_line );
-   void (*process_server_prompt_informative)( char *line, char *rawline );
-   void (*process_server_prompt_action)( char *rawline );
    int  (*process_client_command)( char *cmd );
    int  (*process_client_aliases)( char *cmd );
-   char*(*build_custom_prompt)( );
    int  (*main_loop)( int argc, char **argv );
    void (*update_descriptors)( );
    void (*update_modules)( );

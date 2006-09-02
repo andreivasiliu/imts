@@ -78,16 +78,7 @@ ENTRANCE( voter_module_register )
    self->version_minor = voter_version_minor;
    self->id = voter_id;
    
-   self->init_data = NULL;
-   self->process_server_line_prefix = NULL;
-   self->process_server_line_suffix = NULL;
-   self->process_server_prompt_informative = NULL;
-   self->process_server_prompt_action = NULL;
-   self->process_client_command = NULL;
    self->process_client_aliases = voter_process_commands;
-   self->build_custom_prompt = NULL;
-   self->main_loop = NULL;
-   self->update_descriptors = NULL;
    
    GET_FUNCTIONS( self );
 }
