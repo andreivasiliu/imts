@@ -365,17 +365,17 @@ void set_atcp_table( lua_State *L )
    if ( !a_on )
      {
         a_on = get_variable( "a_on" );
-        a_on = get_variable( "a_hp" );
-        a_on = get_variable( "a_mana" );
-        a_on = get_variable( "a_end" );
-        a_on = get_variable( "a_will" );
-        a_on = get_variable( "a_exp" );
-        a_on = get_variable( "a_max_hp" );
-        a_on = get_variable( "a_max_mana" );
-        a_on = get_variable( "a_max_end" );
-        a_on = get_variable( "a_max_will" );
-        a_on = get_variable( "a_name" );
-        a_on = get_variable( "a_title" );
+        a_hp = get_variable( "a_hp" );
+        a_mana = get_variable( "a_mana" );
+        a_end = get_variable( "a_end" );
+        a_will = get_variable( "a_will" );
+        a_exp = get_variable( "a_exp" );
+        a_max_hp = get_variable( "a_max_hp" );
+        a_max_mana = get_variable( "a_max_mana" );
+        a_max_end = get_variable( "a_max_end" );
+        a_max_will = get_variable( "a_max_will" );
+        a_name = get_variable( "a_name" );
+        a_title = get_variable( "a_title" );
      }
    
    if ( !a_on || !*a_on )

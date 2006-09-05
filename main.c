@@ -435,7 +435,13 @@ void *get_variable( char *name )
 	  { "a_max_hp", &a_max_hp },
 	  { "a_mana", &a_mana },
 	  { "a_max_mana", &a_max_mana },
+	  { "a_end", &a_end },
+	  { "a_max_end", &a_max_hp },
+	  { "a_will", &a_will },
+	  { "a_max_will", &a_max_will },
 	  { "a_exp", &a_exp },
+	  { "a_name", a_name },
+	  { "a_title", a_title },
 	
 	  { NULL, NULL }
      }, *p;
