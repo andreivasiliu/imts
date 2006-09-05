@@ -6,12 +6,13 @@
 #include <lualib.h>
 #include <lauxlib.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "module.h"
 
 
 int i_lua_version_major = 0;
-int i_lua_version_minor = 3;
+int i_lua_version_minor = 5;
 
 char *i_lua_id = I_LUA_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
@@ -29,10 +30,11 @@ typedef struct ilua_mod ILUA_MOD;
 struct ilua_mod
 {
    char *name;
-   
-   lua_State *L;
+   char *work_dir;
    
    short disabled;
+   
+   lua_State *L;
    
    ILUA_MOD *next;
 };
@@ -43,6 +45,8 @@ ILUA_MOD *ilua_modules;
 void ilua_open_mbapi( lua_State *L );
 void ilua_open_mbcolours( lua_State *L );
 void read_ilua_config( char *file_name, char *mod_name );
+
+#define ILUA_PREF C_R "[" C_W "ILua" C_R "]: "
 
 /* Here we register our functions. */
 
@@ -87,15 +91,13 @@ static int ilua_errorhandler( lua_State *L )
    char where[256];
    int level;
    
+   debugf( "Called, %d items.", lua_gettop( L ) );
    errmsg = lua_tostring( L, -1 );
    if ( !errmsg )
      errmsg = "Untrapped error from Lua";
+   debugf( "Called further" );
    
-   level = 1;
-   lua_getstack( L, level, &ar );
-   lua_getinfo( L, "nSl", &ar );
-   
-   clientff( C_R "\r\n[" C_W "ILua" C_R "]: " C_R "%s" C_R "]\r\n" C_0, errmsg );
+   clientff( "\r\n" ILUA_PREF "%s\r\n" C_0, errmsg );
    
    clientff( C_R "Traceback:\r\n" C_0 );
    level = 1;
@@ -141,8 +143,11 @@ void close_ilua_module( ILUA_MOD *module )
    
    if ( module->L )
      lua_close( module->L );
+   
    if ( module->name )
      free( module->name );
+   if ( module->work_dir )
+     free( module->work_dir );
    
    free( module );
 }
@@ -157,7 +162,8 @@ void read_ilua_config( char *file_name, char *mod_name )
    struct stat stat_buf;
    const char *errmsg;
    char line[4096], cmd[256], arg[4096], *p;
-   int ignore = 0, all_okay = 1;
+   char full_path[4096], current_work_dir[4096];
+   int ignore = 0, all_okay = 1, err;
    
    if ( stat( file_name, &stat_buf ) )
      {
@@ -197,7 +203,7 @@ void read_ilua_config( char *file_name, char *mod_name )
           break;
         
         p = get_string( line, cmd, 256 );
-        get_string( p, arg, 4096 );
+        p = get_string( p, arg, 4096 );
         
         if ( !strcmp( cmd, "module" ) )
           {
@@ -223,14 +229,38 @@ void read_ilua_config( char *file_name, char *mod_name )
                   mod = mod->next;
                }
              
+             mod->name = strdup( arg );
+             
+             /* See if it has the optional "working directory" argument. */
+             get_string( p, arg, 4096 );
+             if ( arg[0] )
+               {
+                  mod->work_dir = strdup( arg );
+                  getcwd( current_work_dir, 4096 );
+                  if ( chdir( arg ) )
+                    {
+                       debugf( "%s (ILua): %s: %s", mod->name, mod->work_dir,
+                               strerror( errno ) );
+                       close_ilua_module( mod );
+                       ignore = 1;
+                       all_okay = 0;
+                       continue;
+                    }
+                  /* The path given may be relative. Don't store that one. */
+                  getcwd( full_path, 4096 );
+                  mod->work_dir = strdup( full_path );
+               }
+             
              /* Initialize it. */
              L = luaL_newstate( );
              mod->L = L;
-             mod->name = strdup( arg );
              
              luaL_openlibs( L );
              ilua_open_mbapi( L );
              ilua_open_mbcolours( L );
+             
+             if ( mod->work_dir )
+               chdir( current_work_dir );
           }
         
         if ( ignore )
@@ -244,21 +274,43 @@ void read_ilua_config( char *file_name, char *mod_name )
                   return;
                }
              
+             if ( mod->work_dir )
+               {
+                  getcwd( current_work_dir, 4096 );
+                  if ( chdir( mod->work_dir ) )
+                    {
+                       debugf( "%s (ILua): %s: %s", mod->name, mod->work_dir,
+                               strerror( errno ) );
+                       close_ilua_module( mod );
+                       ignore = 1;
+                       all_okay = 0;
+                       continue;
+                    }
+               }
+             
              lua_pushcfunction( L, ilua_errorhandler );
-             luaL_loadfile( L, arg );
-             if ( lua_pcall( L, 0, 0, -2 ) )
+             
+             err = luaL_loadfile( L, arg ) || lua_pcall( L, 0, 0, -2 );
+             
+             if ( mod->work_dir )
+               chdir( current_work_dir );
+             
+             if ( err )
                {
                   errmsg = lua_tostring( L, -1 );
                   if ( errmsg )
-                    debugf( "%s: %s", arg, errmsg );
-                  lua_pop( L, 1 );
+                    {
+                       debugf( "%s: %s", arg, errmsg );
+                       clientff( ILUA_PREF "%s: %s\r\n" C_0, arg, errmsg );
+                    }
                   
                   /* Close this module. Entirely. */
                   close_ilua_module( mod );
                   ignore = 1;
                   all_okay = 0;
                }
-             lua_pop( L, 1 );
+             else
+               lua_pop( L, 1 );
           }
      }
    
@@ -304,9 +356,81 @@ void set_line_in_table( lua_State *L, LINE *line )
 
 
 
-int ilua_callback( lua_State *L, char *func, char *arg )
+void set_atcp_table( lua_State *L )
 {
+   static int *a_hp, *a_mana, *a_end, *a_will, *a_exp, *a_on;
+   static int *a_max_hp, *a_max_mana, *a_max_end, *a_max_will;
+   static char *a_name, *a_title;
+   
+   if ( !a_on )
+     {
+        a_on = get_variable( "a_on" );
+        a_on = get_variable( "a_hp" );
+        a_on = get_variable( "a_mana" );
+        a_on = get_variable( "a_end" );
+        a_on = get_variable( "a_will" );
+        a_on = get_variable( "a_exp" );
+        a_on = get_variable( "a_max_hp" );
+        a_on = get_variable( "a_max_mana" );
+        a_on = get_variable( "a_max_end" );
+        a_on = get_variable( "a_max_will" );
+        a_on = get_variable( "a_name" );
+        a_on = get_variable( "a_title" );
+     }
+   
+   if ( !a_on || !*a_on )
+     {
+        lua_pushnil( L );
+        lua_setglobal( L, "atcp" );
+        return;
+     }
+   
+   lua_newtable( L );
+   
+   if ( a_hp )
+     lua_pushinteger( L, *a_hp ), lua_setfield( L, -2, "health" );
+   if ( a_mana )
+     lua_pushinteger( L, *a_mana ), lua_setfield( L, -2, "mana" );
+   if ( a_end )
+     lua_pushinteger( L, *a_end ), lua_setfield( L, -2, "endurance" );
+   if ( a_will )
+     lua_pushinteger( L, *a_will ), lua_setfield( L, -2, "willpower" );
+   if ( a_exp )
+     lua_pushinteger( L, *a_exp ), lua_setfield( L, -2, "exp" );
+   if ( a_max_hp )
+     lua_pushinteger( L, *a_max_hp ), lua_setfield( L, -2, "max_health" );
+   if ( a_max_mana )
+     lua_pushinteger( L, *a_max_mana ), lua_setfield( L, -2, "max_mana" );
+   if ( a_max_end )
+     lua_pushinteger( L, *a_max_end ), lua_setfield( L, -2, "max_endurance" );
+   if ( a_max_will )
+     lua_pushinteger( L, *a_max_will ), lua_setfield( L, -2, "max_willpower" );
+   if ( a_name )
+     lua_pushstring( L, a_name ), lua_setfield( L, -2, "name" );
+   if ( a_title )
+     lua_pushstring( L, a_title ), lua_setfield( L, -2, "title" );
+   
+   lua_setglobal( L, "atcp" );
+}
+
+
+
+int ilua_callback( lua_State *L, char *func, char *arg, char *dir )
+{
+   char current_work_dir[4096];
    int ret_value = 0;
+   
+   if ( dir )
+     {
+        getcwd( current_work_dir, 4096 );
+        if ( chdir( dir ) )
+          {
+             debugf( "%s: %s", dir, strerror( errno ) );
+             debugf( "(%s|%s|%s)", current_work_dir, func, arg );
+             clientff( "\r\n" ILUA_PREF "%s: %s\r\n" C_0, dir, strerror( errno ) );
+             return 0;
+          }
+     }
    
    lua_getglobal( L, "mb" );
    if ( lua_istable( L, -1 ) )
@@ -318,7 +442,7 @@ int ilua_callback( lua_State *L, char *func, char *arg )
              if ( arg )
                lua_pushstring( L, arg );
              
-             if ( lua_pcall( L, arg ? 1 : 0, 1, -3 ) )
+             if ( lua_pcall( L, arg ? 1 : 0, 1, arg ? -3 : -2 ) )
                {
                   clientff( C_R "Error in the '%s' callback.\r\n" C_0, func );
                }
@@ -337,6 +461,15 @@ int ilua_callback( lua_State *L, char *func, char *arg )
    
    lua_pop( L, 1 ); /* 'mb' table */
    
+   if ( dir )
+     chdir( current_work_dir );
+   
+   if ( lua_gettop( L ) )
+     {
+        debugf( "Warning! Stack isn't empty! %d elements left.", lua_gettop( L ) );
+        lua_pop( L, lua_gettop( L ) );
+     }
+   
    return ret_value;
 }
 
@@ -352,9 +485,9 @@ void set_gags( lua_State *L, LINE *line )
      }
    
    lua_getfield( L, -1, "gag_line" );
-   line->gag_entirely = line->gag_entirely || lua_toboolean( L, -1 );
+   line->gag_entirely |= lua_toboolean( L, -1 );
    lua_getfield( L, -2, "gag_ending" );
-   line->gag_ending = line->gag_ending || lua_toboolean( L, -1 );
+   line->gag_ending |= lua_toboolean( L, -1 );
    
    lua_pop( L, 3 );
 }
@@ -367,7 +500,7 @@ void i_lua_unload( )
    
    for ( m = ilua_modules; m; m = m->next )
      {
-        ilua_callback( m->L, "unload", NULL );
+        ilua_callback( m->L, "unload", NULL, m->work_dir );
         lua_close( m->L );
      }
 }
@@ -381,7 +514,7 @@ void i_lua_process_server_line( LINE *line )
    for ( m = ilua_modules; m; m = m->next )
      {
         set_line_in_table( m->L, line );
-        ilua_callback( m->L, "server_line", NULL );
+        ilua_callback( m->L, "server_line", NULL, m->work_dir );
         set_gags( m->L, line );
      }
 }
@@ -395,7 +528,8 @@ void i_lua_process_server_prompt( LINE *line )
    for ( m = ilua_modules; m; m = m->next )
      {
         set_line_in_table( m->L, line );
-        ilua_callback( m->L, "server_prompt", NULL ); 
+        set_atcp_table( m->L );
+        ilua_callback( m->L, "server_prompt", NULL, m->work_dir ); 
         set_gags( m->L, line );
     }
 }
@@ -409,7 +543,7 @@ int i_lua_process_client_aliases( char *cmd )
    
    for ( m = ilua_modules; m; m = m->next )
      {
-        i = ilua_callback( m->L, "client_aliases", cmd );
+        i = ilua_callback( m->L, "client_aliases", cmd, m->work_dir );
      }
    
    return i;
@@ -484,7 +618,7 @@ int i_lua_process_client_command( char *cmd )
         if ( mod )
           {
              clientff( C_R "[Unloading current module.]\r\n" C_0 );
-             ilua_callback( mod->L, "unload", NULL );
+             ilua_callback( mod->L, "unload", NULL, mod->work_dir );
              close_ilua_module( mod );
           }
         
@@ -691,33 +825,24 @@ static int ilua_cmp( lua_State *L )
 
 void ilua_open_mbapi( lua_State *L )
 {
-   lua_createtable( L, 0, 10 );
+   lua_newtable( L );
    
    lua_pushfstring( L, "%d.%d", i_lua_version_major, i_lua_version_minor );
-   lua_setfield( L, 1, "version" );
-   
-   /* C Functions. */
-   lua_pushcfunction( L, ilua_echo );
-   lua_setfield( L, 1, "echo" );
-   lua_pushcfunction( L, ilua_send );
-   lua_setfield( L, 1, "send" );
-   lua_pushcfunction( L, ilua_debug );
-   lua_setfield( L, 1, "debug" );
-   lua_pushcfunction( L, ilua_prefix );
-   lua_setfield( L, 1, "prefix" );
-   lua_pushcfunction( L, ilua_suffix );
-   lua_setfield( L, 1, "suffix" );
-   lua_pushcfunction( L, ilua_insert );
-   lua_setfield( L, 1, "insert" );
-   lua_pushcfunction( L, ilua_replace );
-   lua_setfield( L, 1, "replace" );
-   lua_pushcfunction( L, ilua_show_prompt );
-   lua_setfield( L, 1, "show_prompt" );
-   lua_pushcfunction( L, ilua_cmp );
-   lua_setfield( L, 1, "cmp" );
+   lua_setfield( L, -2, "version" );
    
    /* Register the "mb" table as a global. */
    lua_setglobal( L, "mb" );
+   
+   /* C Functions. */
+   lua_register( L, "echo", ilua_echo );
+   lua_register( L, "send", ilua_send );
+   lua_register( L, "debug", ilua_debug );
+   lua_register( L, "prefix", ilua_prefix );
+   lua_register( L, "suffix", ilua_suffix );
+   lua_register( L, "insert", ilua_insert );
+   lua_register( L, "replace", ilua_replace );
+   lua_register( L, "show_prompt", ilua_show_prompt );
+   lua_register( L, "cmp", ilua_cmp );
 }
 
 
@@ -727,37 +852,37 @@ void ilua_open_mbcolours( lua_State *L )
    lua_createtable( L, 0, 16 );
    
    lua_pushstring( L, C_d );
-   lua_setfield( L, 1, "d" );
+   lua_setfield( L, -2, "d" );
    lua_pushstring( L, C_r );
-   lua_setfield( L, 1, "r" );
+   lua_setfield( L, -2, "r" );
    lua_pushstring( L, C_g );
-   lua_setfield( L, 1, "g" );
+   lua_setfield( L, -2, "g" );
    lua_pushstring( L, C_y );
-   lua_setfield( L, 1, "y" );
+   lua_setfield( L, -2, "y" );
    lua_pushstring( L, C_b );
-   lua_setfield( L, 1, "b" );
+   lua_setfield( L, -2, "b" );
    lua_pushstring( L, C_m );
-   lua_setfield( L, 1, "m" );
+   lua_setfield( L, -2, "m" );
    lua_pushstring( L, C_c );
-   lua_setfield( L, 1, "c" );
+   lua_setfield( L, -2, "c" );
    lua_pushstring( L, C_0 );
-   lua_setfield( L, 1, "x" );
+   lua_setfield( L, -2, "x" );
    lua_pushstring( L, C_D );
-   lua_setfield( L, 1, "D" );
+   lua_setfield( L, -2, "D" );
    lua_pushstring( L, C_R );
-   lua_setfield( L, 1, "R" );
+   lua_setfield( L, -2, "R" );
    lua_pushstring( L, C_G );
-   lua_setfield( L, 1, "G" );
+   lua_setfield( L, -2, "G" );
    lua_pushstring( L, C_Y );
-   lua_setfield( L, 1, "Y" );
+   lua_setfield( L, -2, "Y" );
    lua_pushstring( L, C_B );
-   lua_setfield( L, 1, "B" );
+   lua_setfield( L, -2, "B" );
    lua_pushstring( L, C_M );
-   lua_setfield( L, 1, "M" );
+   lua_setfield( L, -2, "M" );
    lua_pushstring( L, C_C );
-   lua_setfield( L, 1, "C" );
+   lua_setfield( L, -2, "C" );
    lua_pushstring( L, C_W );
-   lua_setfield( L, 1, "W" );
+   lua_setfield( L, -2, "W" );
    
    /* Register the "C" colour table as a global. */
    lua_setglobal( L, "C" );
