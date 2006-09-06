@@ -81,8 +81,8 @@ int	(*cmp)( char *trigger, char *string );
 /* Timers */
 TIMER *	(*get_timers)( );
 int	(*get_timer)( );
-void	(*add_timer)( char *name, int delay, void (*cb)( TIMER *self ), int d0, int d1, int d2 );
-void	(*del_timer)( char *name );
+TIMER *	(*add_timer)( const char *name, float delay, void (*cb)( TIMER *self ), int d0, int d1, int d2 );
+void	(*del_timer)( const char *name );
 
 /* Networking */
 DESCRIPTOR *(*get_descriptors)( );

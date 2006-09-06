@@ -165,13 +165,16 @@ struct descriptor_data
 struct timer_data
 {
    char *name;
-   int delay;
+   time_t fire_at_sec;
+   time_t fire_at_usec;
    MODULE *mod;
    
    TIMER *next;
    
    int data[3];
+   void *pdata[3];
    void (*callback)( TIMER *timer );
+   void (*destroy_cb)( TIMER *timer );
 };
 
 

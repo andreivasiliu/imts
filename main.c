@@ -171,8 +171,8 @@ int cmp( char *trigger, char *string );
 /* Timers */
 TIMER *get_timers( );
 int get_timer( );
-void add_timer( char *name, int delay, void (*cb)( TIMER *self ), int d0, int d1, int d2 );
-void del_timer( char *name );
+TIMER *add_timer( const char *name, float delay, void (*cb)( TIMER *self ), int d0, int d1, int d2 );
+void del_timer( const char *name );
 
 /* Networking */
 DESCRIPTOR *get_descriptors( );
@@ -312,7 +312,8 @@ int a_on;
 
 
 void clientfb( char *string );
-void remove_timer( TIMER *timer );
+void unlink_timer( TIMER *timer );
+void free_timer( TIMER *timer );
 
 
 /* Shared memory. */
@@ -1078,13 +1079,15 @@ void unload_module( MODULE *module )
    /* Make sure no timer linked to it exists anymore. */
    while ( 1 )
      {
-	for ( t = timers; t; t = t->next )
-	  if ( t->mod == module )
-	    {
-	       remove_timer( t );
-	       continue;
-	    }
-	break;
+        for ( t = timers; t; t = t->next )
+          if ( t->mod == module )
+            {
+               unlink_timer( t );
+               free_timer( t );
+               break;
+            }
+        if ( !t )
+          break;
      }
    
    /* Destroy all shared memory references from the table. */
@@ -2815,129 +2818,164 @@ void copy_over( char *reason )
 
 
 
-void remove_timer( TIMER *timer )
+void unlink_timer( TIMER *timer )
 {
    TIMER *t;
    
-   /* Unlink it. */
    if ( timers == timer )
      timers = timer->next;
    else
      for ( t = timers; t; t = t->next )
        if ( t->next == timer )
-	 {
-	    t->next = timer->next;
-	    break;
-	 }
+         {
+            t->next = timer->next;
+            break;
+         }
+}
+
+
+
+void free_timer( TIMER *timer )
+{
+   if ( timer->destroy_cb )
+     timer->destroy_cb( timer );
    
-   /* Free it. */
    if ( timer->name )
      free( timer->name );
    free( timer );
 }
 
 
-void update_timers( TIMER *except )
-{
-   TIMER *t;
-   int tm;
-   int diff;
-   
-   tm = time( NULL );
-   
-   diff = tm - last_timer;
-   last_timer = tm;
-   
-   for ( t = timers; t; t = t->next )
-     {
-	if ( t != except )
-	  t->delay -= diff;
-     }
-}
-
 
 void check_timers( )
 {
    TIMER *t;
+   struct timeval now;
    
-   update_timers( NULL );
+   gettimeofday( &now, NULL );
    
    /* Check the timers. */
    while ( 1 )
      {
-	/* A While loop is much safer than t_next = t->next. */
-	
-	for ( t = timers; t; t = t->next )
-	  {
-	     if ( t->delay <= 0 )
-	       {
-		  TIMER temp;
-		  
-		  /* Remove first, execute later. Why? Because it may be added again. */
-		  temp = *t;
-		  temp.next = NULL;
-		  remove_timer( t );
-		  
-		  if ( temp.callback )
-		    (*temp.callback)( &temp );
-		  
-		  break;
-	       }
-	  }
-	     
-	if ( t )
-	  continue;
-	else
-	  break;
+        /* A While loop is much safer than t_next = t->next. */
+        
+        for ( t = timers; t; t = t->next )
+          if ( t->fire_at_sec < now.tv_sec ||
+               ( t->fire_at_sec == now.tv_sec &&
+                 t->fire_at_usec <= now.tv_usec ) )
+            {
+               /* Remove first, execute later. Why? Because it may be added again. */
+               unlink_timer( t );
+               
+               if ( t->callback )
+                 (*t->callback)( t );
+               
+               free_timer( t );
+               
+               break;
+            }
+        
+        if ( !t )
+          break;
      }
 }
 
 
 
-void add_timer( char *name, int delay, void (*cb)( TIMER *timer ),
+void get_first_timer( time_t *sec, time_t *usec )
+{
+   TIMER *t, *first = NULL;
+   struct timeval now;
+   
+   for ( t = timers; t; t = t->next )
+     if ( !first || t->fire_at_sec < first->fire_at_sec ||
+          ( t->fire_at_sec == first->fire_at_sec &&
+            t->fire_at_usec < first->fire_at_usec ) )
+       first = t;
+   
+   if ( !first )
+     return;
+   
+   gettimeofday( &now, NULL );
+   
+   *sec = first->fire_at_sec - now.tv_sec;
+   *usec = first->fire_at_usec - now.tv_usec;
+   if ( *usec < 0 )
+     {
+        *usec += 1000000;
+        *sec -= 1;
+     }
+   
+   /* In other words.. immediately. */
+   if ( *sec < 0 )
+     *sec = *usec = 0;
+}
+
+
+
+TIMER *add_timer( const char *name, float delay, void (*cb)( TIMER *timer ),
 		int d0, int d1, int d2 )
 {
-   TIMER *t = NULL;
+   TIMER *t;
+   struct timeval now;
    
 //   debugf( "Timer: Add [%s] (%d)", name, delay );
    
-   /* All delays should be set from the same source time. */
-   update_timers( NULL );
-   
    /* Check if we already have it in the list. */
-   for ( t = timers; t; t = t->next )
-     {
-	if ( !strcmp( t->name, name ) )
-	  break;
-     }
+   if ( name && name[0] != '*' )
+     for ( t = timers; t; t = t->next )
+       {
+          if ( !strcmp( t->name, name ) )
+            break;
+       }
+   else
+     t = NULL;
    
    if ( !t )
      {
-	t = calloc( sizeof( TIMER ), 1 );
-	t->name = strdup( name );
-	t->next = timers;
-	timers = t;
+        t = calloc( sizeof( TIMER ), 1 );
+        t->name = strdup( name );
+        t->next = timers;
+        timers = t;
      }
    
-   t->delay = delay;
+   gettimeofday( &now, NULL );
+   t->fire_at_sec = now.tv_sec + (int) (delay);
+   t->fire_at_usec = now.tv_usec + (int) (delay * 1000000) % 1000000;
+   
+   if ( t->fire_at_usec > 1000000 )
+     {
+        t->fire_at_sec += 1;
+        t->fire_at_usec -= 1000000;
+     }
+   
    t->callback = cb;
    t->data[0] = d0;
    t->data[1] = d1;
    t->data[2] = d2;
+   
+   return t;
 }
 
 
 
-void del_timer( char *name )
+void del_timer( const char *name )
 {
    TIMER *t;
    
-   for ( t = timers; t; t = t->next )
-     if ( !strcmp( name, t->name ) )
-       {
-	  remove_timer( t );
-	  break;
-       }
+   while( 1 )
+     {
+        for ( t = timers; t; t = t->next )
+          if ( !strcmp( name, t->name ) )
+            {
+               unlink_timer( t );
+               free_timer( t );
+               break;
+            }
+        
+        if ( !t )
+          return;
+     }
 }
 
 
@@ -3497,20 +3535,28 @@ void process_client_line( char *buf )
 	       clientfb( "What module to reload? Use `mods for a list." );
 	  }
 	else if ( !strcmp( buf, "`timers" ) )
-	  {
-	     TIMER *t;
-	     
-	     update_timers( NULL );
-	     
-	     if ( !timers )
-	       clientfb( "No timers." );
-	     else
-	       {
-		  clientfb( "Timers:" );
-		  for ( t = timers; t; t = t->next )
-		    clientff( " - '%s' (%d)\r\n", t->name, t->delay );
-	       }
-	  }
+          {
+             TIMER *t;
+             struct timeval now;
+             int sec, usec;
+             
+             gettimeofday( &now, NULL );
+             
+             if ( !timers )
+               clientfb( "No timers." );
+             else
+               {
+                  clientfb( "Timers:" );
+                  for ( t = timers; t; t = t->next )
+                    {
+                       sec = t->fire_at_sec - now.tv_sec;
+                       usec = t->fire_at_usec - now.tv_usec;
+                       if ( usec < 0 )
+                         usec += 1000000, sec -= 1;
+                       clientff( " - '%s' (%d.%6d)\r\n", t->name, sec, usec, -1 );
+                    }
+               }
+          }
 	else if ( !strcmp( buf, "`desc" ) )
 	  {
 	     if ( !descs )
@@ -4831,9 +4877,11 @@ void main_loop( )
 	  }
 	
 	/* If there's one or more timers, don't sleep more than 0.25 seconds. */
-	pulsetime.tv_sec = 0;
-	pulsetime.tv_usec = 250000;
-	
+        if ( timers )
+          {
+             get_first_timer( &pulsetime.tv_sec, &pulsetime.tv_usec );
+          }
+        
 	if ( select( maxdesc+1, &in_set, &out_set, &exc_set, timers ? &pulsetime : NULL ) < 0 )
 	  {
 	     if ( errno != EINTR )

@@ -12,18 +12,10 @@
 
 
 int i_lua_version_major = 0;
-int i_lua_version_minor = 5;
+int i_lua_version_minor = 7;
 
 char *i_lua_id = I_LUA_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
-
-/* A LuaMod must have
- * a name
- * a state
- * an active flag
- * a main file name
- * cpath/path
- */
 
 typedef struct ilua_mod ILUA_MOD;
 
@@ -91,11 +83,9 @@ static int ilua_errorhandler( lua_State *L )
    char where[256];
    int level;
    
-   debugf( "Called, %d items.", lua_gettop( L ) );
    errmsg = lua_tostring( L, -1 );
    if ( !errmsg )
      errmsg = "Untrapped error from Lua";
-   debugf( "Called further" );
    
    clientff( "\r\n" ILUA_PREF "%s\r\n" C_0, errmsg );
    
@@ -425,8 +415,6 @@ int ilua_callback( lua_State *L, char *func, char *arg, char *dir )
         getcwd( current_work_dir, 4096 );
         if ( chdir( dir ) )
           {
-             debugf( "%s: %s", dir, strerror( errno ) );
-             debugf( "(%s|%s|%s)", current_work_dir, func, arg );
              clientff( "\r\n" ILUA_PREF "%s: %s\r\n" C_0, dir, strerror( errno ) );
              return 0;
           }
@@ -445,6 +433,7 @@ int ilua_callback( lua_State *L, char *func, char *arg, char *dir )
              if ( lua_pcall( L, arg ? 1 : 0, 1, arg ? -3 : -2 ) )
                {
                   clientff( C_R "Error in the '%s' callback.\r\n" C_0, func );
+                  ret_value = 1;
                }
              else
                {
@@ -640,6 +629,7 @@ static int ilua_echo( lua_State *L )
    const char *str;
    
    /* This thingie also leaves an empty string on no arguments. Neat. */
+   lua_pushstring( L, "\r\n" );
    lua_concat( L, lua_gettop( L ) );
    
    str = lua_tostring( L, -1 );
@@ -778,6 +768,146 @@ static int ilua_cmp( lua_State *L )
 
 
 
+void ilua_timer( TIMER *self )
+{
+   ILUA_MOD *m;
+   lua_State *L;
+   int args, i;
+   int timertable;
+   
+   for ( m = ilua_modules; m; m = m->next )
+     if ( m->L == (lua_State *) self->pdata[0] )
+       break;
+   
+   if ( !m )
+     {
+        debugf( "ILua Warning: this timer has an unknown Lua thread." );
+        return;
+     }
+   
+   L = m->L;
+   
+   lua_pushlightuserdata( L, (void *) self );
+   lua_gettable( L, LUA_REGISTRYINDEX );
+   
+   if ( !lua_istable( L, -1 ) )
+     {
+        debugf( "ILua Warning: this timer has lost its associated info." );
+        lua_pop( L, 1 );
+        return;
+     }
+   
+   timertable = lua_gettop( L );
+   
+   lua_pushcfunction( L, ilua_errorhandler );
+   lua_getfield( L, timertable, "args" );
+   lua_getfield( L, timertable, "func" );
+   
+   if ( !lua_isfunction( L, -1 ) || !lua_isnumber( L, -2 ) )
+     {
+        lua_pop( L, 3 );
+        return;
+     }
+   
+   /* Get the arguments ready... */
+   args = lua_tointeger( L, -2 );
+   lua_checkstack( L, args );
+   for ( i = 1; i <= args; i++ )
+     {
+        lua_pushinteger( L, i );
+        lua_gettable( L, timertable );
+     }
+   
+   /* Fire away! */
+   if ( lua_pcall( L, args, 0, timertable+1 ) )
+     {
+        clientff( C_R "Error in the '%s' timer.\r\n" C_0, self->name );
+        lua_pop( L, 1 );
+     }
+   
+   /* The table, error handler, and number of arguments. */
+   lua_pop( L, 3 );
+}
+
+
+
+void ilua_destroy_timer( TIMER *timer )
+{
+   ILUA_MOD *m;
+   
+   for ( m = ilua_modules; m; m = m->next )
+     if ( m->L == (lua_State *) timer->pdata[0] )
+       break;
+   
+   if ( !m )
+     return;
+   
+   /* Lua's garbage collector will take care of the table that was there. */
+   lua_pushlightuserdata( m->L, (void *) timer );
+   lua_pushnil( m->L );
+   lua_settable( m->L, LUA_REGISTRYINDEX );
+}
+
+
+
+/* add_timer( number/time, function/action, optstring/name, ... */
+static int ilua_add_timer( lua_State *L )
+{
+   TIMER *timer;
+   const char *name;
+   lua_Number delay;
+   int optargs, i;
+   
+   delay = luaL_checknumber( L, 1 );
+   luaL_checktype( L, 2, LUA_TFUNCTION );
+   name = luaL_optstring( L, 3, "*unnamed_lua_timer" );
+   
+   timer = add_timer( name, (float) delay, ilua_timer, 0, 0, 0 );
+   timer->pdata[0] = (void *) L;
+   timer->destroy_cb = ilua_destroy_timer;
+   
+   optargs = lua_gettop( L ) - 3;
+   if ( optargs < 0 )
+     optargs = 0;
+   
+   lua_pushlightuserdata( L, (void *) timer );
+   lua_createtable( L, optargs, 2 );
+   
+   lua_pushstring( L, "func" );
+   lua_pushvalue( L, 2 );
+   lua_settable( L, -3 );
+   
+   lua_pushstring( L, "args" );
+   lua_pushinteger( L, optargs );
+   lua_settable( L, -3 );
+   
+   /* Optional values, to be passed as arguments later. */
+   for ( i = 0; i < optargs; i++ )
+     {
+        lua_pushinteger( L, i+1 );
+        lua_pushvalue( L, i+4 );
+        lua_settable( L, -3 );
+     }
+   
+   lua_settable( L, LUA_REGISTRYINDEX );
+   
+   return 0;
+}
+
+
+
+static int ilua_del_timer( lua_State *L )
+{
+   const char *name;
+   
+   name = luaL_checkstring( L, 1 );
+   
+   del_timer( name );
+   
+   return 0;
+}
+
+
 
 /*
  * mb =
@@ -805,7 +935,9 @@ static int ilua_cmp( lua_State *L )
  *    
  *    -- MXP / not implemented
  *    
- *    -- Timers / not implemented
+ *    -- Timers
+ *    add_timer
+ *    del_timer
  *    
  *    -- Networking / not implemented
  *    
@@ -843,6 +975,8 @@ void ilua_open_mbapi( lua_State *L )
    lua_register( L, "replace", ilua_replace );
    lua_register( L, "show_prompt", ilua_show_prompt );
    lua_register( L, "cmp", ilua_cmp );
+   lua_register( L, "add_timer", ilua_add_timer );
+   lua_register( L, "del_timer", ilua_del_timer );
 }
 
 
