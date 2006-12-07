@@ -37,7 +37,6 @@ int mapper_version_minor = 5;
 char *i_mapper_id = I_MAPPER_ID "\r\n" I_MAPPER_H_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
 char *room_color = "\33[33m";
-//char *room_color = "\33[35m";
 int room_color_len = 5;
 
 char map_file[256] = "IMap";
@@ -158,6 +157,9 @@ int skip_newline_on_map;
 int gag_next_prompt;
 int check_for_duplicates;
 int godname;
+int warn_misaligned;
+int warn_environment;
+int warn_unlinked;
 
 /* config.mapper.txt options. */
 int disable_swimming;
@@ -252,6 +254,19 @@ int get_free_vnum( )
 {
    last_vnum++;
    return last_vnum;
+}
+
+
+
+void refind_last_vnum( )
+{
+   ROOM_DATA *room;
+   
+   last_vnum = 0;
+   
+   for ( room = world; room; room = room->next_in_world )
+     if ( last_vnum < room->vnum )
+       last_vnum = room->vnum;
 }
 
 
@@ -706,6 +721,8 @@ void destroy_map( )
    current_area = NULL;
    
    mode = NONE;
+   
+   refind_last_vnum( );
 }
 
 
@@ -1204,7 +1221,8 @@ int check_for_title( LINE *l, int start_offset )
 	if ( ( *p < 'A' || *p > 'Z' ) &&
 	     ( *p < 'a' || *p > 'z' ) &&
 	     *p != ',' && *p != '-' && *p != ' ' &&
-	     *p != '.' && *p != '\'' && *p != '\"' )
+	     *p != '.' && *p != '\'' && *p != '\"' &&
+	     *p != '&' )
 	  return -1;
 	
 	if ( *p == '.' )
@@ -1488,6 +1506,40 @@ void parse_room( LINE *l )
 
 
 
+ROOM_TYPE *add_room_type( char *name, char *color )
+{
+   ROOM_TYPE *type;
+   
+   for ( type = room_types; type; type = type->next )
+     if ( !strcmp( name, type->name ) )
+       break;
+   
+   /* New? Create one more. */
+   if ( !type )
+     {
+	ROOM_TYPE *t;
+	
+	type = calloc( 1, sizeof( ROOM_TYPE ) );
+	type->name = strdup( name );
+	type->next = NULL;
+	
+	if ( !room_types )
+	  room_types = type;
+	else
+	  {
+	     for ( t = room_types; t->next; t = t->next );
+	     t->next = type;
+	  }
+     }
+   
+   if ( !type->color || ( color && strcmp( type->color, color ) ) )
+     type->color = color;
+   
+   return type;
+}
+
+
+
 void check_area( char *name )
 {
    AREA_DATA *area;
@@ -1557,34 +1609,36 @@ void check_area( char *name )
 
 void parse_survey( char *line )
 {
+   char buf[256], *p;
    DEBUG( "parse_survey" );
    
    if ( ( mode == CREATING || auto_bump ) && current_room )
      {
-	if ( ( !strncmp( line, "You discern that you are standing in ", 37 ) &&
-	       ( line += 37 ) ) ||
-	     ( !strncmp( line, "You stand within ", 17 ) &&
-	       ( line += 17 ) ) ||
-	     ( !strncmp( line, "You are standing in ", 20 ) &&
-	       ( line += 20 ) ) )
+	if ( !cmp( "You discern that you are standing in *", line ) ||
+	     !cmp( "You stand within *", line ) ||
+	     !cmp( "You are standing in *", line ) )
 	  {
-	     /* Might not have a "the" in there, rare cases though. */
-	     if ( !strncmp( line, "the ", 4 ) )
-	       line += 4;
+	     p = buf;
 	     
-	     check_area( line );
+	     extract_wildcard( 0, buf, 256 );
+	     
+	     /* Might not have a "the" in there, rare cases though. */
+	     if ( !strncmp( p, "the ", 4 ) )
+	       p += 4;
+	     
+	     check_area( p );
 	  }
-	else if ( !strncmp( line, "Your environment conforms to that of ", 37 ) )
+	else if ( !cmp( "Your environment conforms to that of *.", line ) )
 	  {
 	     ROOM_TYPE *type;
 	     
-	     line = line + 37;
+	     extract_wildcard( 0, buf, 256 );
 	     
 	     for ( type = room_types; type; type = type->next )
-	       if ( !strncmp( line, type->name, strlen( type->name ) ) )
+	       if ( !strcmp( buf, type->name ) )
 		 break;
 	     
-	     /* Lusternia - lowercase letters. */
+	     /* Lusternia - lowercase letters. - Del
 	     if ( !type )
 	       {
 		  char buf[256];
@@ -1598,21 +1652,22 @@ void parse_survey( char *line )
 		       if ( !strncmp( line, buf, strlen( buf ) ) )
 			 break;
 		    }
-	       }
+	       } */
 	     
 	     if ( type != current_room->room_type )
 	       {
 		  if ( mode == CREATING )
 		    {
-		       current_room->room_type = type;
-		       
 		       if ( type )
 			 clientf( C_R " (" C_G "updated" C_R ")" C_0 );
 		       else
 			 {
-			    current_room->room_type = null_room_type;
-			    clientf( C_R " (" C_D "type removed" C_R ")" C_0 );
+			    type = add_room_type( buf, NULL );
+			    clientf( C_R " (" C_G "new type created" C_R ")" C_0 );
+			    clientf( C_R "\r\n[Don't forget to use 'room type' to properly set this environment!]" C_0 );
 			 }
+		       
+		       current_room->room_type = type;
 		    }
 		  else if ( auto_bump )
 		    {
@@ -1621,7 +1676,7 @@ void parse_survey( char *line )
 		    }
 	       }
 	  }
-	else if ( !strcmp( line, "You cannot glean any information about your surroundings." ) )
+	else if ( !cmp( "You cannot glean any information about your surroundings.", line ) )
 	  {
 	     ROOM_TYPE *type;
 	     
@@ -1719,10 +1774,6 @@ void go_next( )
 			    dir_name[current_room->pf_direction], current_room->vnum );
 		  show_prompt( );
 		  return;
-//		  sprintf( buf, "unlock %s", dir_name[current_room->pf_direction] );
-//		  clientfr( buf );
-//		  sprintf( buf, "unlock door %s\r\n", dir_small_name[current_room->pf_direction] );
-//		  send_to_server( buf );
 	       }
 	     else
 	       {
@@ -1897,9 +1948,11 @@ void set_exit( short *ex, ROOM_DATA *room, int dir )
 	if ( room->exits[dir]->area != room->area )
 	  *ex |= EXIT_OTHER_AREA;
      }
-   else
-     if ( room->detected_exits[dir] )
+   else if ( room->detected_exits[dir] )
        *ex |= EXIT_UNLINKED;
+   
+   if ( room->locked_exits[dir] )
+     *ex |= EXIT_LOCKED;
    
    if ( room->exit_stops_mapping[dir] )
      *ex |= EXIT_STOPPING;
@@ -1912,6 +1965,8 @@ void set_exit( short *ex, ROOM_DATA *room, int dir )
 
 void set_all_exits( ROOM_DATA *room, int x, int y )
 {
+   int i;
+   
    /* East, southeast, south. (current element) */
    set_exit( &map_new[x][y].e, room, EX_E );
    set_exit( &map_new[x][y].se, room, EX_SE );
@@ -1939,6 +1994,16 @@ void set_all_exits( ROOM_DATA *room, int x, int y )
    
    /* In, out. */
    map_new[x][y].in_out |= ( room->exits[EX_IN] || room->exits[EX_OUT] ) ? 1 : 0;
+   
+   /* Check for unlinked exits here, and set a warning if needed. */
+   if ( mode == CREATING )
+     for ( i = 1; dir_name[i]; i++ )
+       if ( room->detected_exits[i] && !room->exits[i] &&
+	    !room->locked_exits[i] )
+	 {
+	    map_new[x][y].warn = 2;
+	    warn_unlinked = 1;
+	 }
 }
 
 
@@ -1960,6 +2025,15 @@ void fill_map_new( ROOM_DATA *room, int x, int y )
    room->area->needs_cleaning = 1;
    map_new[x][y].room = room;
    map_new[x][y].color = room->room_type->color;
+   /* Unset? Make it obvious. */
+   if ( mode == CREATING &&
+	( !map_new[x][y].color || room->room_type == null_room_type ) )
+     {
+	warn_environment = 1;
+	map_new[x][y].warn = 1;
+     }
+   if ( !map_new[x][y].color )
+     map_new[x][y].color = C_R;
    
    set_all_exits( room, x, y );
    
@@ -2043,7 +2117,6 @@ void show_map_new( ROOM_DATA *room )
      return;
    
    get_timer( );
-//   debugf( "--map new--" );
    
    for ( x = 0; x < MAP_X; x++ )
      for ( y = 0; y < MAP_Y; y++ )
@@ -2059,12 +2132,12 @@ void show_map_new( ROOM_DATA *room )
 	  r->pf_highlight = 1;
      }
    
-//   debugf( "1: %d", get_timer( ) );
+   warn_misaligned = 0;
+   warn_environment = 0;
+   warn_unlinked = 0;
    
    /* From the current *room, place all other rooms on the map. */
    fill_map_new( room, MAP_X / 2, MAP_Y / 2 );
-   
-//   debugf( "2: %d", get_timer( ) );
    
    
    /* Build it up. */
@@ -2148,6 +2221,10 @@ void show_map_new( ROOM_DATA *room )
 			    
 			    if ( map_new[x][y].room == current_room )
 			      s = C_B "*";
+			    else if ( map_new[x][y].warn == 1 )
+			      s = C_Y "!";
+			    else if ( map_new[x][y].warn == 2 )
+			      s = C_r "!";
 			    else if ( map_new[x][y].room->person_here )
 			      s = C_Y "*";
 			    else if ( map_new[x][y].in_out )
@@ -2204,12 +2281,14 @@ void show_map_new( ROOM_DATA *room )
 		    }
 		  
 		  /* Exit color. */
-		  if ( map_new[x][y].e & EXIT_UNLINKED )
-		    s = C_D, s2 = C_0;
-		  else if ( map_new[x][y].e & EXIT_OTHER_AREA )
+		  if ( map_new[x][y].e & EXIT_OTHER_AREA )
 		    s = C_W, s2 = C_0;
 		  else if ( map_new[x][y].e & EXIT_STOPPING )
 		    s = C_R, s2 = C_0;
+		  else if ( map_new[x][y].e & EXIT_LOCKED )
+		    s = C_r, s2 = C_0;
+		  else if ( map_new[x][y].e & EXIT_UNLINKED )
+		    s = C_D, s2 = C_0;
 		  else if ( map_new[x][y].e & EXIT_PATH )
 		    s = C_B, s2 = C_0;
 		  else
@@ -2235,12 +2314,14 @@ void show_map_new( ROOM_DATA *room )
 	     if ( x )
 	       {
 		  /* Exit color. */
-		  if ( map_new[x][y].s & EXIT_UNLINKED )
-		    s = C_D, s2 = C_0;
-		  else if ( map_new[x][y].s & EXIT_OTHER_AREA )
+		  if ( map_new[x][y].s & EXIT_OTHER_AREA )
 		    s = C_W, s2 = C_0;
 		  else if ( map_new[x][y].s & EXIT_STOPPING )
 		    s = C_R, s2 = C_0;
+		  else if ( map_new[x][y].s & EXIT_LOCKED )
+		    s = C_r, s2 = C_0;
+		  else if ( map_new[x][y].s & EXIT_UNLINKED )
+		    s = C_D, s2 = C_0;
 		  else if ( map_new[x][y].s & EXIT_PATH )
 		    s = C_B, s2 = C_0;
 		  else
@@ -2257,12 +2338,14 @@ void show_map_new( ROOM_DATA *room )
 	       }
 	     
 	     /* Exit color. */
-	     if ( ( map_new[x][y].se | map_new[x][y].se_rev ) & EXIT_UNLINKED )
-	       s = C_D, s2 = C_0;
-	     else if ( ( map_new[x][y].se | map_new[x][y].se_rev ) & EXIT_OTHER_AREA )
+	     if ( ( map_new[x][y].se | map_new[x][y].se_rev ) & EXIT_OTHER_AREA )
 	       s = C_W, s2 = C_0;
 	     else if ( ( map_new[x][y].se | map_new[x][y].se_rev ) & EXIT_STOPPING )
 	       s = C_R, s2 = C_0;
+	     else if ( ( map_new[x][y].se | map_new[x][y].se_rev ) & EXIT_LOCKED )
+	       s = C_r, s2 = C_0;
+	     else if ( ( map_new[x][y].se | map_new[x][y].se_rev ) & EXIT_UNLINKED )
+	       s = C_D, s2 = C_0;
 	     else if ( ( map_new[x][y].se | map_new[x][y].se_rev ) & EXIT_PATH )
 	       s = C_B, s2 = C_0;
 	     else
@@ -2290,15 +2373,27 @@ void show_map_new( ROOM_DATA *room )
    s = buf, len = 0;
    while( *s )
      *(p++) = *(s++), len++;
-   for ( x = len; x < MAP_X * 4 - 5 - skip_newline_on_map*9; x++ )
+   for ( x = len; x < MAP_X * 4 - 7 - ( mode == CREATING )*6; x++ )
      *(p++) = '-';
    
-   if ( !skip_newline_on_map )
-     s = "/\r\n";
-   else
-     s = C_C "<send>go</send>" C_0 "/" C_C "<send>stop</send>" C_0 "--/";
+   /* Map correctness indicators */
+   if ( mode == CREATING )
+     {
+	s = warn_unlinked ? "-" C_R "l" C_0 : "-" C_C "*" C_0;
+	while( *s )
+	  *(p++) = *(s++);
+	s = warn_environment ? "-" C_R "s" C_0 : "-" C_C "*" C_0;
+	while( *s )
+	  *(p++) = *(s++);
+	s = warn_misaligned ? "-" C_R "a" C_0 : "-" C_C "*" C_0;
+	while( *s )
+	  *(p++) = *(s++);
+     }
+   
+   s = "--/\r\n";
    while( *s )
      *(p++) = *(s++);
+   
    *p = 0;
    
    /* Clear up our mess. */
@@ -2309,8 +2404,6 @@ void show_map_new( ROOM_DATA *room )
 	    r->mapped = 0;
 	  a->needs_cleaning = 0;
        }
-   
-//   debugf( "3: %d", get_timer( ) );
    
    /* Show it away. */
    clientf( map_buf );
@@ -2513,6 +2606,11 @@ void show_map( ROOM_DATA *room )
 			 color = "\33[1;36m";
 		       else
 			 color = map[x][y]->room_type->color;
+		       if ( !color )
+			 {
+			    color = C_R;
+			    // warn
+			 }
 		       
 		       if ( !map[x][y] )
 			 {
@@ -2606,45 +2704,6 @@ char *get_color( char *name )
    
    return NULL;
 }
-
-
-ROOM_TYPE *add_room_type( char *name, char *color, int c_in, int c_out, int m_swim, int underw )
-{
-   ROOM_TYPE *type;
-   
-   for ( type = room_types; type; type = type->next )
-     if ( !strcmp( name, type->name ) )
-       break;
-   
-   /* New? Create one more. */
-   if ( !type )
-     {
-	ROOM_TYPE *t;
-	
-	type = calloc( 1, sizeof( ROOM_TYPE ) );
-	type->name = strdup( name );
-	type->next = NULL;
-	
-	if ( !room_types )
-	  room_types = type;
-	else
-	  {
-	     for ( t = room_types; t->next; t = t->next );
-	     t->next = type;
-	  }
-     }
-   
-   if ( !type->color || strcmp( type->color, color ) )
-     type->color = color;
-   
-   type->cost_in = c_in;
-   type->cost_out = c_out;
-   type->must_swim = m_swim;
-   type->underwater = underw;
-   
-   return type;
-}
-
 
 
 int save_settings( char *file )
@@ -2949,7 +3008,7 @@ void save_map( char *file )
    EXIT_DATA *spexit;
    ROOM_TYPE *type;
    FILE *fl;
-   char buf[256];
+   char buf[256], *color;
    int i, j, count = 0;
    
    DEBUG( "save_map" );
@@ -2967,21 +3026,28 @@ void save_map( char *file )
    fprintf( fl, "MAPFILE\n\n" );
    
    fprintf( fl, "\n\nROOM-TYPES\n\n"
-	    "# \"Name\", Color Name, Cost In, Cost Out, Swim, Underwater\n" );
+	    "# \"Name\" color [swim] [underwater] [avoid]\n" );
    
    for ( type = room_types; type; type = type->next )
      {
 	/* Find the color's name. */
 	
-	for ( j = 0; color_names[j].name; j++ )
-	  if ( !strcmp( color_names[j].code, type->color ) )
-	    break;
+	if ( type->color )
+	  {
+	     for ( j = 0; color_names[j].name; j++ )
+	       if ( !strcmp( color_names[j].code, type->color ) )
+		 break;
+	     color = color_names[j].name;
+	     if ( !color[0] )
+	       color = "unset";
+	  }
+	else
+	  color = "unset";
 	
-	fprintf( fl, "T: \"%s\" %s %d %d %s %s\n", type->name,
-		 color_names[j].name ? color_names[j].name : "normal",
-		 type->cost_in, type->cost_out,
-		 type->must_swim ? "yes" : "no",
-		 type->underwater ? "yes" : "no" );
+	fprintf( fl, "Env: \"%s\" %s%s%s%s\n", type->name, color,
+		 type->must_swim ? " swim" : "",
+		 type->underwater ? " underwater" : "",
+		 type->avoid ? " avoid" : "" );
      }
    
    fprintf( fl, "\n\nMESSAGES\n\n" );
@@ -3152,7 +3218,7 @@ void save_binary_map( char *file )
      {
 	fwrite( type, sizeof( ROOM_TYPE ), 1, fl );
 	write_string( type->name, fl );
-	write_string( type->color, fl );
+	write_string( type->color ? type->color : "unset", fl );
      }
    
    /* Global Special Exits. */
@@ -3251,8 +3317,9 @@ int load_binary_map( char *file )
 	     return 1;
 	  }
 	
-	add_room_type( type.name, type.color, type.cost_in, type.cost_out,
-		       type.must_swim, type.underwater );
+	// change me // Really change me
+	add_room_type( type.name, type.color /*, type.must_swim, type.underwater,
+		       0 ); //avoid*/ );
 	if ( type.name )
 	  free( type.name );
 	/* Don't free color. */
@@ -3344,29 +3411,6 @@ int check_map( )
    
    
    return 0;
-}
-
-
-
-void remake_vnums( )
-{
-   AREA_DATA *area;
-   ROOM_DATA *room;
-   char buf[128];
-   int i = 1;
-   
-   DEBUG( "remake_vnums" );
-   
-   for ( area = areas; area; area = area->next )
-     {
-	for ( room = area->rooms; room; room = room->next_in_area )
-	  {
-	     room->vnum = i++;
-	  }
-     }
-   
-   sprintf( buf, "Room vnums remade. Last is %d.", i-1 );
-   clientfr( buf );
 }
 
 
@@ -3787,8 +3831,10 @@ int load_map( char *file )
 	       }
 	  }
 	
+	/* Old style - here only for backwards compatibility. */
 	else if ( !strncmp( line, "T: ", 3 ) )
 	  {
+	     ROOM_TYPE *type;
 	     char name[512];
 	     char color_name[512];
 	     char *color;
@@ -3797,6 +3843,7 @@ int load_map( char *file )
 	     int cost_in, cost_out;
 	     int must_swim;
 	     int underwater;
+	     int avoid;
 	     
 	     if ( section != 3 )
 	       {
@@ -3829,7 +3876,59 @@ int load_map( char *file )
 		  return 1;
 	       }
 	     
-	     add_room_type( name, color, cost_in, cost_out, must_swim, underwater );
+	     avoid = ( cost_in == 5 ) ? 1 : 0;
+	     
+	     type = add_room_type( name, color );
+	     type->must_swim = must_swim;
+	     type->underwater = underwater;
+	     type->avoid = avoid;
+	  }
+	
+	else if ( !strncmp( line, "Env: ", 5 ) )
+	  {
+	     ROOM_TYPE *type;
+	     char name[512];
+	     char color_name[512];
+	     char *color;
+	     char buf[512];
+	     char *p = line + 5;
+	     
+	     if ( section != 3 )
+	       {
+		  debugf( "Misplaced room type. Line %d.", nr );
+		  return 1;
+	       }
+	     
+	     p = get_string( p, name, 512 );
+	     p = get_string( p, color_name, 512 );
+	     
+	     if ( !name[0] || !color_name[0] )
+	       {
+		  debugf( "Buggy Room-Type, line %d.", nr );
+		  return 1;
+	       }
+	     
+	     color = get_color( color_name );
+	     if ( !color && strcmp( color_name, "unset" ) )
+	       {
+		  debugf( "Unknown color name, line %d.", nr );
+		  return 1;
+	       }
+	     
+	     type = add_room_type( name, color );
+	     
+	     p = get_string( p, buf, 512 );
+	     while ( buf[0] )
+	       {
+		  if ( !strcmp( buf, "swim" ) )
+		    type->must_swim = 1;
+		  if ( !strcmp( buf, "underwater" ) )
+		    type->underwater = 1;
+		  if ( !strcmp( buf, "avoid" ) )
+		    type->avoid = 1;
+		  
+		  p = get_string( p, buf, 512 );
+	       }
 	  }
 	
 	else if ( !strncmp( line, "GSE: ", 5 ) )
@@ -3909,7 +4008,8 @@ void init_openlist( ROOM_DATA *room )
 
 int get_cost( ROOM_DATA *src, ROOM_DATA *dest )
 {
-   return src->room_type->cost_out + dest->room_type->cost_in;
+   return src->room_type->must_swim * 2 + src->room_type->avoid * 3 +
+         dest->room_type->must_swim * 2 + dest->room_type->avoid * 3 + 1;
 }
 
 
@@ -4131,8 +4231,8 @@ void i_mapper_module_init_data( )
    
    DEBUG( "i_mapper_init_data" );
    
-   null_room_type = add_room_type( "Unknown", get_color( "red" ), 1, 1, 0, 0 );
-   add_room_type( "Undefined", get_color( "bright-red" ), 1, 1, 0, 0 );
+   null_room_type = add_room_type( "Unknown", get_color( "red" ) );
+   add_room_type( "Undefined", get_color( "bright-red" ) );
    
    destroy_map( );
    
@@ -5841,7 +5941,6 @@ void do_map_help( char *arg )
 	    " map none     - Disable following or mapping.\r\n"
 	    " map follow   - Enable following.\r\n"
 	    " map create   - Enable mapping.\r\n"
-	    " map remake   - Remake vnums.\r\n"
 	    " map path #   - Build directions to vnum #.\r\n"
 	    " map status   - Show general information about the map.\r\n"
 	    " map color    - Change the color of the room title.\r\n"
@@ -5859,37 +5958,27 @@ void do_map_help( char *arg )
 
 
 
-void do_map_remake( char *arg )
-{
-   if ( mode != CREATING )
-     {
-	clientfr( "Turn mapping on, first." );
-	return;
-     }
-   
-   remake_vnums( );
-}
-
-
-
 void do_map_create( char *arg )
 {
-   if ( world == NULL )
+   if ( !strcmp( arg, "newroom" ) )
      {
 	clientfr( "Mapping on. Please 'look', to update this room." );
-	create_area( );
-	current_area = areas;
 	
-	create_room( -1 );
-	current_room = world;
+	if ( world == NULL )
+	  {
+	     create_area( );
+	     current_area = areas;
+	     current_area->name = strdup( "New area" );
+	  }
 	
-	current_area->name = strdup( "New area" );
-	
+	current_room = create_room( -1 );
+	current_room->name = strdup( "New room." );
 	q_top = 0;
      }
    else if ( !current_room )
      {
 	clientfr( "No current room set, from which to begin mapping." );
+	clientfr( "In case it's really what you need, use 'map create newroom'." );
 	return;
      }
    else
@@ -6406,8 +6495,7 @@ void do_map_window( char *arg )
 void do_area_help( char *arg )
 {
    clientfr( "Module: IMapper. Area commands:" );
-   clientf( " area create - Create a new area, and switch to it.\r\n"
-	    " area list   - List all areas.\r\n"
+   clientf( " area list   - List all areas.\r\n"
 	    " area switch - Switch the area of the current room.\r\n"
 	    " area update - Update current area's name.\r\n"
 	    " area info   - Show information about current area.\r\n"
@@ -6753,27 +6841,6 @@ void do_map_teleport( char *arg )
 
 
 
-void do_area_create( char *arg )
-{
-   AREA_DATA *new_area;
-   
-   if ( mode != CREATING )
-     {
-	clientfr( "Turn mapping on, first." );
-	return;
-     }
-   
-   new_area = create_area( );
-   
-   new_area->name = strdup( "New area" );
-   
-   current_area = new_area;
-	     
-   clientfr( "Area created. Next room will be in that area." );
-}
-
-
-
 void do_area_list( char *arg )
 {
    AREA_DATA *area;
@@ -6959,7 +7026,6 @@ void do_room_help( char *arg )
 {
    clientfr( "Module: IMapper. Room commands:" );
    clientf( " room switch  - Switch current room to another vnum.\r\n"
-	    " room create  - Create a new room and switch to it.\r\n"
 	    " room look    - Show info on the current room only.\r\n"
 	    " room info    - List all rooms that weren't properly mapped.\r\n"
 	    " room find    - Find all rooms that contain something in their name.\r\n"
@@ -6996,27 +7062,6 @@ void do_room_switch( char *arg )
 	       mode = FOLLOWING;
 	  }
      }
-}
-
-
-
-void do_room_create( char *arg )
-{
-   ROOM_DATA *room;
-   
-   if ( mode != CREATING )
-     {
-	clientfr( "Turn mapping on, first." );
-	return;
-     }
-   
-   room = create_room( -1 );
-   
-   room->name = strdup( "New room." );
-   
-   current_room = room;
-   current_area = room->area;
-   clientfr( "New room created." );
 }
 
 
@@ -7288,6 +7333,8 @@ void do_room_destroy( char *arg )
 	     clientfr( "Room unlinked and destroyed." );
 	  }
      }
+   
+   refind_last_vnum( );
 }
 	     
 
@@ -7344,18 +7391,85 @@ void do_room_underw( char *arg )
 
 void do_room_types( char *arg )
 {
-   ROOM_TYPE *type;
+   ROOM_TYPE *type, *t;
+   char cmd[256], *p = arg, *color;
    
-   clientfr( "Room types known:" );
+   if ( !current_room )
+     {
+	clientfr( "No current room set." );
+	return;
+     }
    
-   clientff( "   %-25s In Out Swim Underwater\r\n", "Name" );
-   for ( type = room_types; type; type = type->next )
-     clientff( " - %s%-25s" C_0 " " C_G "%2d" C_0 " " C_G "%3d" C_0
-	       "  %s  %s\r\n",
-	       type->color, type->name,
-	       type->cost_in, type->cost_out,
-	       type->must_swim ? C_B "yes" C_0 : C_R " no" C_0,
-	       type->underwater ? C_B "yes" C_0 : C_R " no" C_0 );
+   type = current_room->room_type;
+   
+   if ( !arg[0] )
+     {
+	clientff( C_R "[This room's type is set as '%s%s" C_R "'.]\r\n"
+		  "[Must swim: %s. Underwater: %s. Avoid: %s.]\r\n"
+		  " Syntax: room type [colour] [swim] [underwater] [avoid]\r\n"
+		  "     Or: room type list\r\n"
+		  " Example: room type bright-cyan swim (for a water room)\r\n" C_0,
+		  type->color ? type->color : C_R, type->name,
+		  type->must_swim ? "yes" : "no",
+		  type->underwater ? "yes" : "no",
+		  type->avoid ? "yes" : "no" );
+	return;
+     }
+   
+   p = get_string( arg, cmd, 256 );
+   while ( cmd[0] )
+     {
+	color = get_color( cmd );
+	
+	if ( !strcmp( cmd, "list" ) )
+	  {
+	     clientfr( "Room types known:" );
+	     
+	     clientff( "   %-20s Underwater  Swim Avoid\r\n", "Name" );
+	     for ( t = room_types; t; t = t->next )
+	       {
+		  if ( t->color )
+		    clientff( " - %s%-25s" C_0 "   %s   %s   %s\r\n",
+			      t->color, t->name,
+			      t->underwater ? C_B "yes" C_0 : C_R " no" C_0,
+			      t->must_swim ? C_B "yes" C_0 : C_R " no" C_0,
+			      t->avoid ? C_B "yes" C_0 : C_R " no" C_0 );
+		  else
+		    clientff( " - " C_R "%-34s" C_D "[[unset]]" C_0 "\r\n", t->name );
+	       }
+	  }
+	else if ( !strcmp( cmd, "swim" ) || !strcmp( cmd, "water" ) )
+	  {
+	     type->must_swim = type->must_swim ? 0 : 1;
+	     clientff( C_R "[Environment '%s' will %s require swimming.]\r\n" C_0,
+		       type->name, type->must_swim ? "now" : C_r "no longer" C_R );
+	  }
+	else if ( !strcmp( cmd, "underwater" ) )
+	  {
+	     type->underwater = type->underwater ? 0 : 1;
+	     clientff( C_R "[Environment '%s' is %s set as underwater.]\r\n" C_0,
+		       type->name, type->underwater ? "now" : C_r "no longer" C_R );
+	  }
+	else if ( !strcmp( cmd, "avoid" ) )
+	  {
+	     type->avoid = type->avoid ? 0 : 1;
+	     clientff( C_R "[Environment '%s' will %s be avoided when possible.]\r\n" C_0,
+		       type->name, type->avoid ? "now" : C_r "no longer" C_R );
+	  }
+	else if ( color )
+	  {
+	     type->color = color;
+	     clientff( C_R "[Environment '%s' will be shown as %s%s" C_R ".]\r\n" C_0,
+		       type->name, color, cmd );
+	  }
+	else
+	  {
+	     clientff( C_R "[I don't know what %s means.]\r\n" C_0, cmd );
+	     clientfr( "If you tried to set a colour, check 'map colour' for a list!" );
+	  }
+	
+	p = get_string( p, cmd, 256 );
+     }
 }
 
 
@@ -7510,14 +7624,14 @@ void do_room_merge( char *arg )
 	     if ( new_room->exits[i] && old_room->exits[i] &&
 		  new_room->exits[i] != old_room->exits[i] )
 	       {
-		  clientff( C_R "[Problem with the %s exits; they lead to different places.]\r\n", dir_name[i] );
+		  clientff( C_R "[Problem with the %s exits; they lead to different places.]\r\n" C_0, dir_name[i] );
 		  return;
 	       }
 	     
 	     if ( ( new_room->exits[i] || new_room->detected_exits[i] ) !=
 		  ( old_room->exits[i] || old_room->detected_exits[i] ) )
 	       {
-		  clientff( C_R "[Problem with the %s exits; one room has it, the other doesn't.]\r\n", dir_name[i] );
+		  clientff( C_R "[Problem with the '%s' exit; one room has it, the other doesn't.]\r\n" C_0, dir_name[i] );
 		  return;
 	       }
 	  }
@@ -7589,6 +7703,8 @@ void do_room_merge( char *arg )
 	
 	current_room = new_room;
 	current_area = new_room->area;
+	
+	refind_last_vnum( );
      }
 }
 
@@ -7820,23 +7936,26 @@ void do_exit_unilink( char *arg )
 	return;
      }
    
-   if ( !isdigit( *(arg) ) )
+   if ( arg[0] )
      {
-	clientfr( "Specify a vnum to link to." );
-	return;
+	if ( !isdigit( *arg ) )
+	  {
+	     clientfr( "Specify a vnum to link to." );
+	     return;
+	  }
+	
+	link_next_to = get_room( atoi( arg ) );
+	
+	if ( !link_next_to )
+	  {
+	     clientfr( "That room does not exist." );
+	     return;
+	  }
      }
-   
-   link_next_to = get_room( atoi( arg ) );
    
    unidirectional_exit = 1;
    
-   if ( !link_next_to )
-     {
-	unidirectional_exit = 0;
-	clientfr( "Disabled." );
-     }
-   else
-     clientfr( "Move in the direction the room is." );
+   clientfr( "Move in the direction you want to create an unidirectional exit towards." );
 }
 
 
@@ -8580,7 +8699,6 @@ FUNC_DATA cmd_table[] =
 {
    /* Map commands. */
      { "help",		do_map_help,	CMD_MAP },
-     { "remake",	do_map_remake,	CMD_MAP },
      { "create",	do_map_create,	CMD_MAP },
      { "follow",	do_map_follow,	CMD_MAP },
      { "none",		do_map_none,	CMD_MAP },
@@ -8600,7 +8718,6 @@ FUNC_DATA cmd_table[] =
    
    /* Area commands. */
      { "help",		do_area_help,	CMD_AREA },
-     { "create",	do_area_create,	CMD_AREA },
      { "list",		do_area_list,	CMD_AREA },
      { "switch",	do_area_switch,	CMD_AREA },
      { "update",	do_area_update,	CMD_AREA },
@@ -8612,7 +8729,6 @@ FUNC_DATA cmd_table[] =
    /* Room commands. */
      { "help",		do_room_help,	CMD_ROOM },
      { "switch",	do_room_switch,	CMD_ROOM },
-     { "create",	do_room_create,	CMD_ROOM },
      { "info",		do_room_info,	CMD_ROOM },
      { "find",		do_room_find,	CMD_ROOM },
      { "look",		do_room_look,	CMD_ROOM },

@@ -126,6 +126,7 @@ struct area_data
 #define EXIT_OTHER_AREA	4
 #define EXIT_PATH	8
 #define EXIT_UNLINKED  16
+#define EXIT_LOCKED    32
 
 
 /* One room on the map. */
@@ -134,6 +135,7 @@ struct map_element
    ROOM_DATA *room;
    
    char *color;
+   short warn;
    
    short in_out;
    
@@ -177,11 +179,9 @@ struct room_type_data
    char *name;
    char *color;
    
-   int cost_in;
-   int cost_out;
-   
    int must_swim;
    int underwater;
+   int avoid;
    
    ROOM_TYPE *next;
 };

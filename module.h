@@ -77,6 +77,7 @@ int	(*gettimeofday)( struct timeval *tv, void * );
 #endif
 char *	(*get_string)( char *argument, char *arg_first, int max );
 int	(*cmp)( char *trigger, char *string );
+void	(*extract_wildcard)( int nr, char *dest, int max );
 
 /* Timers */
 TIMER *	(*get_timers)( );
@@ -124,6 +125,7 @@ int	(*c_close)( int fd );
    /* Utility */ \
    get_string = self->get_func( "get_string" ); \
    cmp = self->get_func( "cmp" ); \
+   extract_wildcard = self->get_func( "extract_wildcard" ); \
    /* Timers */ \
    get_timers = self->get_func( "get_timers" ); \
    get_timer = self->get_func( "get_timer" ); \

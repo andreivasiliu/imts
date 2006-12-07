@@ -167,6 +167,7 @@ int gettimeofday( struct timeval *tv, void * );
 #endif
 char *get_string( const char *argument, char *arg_first, int max );
 int cmp( char *trigger, char *string );
+void extract_wildcard( int nr, char *dest, int max );
 
 /* Timers */
 TIMER *get_timers( );
@@ -282,6 +283,8 @@ int add_newline;
 int show_prompt_again;
 int processing;
 LINE last_prompt;
+char *wildcards[16][2];
+int wildcard_limit;
 
 char *connection_error;
 
@@ -492,6 +495,7 @@ void *get_function( char *name )
 	  { "gettimeofday", gettimeofday },
 	  { "get_string", get_string },
 	  { "cmp", cmp },
+	  { "extract_wildcard", extract_wildcard },
 	/* Timers */
 	  { "get_timers", get_timers },
 	  { "get_timer", get_timer },
@@ -4936,6 +4940,7 @@ void main_loop( )
 }
 
 
+
 int main( int argc, char **argv )
 {
    int what = 0, help = 0;
@@ -5091,6 +5096,36 @@ int main( int argc, char **argv )
 
 
 /*
+ * Extracts a word (^) or zone (*) used in the most recent trigger check.
+ * This ^ is ^ trigger * won't ^ too ^ things.
+ * Due to checking in reverse after *, wildcards are numbered as follows:
+ *      1    2         0       4     3
+ */
+
+void extract_wildcard( int nr, char *dest, int max )
+{
+   char *s, *d;
+   
+   /* Impossible combinations are always possible. */
+   if ( nr > wildcard_limit )
+     {
+	if ( max > 0 )
+	  *dest = 0;
+	return;
+     }
+   
+   s = wildcards[nr][0];
+   d = dest;
+   
+   while ( max > 1 && s < wildcards[nr][1] )
+     *(d++) = *(s++), max--;
+   
+   if ( max > 0 )
+     *d = 0;
+}
+
+
+/*
  * Checks a string to see if it matches a trigger string.
  * String "Hello world!" matches trigger "Hel*orld!".
  * String "Hello world!" matches trigger "Hello ^!". (single word)
@@ -5101,7 +5136,8 @@ int main( int argc, char **argv )
 int cmp( char *trigger, char *string )
 {
    char *t, *s;
-   int reverse = 0;
+   int reverse = 0, w = 1;
+   char *w_start[16], *w_stop[16];
    
    DEBUG( "trigger_cmp" );
    
@@ -5116,7 +5152,7 @@ int cmp( char *trigger, char *string )
 	  {
 	     /* The end? */
 	     if ( !*t && !*s )
-	       return 0;
+	       break;
 	     
 	     /* One got faster to the end? */
 	     if ( ( !*t || !*s ) && *t != '*' )
@@ -5126,7 +5162,7 @@ int cmp( char *trigger, char *string )
 	  {
 	     /* End of reverse? */
 	     if ( t >= trigger && *t == '*' )
-	       return 0;
+	       break;
 	     
 	     /* No '*' found? */
 	     if ( s < string )
@@ -5137,16 +5173,23 @@ int cmp( char *trigger, char *string )
 	  {
 	     if ( !reverse )
 	       {
+		  w_start[w] = s;
 		  while ( isalnum( *s ) )
 		    s++;
 		  t++;
+		  w_stop[w] = s;
 	       }
 	     else
 	       {
+		  w_stop[w] = s + 1;
 		  while( s >= string && isalnum( *s ) )
 		    s--;
 		  t--;
+		  w_start[w] = s + 1;
 	       }
+	     
+	     if ( ++w > 15 )
+	       w = 15;
 	  }
 	
 	if ( *t != *s )
@@ -5156,9 +5199,11 @@ int cmp( char *trigger, char *string )
 		  /* Wildcard found, reversing search. */
 		  reverse = 1;
 		  
+		  w_start[0] = s;
+		  
 		  /* Move them at the end. */
-		  t = t + strlen( t );
-		  s = s + strlen( s );
+		  while ( *t ) t++;
+		  while ( *s ) s++;
 	       }
 	     else
 	       {
@@ -5173,6 +5218,22 @@ int cmp( char *trigger, char *string )
 	else
 	  t--, s--;
      }
+   
+   /* A match! Make the wildcards official. */
+   
+   wildcards[0][0] = reverse ? w_start[0] : 0;
+   wildcards[0][1] = reverse ? s + 1 : 0;
+   
+   wildcard_limit = w - 1;
+   
+   while ( w > 1 )
+     {
+	w--;
+	wildcards[w][0] = w_start[w];
+	wildcards[w][1] = w_stop[w];
+     }
+   
+   return 0;
 }
 
 
