@@ -210,6 +210,11 @@ int last_vnum;
 ROOM_DATA *pf_current_openlist;
 ROOM_DATA *pf_new_openlist;
 
+/* New path-finder chains. */
+#define MAX_COST 13
+int pf_step = 0, pf_rooms;
+ROOM_DATA *pf_queue[MAX_COST];
+
 
 /* Command queue. -1 is look, positive number is direction. */
 int queue[256];
@@ -553,6 +558,8 @@ void free_room( ROOM_DATA *room )
    while ( room->tags )
      unlink_element( room->tags );
    
+   // FIXME: destroy revlinks
+   
    free( room );
 }
 
@@ -813,6 +820,7 @@ int room_cmp( const char *room, const char *smallr )
 }
 
 
+/* Old style. */
 void set_reverse( ROOM_DATA *source, int dir, ROOM_DATA *destination )
 {
    if ( ( !source && destination->more_reverse_exits[dir] ) ||
@@ -837,6 +845,112 @@ void set_reverse( ROOM_DATA *source, int dir, ROOM_DATA *destination )
      }
    else
      destination->reverse_exits[dir] = source;
+}
+
+
+
+void unlink_rooms( ROOM_DATA *source, int dir, ROOM_DATA *dest )
+{
+   REVERSE_EXIT *rexit, *r;
+   
+   if ( !dir )
+     return;
+   
+   for ( rexit = dest->rev_exits; rexit; rexit = rexit->next )
+     if ( rexit->from == source && rexit->direction == dir )
+       break;
+   
+   if ( !rexit )
+     return;
+   
+   /* Unlink. */
+   if ( rexit == dest->rev_exits )
+     dest->rev_exits = rexit->next;
+   else
+     {
+	for ( r = dest->rev_exits; r->next != rexit; r = r->next );
+	r->next = rexit->next;
+     }
+   
+   free( rexit );
+   
+   source->exits[dir] = NULL;
+   
+   /* Old style. */
+   set_reverse( NULL, dir, dest );
+}
+
+
+
+void link_rooms( ROOM_DATA *source, int dir, ROOM_DATA *dest )
+{
+   REVERSE_EXIT *rexit;
+   
+   if ( !dir )
+     return;
+   
+   /* Just to be sure. */
+   if ( source->exits[dir] )
+     unlink_rooms( source, dir, source->exits[dir] );
+   
+   source->exits[dir] = dest;
+   
+   rexit = calloc( 1, sizeof( REVERSE_EXIT ) );
+   rexit->next = dest->rev_exits;
+   rexit->from = source;
+   rexit->direction = dir;
+   rexit->spexit = NULL;
+   
+   dest->rev_exits = rexit;
+   
+   /* Old style. */
+   set_reverse( source, dir, dest );
+}
+
+
+
+void link_special_exit( ROOM_DATA *source, EXIT_DATA *spexit, ROOM_DATA *dest )
+{
+   REVERSE_EXIT *rexit;
+   
+   if ( !spexit )
+     return;
+   
+   rexit = calloc( 1, sizeof( REVERSE_EXIT ) );
+   rexit->next = dest->rev_exits;
+   rexit->from = source;
+   rexit->direction = 0;
+   rexit->spexit = spexit;
+   
+   dest->rev_exits = rexit;
+}
+
+
+
+void unlink_special_exit( ROOM_DATA *source, EXIT_DATA *spexit, ROOM_DATA *dest )
+{
+   REVERSE_EXIT *rexit, *r;
+   
+   if ( !spexit )
+     return;
+   
+   for ( rexit = dest->rev_exits; rexit; rexit = rexit->next )
+     if ( rexit->from == source && rexit->spexit == spexit )
+       break;
+   
+   if ( !rexit )
+     return;
+   
+   /* Unlink. */
+   if ( rexit == dest->rev_exits )
+     dest->rev_exits = rexit->next;
+   else
+     {
+	for ( r = dest->rev_exits; r->next != rexit; r = r->next );
+	r->next = rexit->next;
+     }
+   
+   free( rexit );
 }
 
 
@@ -904,6 +1018,7 @@ int parse_title( const char *line )
 	spexit = create_exit( current_room );
 	spexit->to = new_room;
 	spexit->vnum = new_room->vnum;
+	link_special_exit( current_room, spexit, new_room );
 	
 	clientff( C_R "\r\nCommand: '" C_W "%s" C_R "'" C_0,
 		  cse_command[0] ? cse_command : "null" );
@@ -914,6 +1029,8 @@ int parse_title( const char *line )
 		  cse_message );
 	spexit->message = strdup( cse_message );
 	
+	// FIXME: Maybe talk about Esp alias?
+       	
 	current_room = new_room;
 	current_area = current_room->area;
 	capture_special_exit = 0;
@@ -1013,14 +1130,16 @@ int parse_title( const char *line )
 			      check_for_duplicates = 1;
 			 }
 		       
-		       current_room->exits[q] = new_room;
-		       set_reverse( current_room, q, new_room );
+		       link_rooms( current_room, q, new_room );
+// del		       current_room->exits[q] = new_room;
+// del		       set_reverse( current_room, q, new_room );
 		       if ( !unidirectional_exit )
 			 {
 			    if ( !new_room->exits[reverse_exit[q]] )
 			      {
-				 new_room->exits[reverse_exit[q]] = current_room;
-				 set_reverse( new_room, reverse_exit[q], current_room );
+				 link_rooms( new_room, reverse_exit[q], current_room );
+// del				 new_room->exits[reverse_exit[q]] = current_room;
+// del				 set_reverse( new_room, reverse_exit[q], current_room );
 			      }
 			    else
 			      {
@@ -3417,7 +3536,7 @@ int check_map( )
 
 void convert_vnum_exits( )
 {
-   ROOM_DATA *room;
+   ROOM_DATA *room, *r;
    EXIT_DATA *spexit;
    int i;
    
@@ -3430,15 +3549,17 @@ void convert_vnum_exits( )
 	  {
 	     if ( room->vnum_exits[i] )
 	       {
-		  room->exits[i] = get_room( room->vnum_exits[i] );
-		  if ( !room->exits[i] )
+		  r = get_room( room->vnum_exits[i] );
+		  
+		  if ( !r )
 		    {
 		       debugf( "Can't link room %d (%s) to %d.",
 			       room->vnum, room->name, room->vnum_exits[i] );
 		       continue;
 		    }
-		  set_reverse( room, i, room->exits[i] );
-//		  room->exits[i]->reverse_exits[i] = room;
+		  link_rooms( room, i, r );
+// del		  room->exits[i] = get_room( room->vnum_exits[i] );
+// del		  set_reverse( room, i, room->exits[i] );
 		  room->vnum_exits[i] = 0;
 	       }
 	  }
@@ -3456,7 +3577,10 @@ void convert_vnum_exits( )
 				  room->vnum, room->name, spexit->vnum );
 		       }
 		  else
-		    spexit->to->pointed_by = 1;
+		    {
+		       link_special_exit( room, spexit, spexit->to );
+		       spexit->to->pointed_by = 1; // FIXME: old
+		    }
 	       }
 	  }
      }
@@ -4204,6 +4328,89 @@ void show_path( ROOM_DATA *current )
      }
    strcat( buf, C_R ".]\r\n" C_0 );
    clientf( buf );
+}
+
+
+
+void clean_paths( )
+{
+   ROOM_DATA *room;
+   
+   /* Clean up the world. */
+   for ( room = world; room; room = room->next_in_world )
+     room->pf_parent = NULL, room->pf_cost = 0, room->pf_direction = 0;
+   
+   for ( pf_step = 0; pf_step < MAX_COST; pf_step++ )
+     pf_queue[pf_step] = NULL;
+   
+   pf_step = pf_rooms = 0;
+}
+
+
+
+int add_to_pathfinder( ROOM_DATA *room, int cost )
+{
+   ROOM_DATA **queue;
+   
+   if ( room->pf_cost && room->pf_cost <= pf_step + cost )
+     return 0;
+   
+   /* Unlink it if it's already somewhere. */
+   if ( room->pf_cost )
+     {
+	if ( room->pf_next )
+	  room->pf_next->pf_prev = room->pf_prev;
+	*(room->pf_prev) = room->pf_next, pf_rooms--;
+     }
+   
+   
+   if ( cost < 1 || cost > MAX_COST - 1)
+     debugf( "FREAKING OUT!" );
+   
+   room->pf_cost = pf_step + cost;
+   
+   /* Now add it to the queue. Wacky, eh? */
+   queue = &pf_queue[(pf_step + cost) % MAX_COST];
+   
+   room->pf_next = *queue;
+   room->pf_prev = queue;
+   *queue = room;
+   if ( room->pf_next )
+     room->pf_next->pf_prev = &room->pf_next;
+   
+   pf_rooms++;
+   
+   return 1;
+}
+
+
+
+void path_finder_2( )
+{
+   ROOM_DATA *room;
+   REVERSE_EXIT *rexit;
+   
+   while ( pf_rooms )
+     {
+	for ( room = pf_queue[pf_step % MAX_COST]; room; room = room->pf_next )
+	  {
+	     for ( rexit = room->rev_exits; rexit; rexit = rexit->next )
+	       {
+		  if ( add_to_pathfinder( rexit->from, get_cost( rexit->from, room ) ) )
+		    {
+		       rexit->from->pf_direction = rexit->direction;
+		       if ( !rexit->direction )
+			 rexit->from->pf_direction = -1;
+		       rexit->from->pf_parent = room;
+		    }
+	       }
+	     
+	     pf_rooms--;
+	  }
+	
+	pf_queue[pf_step % MAX_COST] = NULL;
+	pf_step++;
+     }
 }
 
 
@@ -6066,6 +6273,7 @@ void do_map_path( char *arg )
    ROOM_DATA *room;
    ELEMENT *tag;
    char buf[256];
+   int old = 0;
    
    /* Force an update of the floating map. */
    last_room = NULL;
@@ -6080,6 +6288,8 @@ void do_map_path( char *arg )
 	return;
      }
    
+   clean_paths( );
+   
    init_openlist( NULL );
    
    while ( arg[0] )
@@ -6087,6 +6297,12 @@ void do_map_path( char *arg )
 	int neari = 0;
 	
 	arg = get_string( arg, buf, 256 );
+	
+	if ( !strcmp( buf, "old" ) )
+	  {
+	     old = 1;
+	     continue;
+	  }
 	
 	if ( !strcmp( buf, "near" ) )
 	  {
@@ -6105,12 +6321,22 @@ void do_map_path( char *arg )
 	       }
 	     
 	     if ( !neari )
-	       init_openlist( room );
+	       {
+		  if ( old )
+		    init_openlist( room );
+		  else
+		    add_to_pathfinder( room, 1 );
+	       }
 	     else
 	       {
 		  for ( neari = 1; dir_name[neari]; neari++ )
 		    if ( room->exits[neari] )
-		      init_openlist( room->exits[neari] );
+		      {
+			 if ( old )
+			   init_openlist( room->exits[neari] );
+			 else
+			   add_to_pathfinder( room->exits[neari], 1 );
+		      }
 	       }
 	     
 	  }
@@ -6124,12 +6350,22 @@ void do_map_path( char *arg )
 		 if ( !case_strcmp( buf, (char *) tag->p ) )
 		   {
 		      if ( !neari )
-			init_openlist( room );
+			{
+			   if ( old )
+			     init_openlist( room );
+			   else
+			     add_to_pathfinder( room, 1 );
+			}
 		      else
 			{
 			   for ( neari = 1; dir_name[neari]; neari++ )
 			     if ( room->exits[neari] )
-			       init_openlist( room->exits[neari] );
+			       {
+				  if ( old )
+				    init_openlist( room->exits[neari] );
+				  else
+				    add_to_pathfinder( room->exits[neari], 1 );
+			       }
 			}
 		      found = 1;
 		   }
@@ -6144,7 +6380,11 @@ void do_map_path( char *arg )
      }
    
    get_timer( );
-   path_finder( );
+   if ( old )
+     path_finder( );
+   else
+     path_finder_2( );
+   
    sprintf( buf, "Path calculated in: %d microseconds.", get_timer( ) );
    clientfr( buf );
    
@@ -7196,8 +7436,9 @@ void do_room_find( char *arg )
 void do_room_look( char *arg )
 {
    ROOM_DATA *room;
+   EXIT_DATA *spexit;
    char buf[256];
-   int i;
+   int i, nr;
    
    if ( arg[0] && isdigit( arg[0] ) )
      {
@@ -7248,7 +7489,7 @@ void do_room_look( char *arg )
 	     else
 	       lngth[0] = 0;
 	     
-	     clientff( "  %s: (%d) %s%s\r\n", dir_name[i],
+	     clientff( "  " C_B "%s" C_0 ": (" C_G "%d" C_0 ") %s%s\r\n", dir_name[i],
 		      room->exits[i]->vnum,
 		      room->exits[i]->name, lngth );
 	  }
@@ -7261,13 +7502,42 @@ void do_room_look( char *arg )
 	  }
      }
    
-   /* Debugging.
+   nr = 0;
+   for ( spexit = current_room->special_exits; spexit; spexit = spexit->next )
+     {
+	if ( !nr )
+	  clientfr( "Special exits:" );
+	nr++;
+	clientff( C_B "%3d" C_0 ": '" C_g "%s" C_0 "' (alias: %s) -> \"" C_g "%s" C_0 "\""
+		  " -> " C_G "%d" C_0 ".\r\n",
+		  nr, spexit->command,
+		  spexit->alias ? dir_name[spexit->alias] : "n/a",
+		  spexit->message, spexit->vnum );
+     }
+   
+   /* Debugging v2.0 */
+     {
+	REVERSE_EXIT *rexit;
+	
+	if ( room->rev_exits )
+	  clientfr( "Reverse exits:" );
+	
+	for ( rexit = room->rev_exits; rexit; rexit = rexit->next )
+	  {
+	     clientff( C_B "  %s" C_0 ": From %s (" C_G "%d" C_0 ").\r\n",
+		       rexit->direction ? dir_name[rexit->direction] : ( rexit->spexit->command ? rexit->spexit->command : "??" ),
+		       rexit->from->name, rexit->from->vnum );
+	  }
+     }
+   
+   
+   /* Debugging. */
    sprintf( buf, "PF-Cost: %d. PF-Direction: %s.", room->pf_cost,
 	    room->pf_direction ? dir_name[room->pf_direction] : "none" );
    clientfr( buf );
    sprintf( buf, "PF-Parent: %s", room->pf_parent ? room->pf_parent->name : "none" );
    clientfr( buf );
-   
+   /*
    for ( i = 1; dir_name[i]; i++ )
      {
 	if ( room->reverse_exits[i] )
@@ -7307,14 +7577,31 @@ void do_room_destroy( char *arg )
 	  clientfr( "Can't destroy the room you're currently in." );
 	else
 	  {
-	     ROOM_DATA *r;
-	     EXIT_DATA *e, *e_next;
+	     EXIT_DATA *spexit;
 	     
-	     /* We don't want pointers to point in unknown locations, don't we? */
+	     for ( i = 1; dir_name[i]; i++ )
+	       if ( room->exits[i] )
+		 unlink_rooms( room, i, room->exits[i] );
+	     
+	     /* We don't want pointers to point in unknown locations, do we? */
+	     while ( room->rev_exits )
+	       {
+		  /* Normal exits. */
+		  if ( room->rev_exits->direction )
+		    unlink_rooms( room->rev_exits->from, room->rev_exits->direction, room );
+		  /* Special exits. */
+		  else
+		    {
+		       spexit = room->rev_exits->spexit;
+		       unlink_special_exit( room->rev_exits->from, spexit, room );
+		       destroy_exit( spexit );
+		    }
+	       }
+	     
+	     /* Replaced?
 	     for ( i = 1; dir_name[i]; i++ )
 	       if ( room->exits[i] )
 		 set_reverse( NULL, i, room->exits[i] );
-//		 room->exits[i]->reverse_exits[i] = NULL;
 	     
 	     for ( r = world; r; r = r->next_in_world )
 	       {
@@ -7328,6 +7615,7 @@ void do_room_destroy( char *arg )
 			 destroy_exit( e );
 		    }
 	       }
+	      */
 	     
 	     destroy_room( room );
 	     clientfr( "Room unlinked and destroyed." );
@@ -7653,6 +7941,8 @@ void do_room_merge( char *arg )
 	  }
 	
 	/* All rooms that once pointed to the old one, should point to the new. */
+	
+	// FIXME: redo reverse exits!
 	for ( r = world; r; r = r->next_in_world )
 	  {
 	     for ( i = 1; dir_name[i]; i++ )
@@ -8000,6 +8290,7 @@ void do_exit_lock( char *arg )
 
 void do_exit_destroy( char *arg )
 {
+   EXIT_DATA *spexit;
    char buf[256];
    int dir = 0;
    int i;
@@ -8016,47 +8307,78 @@ void do_exit_destroy( char *arg )
 	return;
      }
    
+   /* Destroy a normal exit? */
    for ( i = 1; dir_name[i]; i++ )
      {
 	if ( !strcmp( arg, dir_name[i] ) )
 	  dir = i;
      }
    
-   if ( !dir )
+   if ( dir )
      {
-	clientfr( "Which link do you wish to destroy?" );
+	if ( !current_room->exits[dir] )
+	  {
+	     clientfr( "No link in that direction." );
+	     return;
+	  }
+	
+	if ( current_room->exits[dir]->exits[reverse_exit[dir]] != current_room )
+	  {
+	     clientfr( "Warning: Reverse link was not destroyed." );
+	  }
+	else
+	  {
+	     unlink_rooms( current_room->exits[dir], reverse_exit[dir], current_room );
+// del	     set_reverse( NULL, reverse_exit[dir], current_room );
+// del	     current_room->exits[dir]->exits[reverse_exit[dir]] = NULL;
+	  }
+	
+	i = current_room->exits[dir]->vnum;
+	
+	unlink_rooms( current_room, dir, current_room->exits[dir] );
+// del	set_reverse( NULL, dir, current_room->exits[dir] );
+// del	current_room->exits[dir] = NULL;
+	
+	sprintf( buf, "Link to vnum %d destroyed.", i );
+	clientfr( buf );
 	return;
      }
    
-   if ( !current_room->exits[dir] )
+   // Oh dear... :(
+   /* Destroy a special exit? */
+   if ( arg[0] && isdigit( arg[0] ) )
      {
-	clientfr( "No link in that direction." );
+	int nr;
+	
+	nr = atoi( arg );
+	
+	for ( i = 1, spexit = current_room->special_exits; spexit; spexit = spexit->next, i++ )
+	  {
+	     if ( i == nr )
+	       {
+		  if ( spexit->to )
+		    unlink_special_exit( current_room, spexit, spexit->to );
+		  destroy_exit( spexit );
+		  sprintf( buf, "Special exit %d destroyed.", nr );
+		  clientfr( buf );
+		  return;
+	       }
+	  }
+	
+	sprintf( buf, "Special exit %d was not found.", nr );
+	clientfr( buf );
+	
 	return;
      }
    
-   if ( current_room->exits[dir]->exits[reverse_exit[dir]] != current_room )
-     {
-	clientfr( "Reverse link was not destroyed." );
-     }
-   else
-     {
-	set_reverse( NULL, reverse_exit[dir], current_room );
-//	current_room->reverse_exits[reverse_exit[dir]] = NULL;
-	current_room->exits[dir]->exits[reverse_exit[dir]] = NULL;
-     }
-   
-   i = current_room->exits[dir]->vnum;
-   
-   set_reverse( NULL, dir, current_room->exits[dir] );
-//   current_room->exits[dir]->reverse_exits[dir] = NULL;
-   current_room->exits[dir] = NULL;
-   
-   sprintf( buf, "Link to vnum %d destroyed.", i );
-   clientfr( buf );
+   clientfr( "Which link do you wish to destroy?" );
+   clientfr( "Use 'room look' for a list." );
+   return;
 }
 
 
 
+// FIXME: Convert [1,n]!
 void do_exit_special( char *arg )
 {
    EXIT_DATA *spexit;
@@ -8075,8 +8397,7 @@ void do_exit_special( char *arg )
    if ( !strncmp( arg, "help", strlen( arg ) ) )
      {
 	clientfr( "Syntax: exit special <command> [exit] [args]" );
-	clientfr( "Commands: list, capture, destroy" );
-	clientfr( "Advanced: create, command, message, link, alias" );
+	clientfr( "Commands: capture create, capture link <vnum>, link, alias" );
 	return;
      }
    
@@ -8088,58 +8409,7 @@ void do_exit_special( char *arg )
    
    arg = get_string( arg, cmd, 256 );
    
-   if ( !strcmp( cmd, "list" ) )
-     {
-	clientfr( "Special exits:" );
-	for ( spexit = current_room->special_exits; spexit; spexit = spexit->next )
-	  {
-	     sprintf( buf, C_B "%3d" C_0 " - L: " C_G "%d" C_0 " A: '" C_g
-		      "%s" C_0 "' C: '" C_g "%s" C_0 "' M: '" C_g "%s" C_0 "'\r\n",
-		      nr++, spexit->vnum, spexit->alias ? dir_name[spexit->alias] : "none",
-		      spexit->command, spexit->message );
-	     clientf( buf );
-	  }
-	
-	if ( !nr )
-	  clientf( " - None.\r\n" );
-     }
-   
-   else if ( !strcmp( cmd, "create" ) )
-     {
-	create_exit( current_room );
-	clientfr( "Special exit created." );
-     }
-   
-   else if ( !strcmp( cmd, "destroy" ) )
-     {
-	int done = 0;
-	
-	if ( !arg[0] || !isdigit( arg[0] ) )
-	  {
-	     clientfr( "What special exit do you wish to destroy?" );
-	     return;
-	  }
-	
-	nr = atoi( arg );
-	
-	for ( i = 0, spexit = current_room->special_exits; spexit; spexit = spexit->next )
-	  {
-	     if ( i++ == nr )
-	       {
-		  destroy_exit( spexit );
-		  done = 1;
-		  break;
-	       }
-	  }
-	
-	if ( done )
-	  sprintf( buf, "Special exit %d destroyed.", nr );
-	else
-	  sprintf( buf, "Special exit %d was not found.", nr );
-	clientfr( buf );
-     }
-   
-   else if ( !strcmp( cmd, "capture" ) )
+   if ( !strcmp( cmd, "capture" ) )
      {
 	arg = get_string( arg, cmd, 256 );
 	
@@ -8188,78 +8458,8 @@ void do_exit_special( char *arg )
 	return;
      }
    
-   else if ( !strcmp( cmd, "message" ) )
-     {
-	int done = 0;
-	
-	/* We'll store the number in cmd. */
-	arg = get_string( arg, cmd, 256 );
-	
-	if ( !isdigit( cmd[0] ) )
-	  {
-	     clientfr( "Set message on what special exit?" );
-	     return;
-	  }
-	
-	nr = atoi( cmd );
-	
-	for ( i = 0, spexit = current_room->special_exits; spexit; spexit = spexit->next )
-	  {
-	     if ( i++ == nr )
-	       {
-		  if ( spexit->message )
-		    free( spexit->message );
-		  
-		  spexit->message = strdup( arg );
-		  done = 1;
-		  break;
-	       }
-	  }
-	
-	if ( done )
-	  sprintf( buf, "Message on exit %d changed to '%s'", nr, arg );
-	else
-	  sprintf( buf, "Can't find special exit %d.", nr );
-	
-	clientfr( buf );
-     }
-   
-   else if ( !strcmp( cmd, "command" ) )
-     {
-	int done = 0;
-	
-	/* We'll store the number in cmd. */
-	arg = get_string( arg, cmd, 256 );
-	
-	if ( !isdigit( cmd[0] ) )
-	  {
-	     clientfr( "Set command on what special exit?" );
-	     return;
-	  }
-	
-	nr = atoi( cmd );
-	
-	for ( i = 0, spexit = current_room->special_exits; spexit; spexit = spexit->next )
-	  {
-	     if ( i++ == nr )
-	       {
-		  if ( spexit->command )
-		    free( spexit->command );
-		  
-		  spexit->command = strdup( arg );
-		  done = 1;
-		  break;
-	       }
-	  }
-	
-	if ( done )
-	  sprintf( buf, "Command on exit %d changed to '%s'", nr, arg );
-	else
-	  sprintf( buf, "Can't find special exit %d.", nr );
-	
-	clientfr( buf );
-     }
-   
+   // FIXME: How can we create -1 vnum exits?
+   // Doesn't conform to new reverse exits.
    else if ( !strcmp( cmd, "link" ) )
      {
 	/* E special link 0 -1 */

@@ -33,6 +33,7 @@ typedef struct function_data FUNC_DATA;
 typedef struct color_data COLOR_DATA;
 typedef struct map_element MAP_ELEMENT;
 typedef struct element_data ELEMENT;
+typedef struct reverse_exit_data REVERSE_EXIT;
 
 /* Special exit structure. */
 struct exit_data
@@ -53,6 +54,21 @@ struct exit_data
 };
 
 
+struct reverse_exit_data
+{
+   /* An exit leads from this room, to here. */
+   ROOM_DATA *from;
+   
+   /* Via this special exit.. (!= NULL) */
+   EXIT_DATA *spexit;
+   
+   /* ..or this direction. (!= 0) */
+   int direction;
+   
+   REVERSE_EXIT *next;
+};
+
+
 /* Room structure. */
 struct room_data
 {
@@ -63,7 +79,6 @@ struct room_data
    
    short mapped;
    short landmark;
-   short pointed_by;
    short underwater;
    
    ROOM_DATA *next_in_world;
@@ -74,8 +89,12 @@ struct room_data
    
    /* NULL, N, NE, E, SE, S, SW, W, NW, UP, DOWN, IN, OUT */
    ROOM_DATA *exits[13];
-   ROOM_DATA *reverse_exits[13];
-   int more_reverse_exits[13];
+   
+   REVERSE_EXIT *rev_exits;
+   
+   ROOM_DATA *reverse_exits[13]; // del
+   int more_reverse_exits[13]; // del
+   short pointed_by;
    
    /* Beginning of binary-saved values. If you change these, change save_binary_map! */
    int vnum_exits[13];
@@ -99,6 +118,10 @@ struct room_data
    ROOM_DATA *pf_parent;
    ROOM_DATA *next_in_pfno;
    ROOM_DATA *next_in_pfco;
+   
+   /* Pathfinder 2. */
+   ROOM_DATA *pf_next;
+   ROOM_DATA **pf_prev;
    
    /* Person in this room. */
    char *person_here;

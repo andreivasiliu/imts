@@ -7,6 +7,7 @@ IMTS-unstable
 (Imperian:)
 - Added the 'back' body part.
 (IMapper:)
+- Path-finder rewritten, now being 25-40 times faster.
 - Fixed the 'go' command: resets dash/sprint status, and lets unknown 'go'
   commands go to Imperian. Builders rejoice.
 - Improved title recognizing. Builders rejoice again.

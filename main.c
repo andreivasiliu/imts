@@ -5190,26 +5190,25 @@ int cmp( char *trigger, char *string )
 	     
 	     if ( ++w > 15 )
 	       w = 15;
+	     
+	     continue;
 	  }
 	
-	if ( *t != *s )
+	else if ( *t == '*' )
 	  {
-	     if ( *t == '*' )
-	       {
-		  /* Wildcard found, reversing search. */
-		  reverse = 1;
-		  
-		  w_start[0] = s;
-		  
-		  /* Move them at the end. */
-		  while ( *t ) t++;
-		  while ( *s ) s++;
-	       }
-	     else
-	       {
-		  /* Chars differ, strings don't match. */
-		  return 1;
-	       }
+	     /* Wildcard found, reversing search. */
+	     reverse = 1;
+	     
+	     w_start[0] = s;
+	     
+	     /* Move them at the end. */
+	     while ( *t ) t++;
+	     while ( *s ) s++;
+	  }
+	else if ( *t != *s )
+	  {
+	     /* Chars differ, strings don't match. */
+	     return 1;
 	  }
 	
 	/* Run. Backwards if needed. */
