@@ -52,6 +52,7 @@ int CreateMainWindow( HINSTANCE hInstance );
 int CreateEditorWindow( HINSTANCE hInstance );
 LRESULT CALLBACK MainWndProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam );
 LRESULT CALLBACK EditorWndProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam );
+void UpdateTimer( );
 
 extern DESCRIPTOR *descs, *current_descriptor;
 extern DESCRIPTOR *server, *client, *control;
@@ -218,6 +219,8 @@ int WINAPI WinMain( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, i
    ShowWindow( hwndMain, nShowCmd );
    
    mudbot_init( 123 );
+   
+   UpdateTimer( );
    
    if ( !control )
      {
@@ -906,12 +909,21 @@ void check_descriptors( )
 
 void UpdateTimer( )
 {
+   void get_first_timer( time_t *sec, time_t *usec );
    void check_timers( );
+   time_t sec, usec;
+   int delay;
    
    check_timers( );
    
    if ( timers )
-     SetTimer( hwndMain, 0, 200, NULL );
+     {
+        get_first_timer( &sec, &usec );
+        delay = (sec*1000) + (usec/1000) + 1;
+        SetTimer( hwndMain, 0, delay, NULL );
+     }
+   else
+     KillTimer( hwndMain, 0 );
 }
 
 
@@ -1289,8 +1301,8 @@ LRESULT CALLBACK EditorWndProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
 int gettimeofday( struct timeval *tv, void *tz )
 {
-   LARGE_INTEGER frequency, counter;
-   unsigned long long seconds;
+   LARGE_INTEGER frequency, lcounter;
+   unsigned long long counter;
    
    tv->tv_sec = 0;
    tv->tv_usec = 0;
@@ -1305,18 +1317,21 @@ int gettimeofday( struct timeval *tv, void *tz )
    if ( !frequency.LowPart /*&& !frequency.HighPart*/ )
      return -1;
    
-   if ( !QueryPerformanceCounter( &counter ) )
+   if ( !QueryPerformanceCounter( &lcounter ) )
      return -1;
    
    //seconds = LargeIntegerDivide( counter, frequency, NULL );
-   seconds = counter.HighPart;
-   seconds = seconds << 32;
-   seconds += counter.LowPart;
-   seconds /= frequency.LowPart;
+   counter = lcounter.HighPart;
+   counter = counter << 32;
+   counter += lcounter.LowPart;
    
-   tv->tv_sec = seconds;
+   tv->tv_sec = (counter / frequency.LowPart);
    
-   tv->tv_usec = ( counter.LowPart % frequency.LowPart ) * 1e6 / frequency.LowPart;
+   counter = counter % frequency.LowPart;
+   counter *= 1e6;
+   counter /= frequency.LowPart;
+   
+   tv->tv_usec = counter;
    
    return 0;
 }

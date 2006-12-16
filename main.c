@@ -2945,9 +2945,9 @@ TIMER *add_timer( const char *name, float delay, void (*cb)( TIMER *timer ),
    
    gettimeofday( &now, NULL );
    t->fire_at_sec = now.tv_sec + (int) (delay);
-   t->fire_at_usec = now.tv_usec + (int) (delay * 1000000) % 1000000;
+   t->fire_at_usec = now.tv_usec + (int) ((unsigned long long) (delay * 1000000) % 1000000);
    
-   if ( t->fire_at_usec > 1000000 )
+   if ( t->fire_at_usec >= 1000000 )
      {
         t->fire_at_sec += 1;
         t->fire_at_usec -= 1000000;
@@ -3553,6 +3553,7 @@ void process_client_line( char *buf )
                   clientfb( "Timers:" );
                   for ( t = timers; t; t = t->next )
                     {
+                       clientff( " - At: %d.%6d\r\n", t->fire_at_sec, t->fire_at_usec );
                        sec = t->fire_at_sec - now.tv_sec;
                        usec = t->fire_at_usec - now.tv_usec;
                        if ( usec < 0 )
