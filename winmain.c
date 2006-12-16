@@ -1290,6 +1290,7 @@ LRESULT CALLBACK EditorWndProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 int gettimeofday( struct timeval *tv, void *tz )
 {
    LARGE_INTEGER frequency, counter;
+   unsigned long long seconds;
    
    tv->tv_sec = 0;
    tv->tv_usec = 0;
@@ -1301,13 +1302,19 @@ int gettimeofday( struct timeval *tv, void *tz )
    if ( frequency.HighPart )
      return -1;
    
-   if ( !frequency.LowPart )
+   if ( !frequency.LowPart /*&& !frequency.HighPart*/ )
      return -1;
    
    if ( !QueryPerformanceCounter( &counter ) )
      return -1;
    
-   tv->tv_sec = counter.LowPart / frequency.LowPart;
+   //seconds = LargeIntegerDivide( counter, frequency, NULL );
+   seconds = counter.HighPart;
+   seconds = seconds << 32;
+   seconds += counter.LowPart;
+   seconds /= frequency.LowPart;
+   
+   tv->tv_sec = seconds;
    
    tv->tv_usec = ( counter.LowPart % frequency.LowPart ) * 1e6 / frequency.LowPart;
    
