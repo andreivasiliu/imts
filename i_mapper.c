@@ -1863,7 +1863,7 @@ void go_next( )
 	     else
 	       {
 		  if ( !gag_next_prompt )
-		    clientff( C_R "(%s - " C_r "%d" C_R ") " C_0, dir_name[current_room->pf_direction], current_room->pf_cost - 1 );
+		    clientff( C_R "(" C_r "%d" C_R " - %s) " C_0, current_room->pf_cost - 1, dir_name[current_room->pf_direction] );
 		  
 		  if ( must_swim( current_room, current_room->pf_parent ) )
 		    send_to_server( "swim " );
