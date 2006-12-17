@@ -92,10 +92,6 @@ struct room_data
    
    REVERSE_EXIT *rev_exits;
    
-   ROOM_DATA *reverse_exits[13]; // del
-   int more_reverse_exits[13]; // del
-   short pointed_by;
-   
    /* Beginning of binary-saved values. If you change these, change save_binary_map! */
    int vnum_exits[13];
    short detected_exits[13];

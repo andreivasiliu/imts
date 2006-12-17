@@ -146,7 +146,6 @@ int destroying_world;
 int door_closed;
 int door_locked;
 int locate_arena;
-int capture_special_exit;
 char cse_command[5120];
 char cse_message[5120];
 int close_rmtitle_tag;
@@ -160,6 +159,10 @@ int godname;
 int warn_misaligned;
 int warn_environment;
 int warn_unlinked;
+int capture_special_exit;
+int special_exit_vnum;
+int special_exit_nocommand;
+int special_exit_alias;
 
 /* config.mapper.txt options. */
 int disable_swimming;
@@ -480,33 +483,6 @@ void free_exit( EXIT_DATA *spexit )
 
 
 
-void check_pointed_by( ROOM_DATA *room )
-{
-   ROOM_DATA *r;
-   EXIT_DATA *e;
-   
-   DEBUG( "check_pointed_by" );
-   
-   if ( !room || destroying_world )
-     return;
-   
-   for ( r = world; r; r = r->next_in_world )
-     {
-	for ( e = r->special_exits; e; e = e->next )
-	  {
-	     if ( e->to == room )
-	       {
-		  room->pointed_by = 1;
-		  return;
-	       }
-	  }
-     }
-   
-   room->pointed_by = 0;
-}
-
-
-
 void link_element( ELEMENT *elem, ELEMENT **first )
 {
    elem->next = *first;
@@ -533,15 +509,165 @@ void unlink_element( ELEMENT *elem )
 
 
 
+void unlink_rooms( ROOM_DATA *source, int dir, ROOM_DATA *dest )
+{
+   REVERSE_EXIT *rexit, *r;
+   
+   if ( !dir )
+     return;
+   
+   for ( rexit = dest->rev_exits; rexit; rexit = rexit->next )
+     if ( rexit->from == source && rexit->direction == dir )
+       break;
+   
+   if ( !rexit )
+     return;
+   
+   /* Unlink. */
+   if ( rexit == dest->rev_exits )
+     dest->rev_exits = rexit->next;
+   else
+     {
+	for ( r = dest->rev_exits; r->next != rexit; r = r->next );
+	r->next = rexit->next;
+     }
+   
+   free( rexit );
+   
+   source->exits[dir] = NULL;
+}
+
+
+
+void link_rooms( ROOM_DATA *source, int dir, ROOM_DATA *dest )
+{
+   REVERSE_EXIT *rexit;
+   
+   if ( !dir )
+     return;
+   
+   /* Just to be sure. */
+   if ( source->exits[dir] )
+     unlink_rooms( source, dir, source->exits[dir] );
+   
+   source->exits[dir] = dest;
+   
+   rexit = calloc( 1, sizeof( REVERSE_EXIT ) );
+   rexit->next = dest->rev_exits;
+   rexit->from = source;
+   rexit->direction = dir;
+   rexit->spexit = NULL;
+   
+   dest->rev_exits = rexit;
+}
+
+
+
+void link_special_exit( ROOM_DATA *source, EXIT_DATA *spexit, ROOM_DATA *dest )
+{
+   REVERSE_EXIT *rexit;
+   
+   if ( !spexit )
+     return;
+   
+   rexit = calloc( 1, sizeof( REVERSE_EXIT ) );
+   rexit->next = dest->rev_exits;
+   rexit->from = source;
+   rexit->direction = 0;
+   rexit->spexit = spexit;
+   
+   dest->rev_exits = rexit;
+}
+
+
+
+void unlink_special_exit( ROOM_DATA *source, EXIT_DATA *spexit, ROOM_DATA *dest )
+{
+   REVERSE_EXIT *rexit, *r;
+   
+   if ( !spexit )
+     return;
+   
+   for ( rexit = dest->rev_exits; rexit; rexit = rexit->next )
+     if ( rexit->from == source && rexit->spexit == spexit )
+       break;
+   
+   if ( !rexit )
+     return;
+   
+   /* Unlink. */
+   if ( rexit == dest->rev_exits )
+     dest->rev_exits = rexit->next;
+   else
+     {
+	for ( r = dest->rev_exits; r->next != rexit; r = r->next );
+	r->next = rexit->next;
+     }
+   
+   free( rexit );
+}
+
+
+
+void destroy_exit( EXIT_DATA *spexit )
+{
+   ROOM_DATA *room;
+   EXIT_DATA *e;
+   
+   /* Delete its reverse. */
+   if ( ( room = spexit->to ) && spexit->owner )
+     {
+	unlink_special_exit( spexit->owner, spexit, room );
+     }
+   
+   /* Unlink from room, or global. */
+   if ( ( room = spexit->owner ) )
+     {
+	if ( room->special_exits == spexit )
+	  room->special_exits = spexit->next;
+	else
+	  for ( e = room->special_exits; e; e = e->next )
+	    if ( e->next == spexit )
+	      {
+		 e->next = spexit->next;
+		 break;
+	      }
+     }
+   else
+     {
+	if ( global_special_exits == spexit )
+	  global_special_exits = spexit->next;
+	else
+	  for ( e = global_special_exits; e; e = e->next )
+	    if ( e->next == spexit )
+	      {
+		 e->next = spexit->next;
+		 break;
+	      }
+     }
+   
+   /* Free it up. */
+   free_exit( spexit );
+}
+
+
 void free_room( ROOM_DATA *room )
 {
-   EXIT_DATA *e, *e_next;
-   ROOM_DATA *r;
-   
    if ( room->name )
      free( room->name );
    
-   for ( e = room->special_exits; e; e = e_next )
+   while ( room->rev_exits )
+     {
+	if ( room->rev_exits->direction )
+	  unlink_rooms( room->rev_exits->from, room->rev_exits->direction,
+			room );
+	else
+	  destroy_exit( room->rev_exits->spexit );
+     }
+   
+   while ( room->special_exits )
+     destroy_exit( room->special_exits );
+/*   for ( e = room->special_exits; e; e = e_next )
      {
 	e_next = e->next;
 	
@@ -549,16 +675,13 @@ void free_room( ROOM_DATA *room )
 	  {
 	     r = e->to;
 	     e->to = NULL;
-	     check_pointed_by( r );
 	  }
 	
 	free_exit( e );
-     }
+     }*/
    
    while ( room->tags )
      unlink_element( room->tags );
-   
-   // FIXME: destroy revlinks
    
    free( room );
 }
@@ -637,48 +760,6 @@ void destroy_area( AREA_DATA *area )
    free( area );
 }
 
-
-
-void destroy_exit( EXIT_DATA *spexit )
-{
-   ROOM_DATA *room;
-   EXIT_DATA *e;
-   
-   if ( ( room = spexit->to ) )
-     {
-	spexit->to = NULL;
-	check_pointed_by( room );
-     }
-   
-   /* Unlink from room, or global. */
-   if ( ( room = spexit->owner ) )
-     {
-	if ( room->special_exits == spexit )
-	  room->special_exits = spexit->next;
-	else
-	  for ( e = room->special_exits; e; e = e->next )
-	    if ( e->next == spexit )
-	      {
-		 e->next = spexit->next;
-		 break;
-	      }
-     }
-   else
-     {
-	if ( global_special_exits == spexit )
-	  global_special_exits = spexit->next;
-	else
-	  for ( e = global_special_exits; e; e = e->next )
-	    if ( e->next == spexit )
-	      {
-		 e->next = spexit->next;
-		 break;
-	      }
-     }
-   
-   /* Free it up. */
-   free_exit( spexit );
-}
 
 
 /* Destroy everything. */
@@ -820,141 +901,6 @@ int room_cmp( const char *room, const char *smallr )
 }
 
 
-/* Old style. */
-void set_reverse( ROOM_DATA *source, int dir, ROOM_DATA *destination )
-{
-   if ( ( !source && destination->more_reverse_exits[dir] ) ||
-	( source && destination->reverse_exits[dir] &&
-	  destination->reverse_exits[dir] != source ) )
-     {
-	ROOM_DATA *room;
-	
-	destination->reverse_exits[dir] = NULL;
-	destination->more_reverse_exits[dir] = 0;
-	
-	for ( room = world; room; room = room->next_in_world )
-	  {
-	     if ( room->exits[dir] != destination )
-	       continue;
-	     
-	     if ( destination->reverse_exits[dir] )
-	       destination->more_reverse_exits[dir]++;
-	     else
-	       destination->reverse_exits[dir] = room;
-	  }
-     }
-   else
-     destination->reverse_exits[dir] = source;
-}
-
-
-
-void unlink_rooms( ROOM_DATA *source, int dir, ROOM_DATA *dest )
-{
-   REVERSE_EXIT *rexit, *r;
-   
-   if ( !dir )
-     return;
-   
-   for ( rexit = dest->rev_exits; rexit; rexit = rexit->next )
-     if ( rexit->from == source && rexit->direction == dir )
-       break;
-   
-   if ( !rexit )
-     return;
-   
-   /* Unlink. */
-   if ( rexit == dest->rev_exits )
-     dest->rev_exits = rexit->next;
-   else
-     {
-	for ( r = dest->rev_exits; r->next != rexit; r = r->next );
-	r->next = rexit->next;
-     }
-   
-   free( rexit );
-   
-   source->exits[dir] = NULL;
-   
-   /* Old style. */
-   set_reverse( NULL, dir, dest );
-}
-
-
-
-void link_rooms( ROOM_DATA *source, int dir, ROOM_DATA *dest )
-{
-   REVERSE_EXIT *rexit;
-   
-   if ( !dir )
-     return;
-   
-   /* Just to be sure. */
-   if ( source->exits[dir] )
-     unlink_rooms( source, dir, source->exits[dir] );
-   
-   source->exits[dir] = dest;
-   
-   rexit = calloc( 1, sizeof( REVERSE_EXIT ) );
-   rexit->next = dest->rev_exits;
-   rexit->from = source;
-   rexit->direction = dir;
-   rexit->spexit = NULL;
-   
-   dest->rev_exits = rexit;
-   
-   /* Old style. */
-   set_reverse( source, dir, dest );
-}
-
-
-
-void link_special_exit( ROOM_DATA *source, EXIT_DATA *spexit, ROOM_DATA *dest )
-{
-   REVERSE_EXIT *rexit;
-   
-   if ( !spexit )
-     return;
-   
-   rexit = calloc( 1, sizeof( REVERSE_EXIT ) );
-   rexit->next = dest->rev_exits;
-   rexit->from = source;
-   rexit->direction = 0;
-   rexit->spexit = spexit;
-   
-   dest->rev_exits = rexit;
-}
-
-
-
-void unlink_special_exit( ROOM_DATA *source, EXIT_DATA *spexit, ROOM_DATA *dest )
-{
-   REVERSE_EXIT *rexit, *r;
-   
-   if ( !spexit )
-     return;
-   
-   for ( rexit = dest->rev_exits; rexit; rexit = rexit->next )
-     if ( rexit->from == source && rexit->spexit == spexit )
-       break;
-   
-   if ( !rexit )
-     return;
-   
-   /* Unlink. */
-   if ( rexit == dest->rev_exits )
-     dest->rev_exits = rexit->next;
-   else
-     {
-	for ( r = dest->rev_exits; r->next != rexit; r = r->next );
-	r->next = rexit->next;
-     }
-   
-   free( rexit );
-}
-
-
-
 /* This is a title. Do something with it. */
 int parse_title( const char *line )
 {
@@ -969,10 +915,12 @@ int parse_title( const char *line )
      {
 	EXIT_DATA *spexit;
 	
+        capture_special_exit = 0;
+        new_room = NULL;
+        
 	if ( !current_room )
 	  {
 	     clientf( C_R " (Current Room is NULL! Capturing disabled)" C_0 );
-	     capture_special_exit = 0;
 	     mode = FOLLOWING;
 	     return -1;
 	  }
@@ -980,19 +928,17 @@ int parse_title( const char *line )
 	if ( !cse_message[0] )
 	  {
 	     clientf( C_R " (No message found! Capturing disabled)" C_0 );
-	     capture_special_exit = 0;
 	     mode = FOLLOWING;
 	     return -1;
 	  }
 	
-	if ( capture_special_exit > 0 )
+	if ( special_exit_vnum > 0 )
 	  {
-	     new_room = get_room( capture_special_exit );
+	     new_room = get_room( special_exit_vnum );
 	     
 	     if ( !new_room )
 	       {
 		  clientf( C_R " (Destination room is now NULL! Capturing disabled)" C_0 );
-		  capture_special_exit = 0;
 		  mode = FOLLOWING;
 		  return -1;
 	       }
@@ -1002,38 +948,62 @@ int parse_title( const char *line )
 		  !( similar && !room_cmp( new_room->name, line ) ) )
 	       {
 		  clientf( C_R " (Destination does not match! Capturing disabled)" C_0 );
-		  capture_special_exit = 0;
 		  mode = FOLLOWING;
 		  return -1;
 	       }
 	  }
-	else
+	else if ( !special_exit_vnum )
 	  {
 	     new_room = create_room( -1 );
 	     new_room->name = strdup( line );
 	  }
 	
-	clientff( C_R " (" C_W "sp:" C_G "%d" C_R ")" C_0, new_room->vnum );
+        spexit = create_exit( current_room );
+        
+        if ( special_exit_vnum >= 0 )
+          {
+             clientff( C_R " (" C_W "sp:" C_G "%d" C_R ")" C_0, new_room->vnum );
+             spexit->to = new_room;
+             spexit->vnum = new_room->vnum;
+             link_special_exit( current_room, spexit, new_room );
+          }
+        else
+          {
+             mode = GET_UNLOST;
+             spexit->vnum = -1;
+          }
+        
 	clientff( C_R "\r\n[Special exit created.]" );
-	spexit = create_exit( current_room );
-	spexit->to = new_room;
-	spexit->vnum = new_room->vnum;
-	link_special_exit( current_room, spexit, new_room );
 	
-	clientff( C_R "\r\nCommand: '" C_W "%s" C_R "'" C_0,
-		  cse_command[0] ? cse_command : "null" );
-	if ( cse_command[0] )
-	  spexit->command = strdup( cse_command );
+        if ( special_exit_nocommand || !cse_command[0] )
+          {
+             clientff( C_R "\r\nCommand: " C_W "none" C_R "." C_0 );
+             spexit->command = NULL;
+          }
+        else
+          {
+             clientff( C_R "\r\nCommand: '" C_W "%s" C_R "'" C_0,
+                       cse_command[0] ? cse_command : "null" );
+             spexit->command = strdup( cse_command );
+          }
 	
 	clientff( C_R "\r\nMessage: '" C_W "%s" C_R "'" C_0,
 		  cse_message );
 	spexit->message = strdup( cse_message );
 	
-	// FIXME: Maybe talk about Esp alias?
-       	
-	current_room = new_room;
-	current_area = current_room->area;
-	capture_special_exit = 0;
+        if ( special_exit_alias )
+          {
+             clientff( C_R "\r\nAlias: '" C_W "%s" C_R "'" C_0,
+                       dir_name[special_exit_alias] );
+             spexit->alias = special_exit_alias;
+          }
+        
+        if ( new_room )
+          {
+             current_room = new_room;
+             current_area = current_room->area;
+          }
+        
 	return -1;
      }
    
@@ -1131,15 +1101,11 @@ int parse_title( const char *line )
 			 }
 		       
 		       link_rooms( current_room, q, new_room );
-// del		       current_room->exits[q] = new_room;
-// del		       set_reverse( current_room, q, new_room );
 		       if ( !unidirectional_exit )
 			 {
 			    if ( !new_room->exits[reverse_exit[q]] )
 			      {
 				 link_rooms( new_room, reverse_exit[q], current_room );
-// del				 new_room->exits[reverse_exit[q]] = current_room;
-// del				 set_reverse( new_room, reverse_exit[q], current_room );
 			      }
 			    else
 			      {
@@ -1897,7 +1863,7 @@ void go_next( )
 	     else
 	       {
 		  if ( !gag_next_prompt )
-		    clientff( C_R "(%s) " C_0, dir_name[current_room->pf_direction] );
+		    clientff( C_R "(%s - " C_r "%d" C_R ") " C_0, dir_name[current_room->pf_direction], current_room->pf_cost - 1 );
 		  
 		  if ( must_swim( current_room, current_room->pf_parent ) )
 		    send_to_server( "swim " );
@@ -3558,8 +3524,6 @@ void convert_vnum_exits( )
 		       continue;
 		    }
 		  link_rooms( room, i, r );
-// del		  room->exits[i] = get_room( room->vnum_exits[i] );
-// del		  set_reverse( room, i, room->exits[i] );
 		  room->vnum_exits[i] = 0;
 	       }
 	  }
@@ -3572,15 +3536,10 @@ void convert_vnum_exits( )
 	     else
 	       {
 		  if ( !( spexit->to = get_room( spexit->vnum ) ) )
-		       {
-			  debugf( "Can't link room %d (%s) to %d. (special exit)",
-				  room->vnum, room->name, spexit->vnum );
-		       }
+		    debugf( "Can't link room %d (%s) to %d. (special exit)",
+			    room->vnum, room->name, spexit->vnum );
 		  else
-		    {
-		       link_special_exit( room, spexit, spexit->to );
-		       spexit->to->pointed_by = 1; // FIXME: old
-		    }
+		    link_special_exit( room, spexit, spexit->to );
 	       }
 	  }
      }
@@ -4101,6 +4060,18 @@ int load_map( char *file )
 }
 
 
+int get_cost( ROOM_DATA *src, ROOM_DATA *dest )
+{
+   return src->room_type->must_swim * 2 + src->room_type->avoid * 3 +
+         dest->room_type->must_swim * 2 + dest->room_type->avoid * 3 + 1;
+}
+
+
+
+#if 0
+
+// This was the old version of the path-finder. It was O(n^2), so now its gone.
+
 void init_openlist( ROOM_DATA *room )
 {
    ROOM_DATA *r;
@@ -4128,14 +4099,6 @@ void init_openlist( ROOM_DATA *room )
 	room->next_in_pfco = NULL;
      }
 }
-
-
-int get_cost( ROOM_DATA *src, ROOM_DATA *dest )
-{
-   return src->room_type->must_swim * 2 + src->room_type->avoid * 3 +
-         dest->room_type->must_swim * 2 + dest->room_type->avoid * 3 + 1;
-}
-
 
 
 
@@ -4263,6 +4226,8 @@ void path_finder( )
      }
 }
 
+#endif
+
 
 void show_path( ROOM_DATA *current )
 {
@@ -4389,6 +4354,8 @@ void path_finder_2( )
 {
    ROOM_DATA *room;
    REVERSE_EXIT *rexit;
+   
+   DEBUG( "path_finder_2" );
    
    while ( pf_rooms )
      {
@@ -5647,9 +5614,9 @@ void parse_autobump( char *line )
 		  clientfr( "All rooms completed." );
 	       }
 	     
-	     init_openlist( NULL );
-	     init_openlist( bump_room );
-	     path_finder( );
+	     clean_paths( );
+	     add_to_pathfinder( bump_room, 1 );
+	     path_finder_2( );
 	     go_next( );
 	  }
      }
@@ -5726,6 +5693,8 @@ void i_mapper_process_server_line( LINE *l )
 	  "You must stand up to do that.",
 	  "Your legs are crippled, how will you move?",
 	  "You cannot walk through an enormous stone gate.",
+	  "You must regain your equilibrium first.",
+	  "You must regain balance first.",
 	  
 	  /* Lusternia. */
 	  "Now now, don't be so hasty!",
@@ -5893,6 +5862,9 @@ void i_mapper_process_server_prompt( LINE *l )
    
    if ( pet_list )
      pet_list = 0;
+   
+   if ( capture_special_exit )
+     cse_message[0] = 0;
    
    if ( get_unlost_exits )
      {
@@ -6273,36 +6245,25 @@ void do_map_path( char *arg )
    ROOM_DATA *room;
    ELEMENT *tag;
    char buf[256];
-   int old = 0;
    
    /* Force an update of the floating map. */
    last_room = NULL;
    
+   clean_paths( );
+   
    if ( !arg[0] )
      {
-	init_openlist( NULL );
-	path_finder( );
 	clientfr( "Map directions cleared." );
 	clientfr( "Usage: map path [near] <vnum/tag> [[near] <vnum2/tag2>]..." );
 	
 	return;
      }
    
-   clean_paths( );
-   
-   init_openlist( NULL );
-   
    while ( arg[0] )
      {
 	int neari = 0;
 	
 	arg = get_string( arg, buf, 256 );
-	
-	if ( !strcmp( buf, "old" ) )
-	  {
-	     old = 1;
-	     continue;
-	  }
 	
 	if ( !strcmp( buf, "near" ) )
 	  {
@@ -6316,26 +6277,20 @@ void do_map_path( char *arg )
 	     if ( !( room = get_room( atoi( buf ) ) ) )
 	       {
 		  clientff( C_R "[No room with the vnum '%s' was found.]\r\n" C_0, buf );
-		  init_openlist( NULL );
+		  clean_paths( );
 		  return;
 	       }
 	     
 	     if ( !neari )
 	       {
-		  if ( old )
-		    init_openlist( room );
-		  else
-		    add_to_pathfinder( room, 1 );
+		  add_to_pathfinder( room, 1 );
 	       }
 	     else
 	       {
 		  for ( neari = 1; dir_name[neari]; neari++ )
 		    if ( room->exits[neari] )
 		      {
-			 if ( old )
-			   init_openlist( room->exits[neari] );
-			 else
-			   add_to_pathfinder( room->exits[neari], 1 );
+			 add_to_pathfinder( room->exits[neari], 1 );
 		      }
 	       }
 	     
@@ -6351,20 +6306,14 @@ void do_map_path( char *arg )
 		   {
 		      if ( !neari )
 			{
-			   if ( old )
-			     init_openlist( room );
-			   else
-			     add_to_pathfinder( room, 1 );
+			   add_to_pathfinder( room, 1 );
 			}
 		      else
 			{
 			   for ( neari = 1; dir_name[neari]; neari++ )
 			     if ( room->exits[neari] )
 			       {
-				  if ( old )
-				    init_openlist( room->exits[neari] );
-				  else
-				    add_to_pathfinder( room->exits[neari], 1 );
+				  add_to_pathfinder( room->exits[neari], 1 );
 			       }
 			}
 		      found = 1;
@@ -6373,17 +6322,14 @@ void do_map_path( char *arg )
 	     if ( !found )
 	       {
 		  clientff( C_R "[No room with the tag '%s' was found.]\r\n" C_0, buf );
-		  init_openlist( NULL );
+		  clean_paths( );
 		  return;
 	       }
 	  }
      }
    
    get_timer( );
-   if ( old )
-     path_finder( );
-   else
-     path_finder_2( );
+   path_finder_2( );
    
    sprintf( buf, "Path calculated in: %d microseconds.", get_timer( ) );
    clientfr( buf );
@@ -6501,63 +6447,60 @@ void do_map_color( char *arg )
 
 void do_map_bump( char *arg )
 {
-   if ( !strcmp( arg, "skip" ) )
-     {
-	if ( bump_room && bump_room->next_in_area )
-	  {
-	     bump_room = bump_room->next_in_area;
-	     init_openlist( NULL );
-	     init_openlist( bump_room );
-	     path_finder( );
-	     clientfr( "Skipped one room." );
-	  }
-	else
-	  clientfr( "Skipping a room is not possible." );
-	
-	return;
-     }
-   
-   if ( !strcmp( arg, "continue" ) )
-     {
-	if ( !bump_room )
-	  clientfr( "Unable to continue bumping." );
-	else
-	  {
-	     clientfr( "Bumping continues." );
-	     
-	     auto_bump = 3;
-	     
-	     init_openlist( NULL );
-	     init_openlist( bump_room );
-	     path_finder( );
-	     go_next( );
-	  }
-	
-	return;
-     }
-   
-   if ( auto_bump )
-     {
-	auto_bump = 0;
-	clientfr( "Bumping ended." );
-	return;
-     }
-   
    if ( !current_room )
      {
 	clientfr( "No current room set." );
 	return;
      }
    
+   if ( !strcmp( arg, "skip" ) )
+     {
+	if ( bump_room && bump_room->next_in_area )
+	  {
+	     bump_room = bump_room->next_in_area;
+	     auto_bump = 3;
+	     clientfr( "Skipped one room." );
+	  }
+	else
+	  {
+	     clientfr( "Skipping a room is not possible." );
+	     return;
+	  }
+     }
    
-   clientfr( "Bumping begins." );
+   else if ( !strcmp( arg, "continue" ) )
+     {
+	if ( bump_room )
+	  {
+	     clientfr( "Bumping continues." );
+	     
+	     auto_bump = 3;
+	  }
+	else
+	  {
+	     clientfr( "Unable to continue bumping." );
+	     return;
+	  }
+     }
    
-   auto_bump = 3;
+   else if ( auto_bump )
+     {
+	auto_bump = 0;
+	clientfr( "Bumping ended." );
+	return;
+     }
    
-   bump_room = current_room->area->rooms;
-   init_openlist( NULL );
-   init_openlist( bump_room );
-   path_finder( );
+   else
+     {
+	clientfr( "Bumping begins." );
+	
+	auto_bump = 3;
+	bump_room = current_room->area->rooms;
+     }
+   
+   clean_paths( );
+   add_to_pathfinder( bump_room, 1 );
+   path_finder_2( );
    go_next( );
 }
 
@@ -6695,93 +6638,6 @@ void do_map_config( char *arg )
 	    " map config sewer_grates - Toggle pathfinding through sewer grates.\r\n" );
 }
 
-
-
-void do_map_window( char *arg )
-{
-   if ( floating_map_enabled )
-     {
-	floating_map_enabled = 0;
-	clientfr( "Floating MXP map disabled. Don't forget to close the window!" );
-	return;
-     }
-   
-   if ( !mxp_tag( TAG_LOCK_SECURE ) )
-     {
-	floating_map_enabled = 0;
-	clientfr( "Unable to get a SECURE tag. Maybe your client does not support MXP?" );
-	return;
-     }
-   
-   floating_map_enabled = 1;
-   mxp( "<FRAME IMapper Left=\"-57c\" Top=\"2c\" Height=\"21c\""
-	" Width=\"55c\" FLOATING>" );
-   mxp( "<DEST IMapper>" );
-   mxp_tag( TAG_LOCK_SECURE );
-   mxp( "<!element mpelm '<send \"map path &v;|room look &v;\" "
-	"hint=\"&r;|Vnum: &v;|Type: &t;\">' ATT='v r t'>" );
-   mxp( "<!element mppers '<send \"map path &v;|room look &v;|who &p;\" "
-	"hint=\"&p; (&r;)|Vnum: &v;|Type: &t;|Player: &p;\">' ATT='v r t p'>" );
-   mxp( "</DEST>" );
-   mxp_tag( TAG_DEFAULT );
-   clientfr( "Enabled. Warning, this may slow you down." );
-}
-
-
-
-
-/* Area commands. */
-
-void do_area_help( char *arg )
-{
-   clientfr( "Module: IMapper. Area commands:" );
-   clientf( " area list   - List all areas.\r\n"
-	    " area switch - Switch the area of the current room.\r\n"
-	    " area update - Update current area's name.\r\n"
-	    " area info   - Show information about current area.\r\n"
-	    " area off    - Disable pathfinding in the current area.\r\n"
-	    " area orig   - Check the originality of the area.\r\n" );
-}
-
-
-
-void do_area_orig( char *arg )
-{
-   ROOM_DATA *room, *r;
-   int rooms = 0, original_rooms = 0;
-   
-   if ( !current_area )
-     {
-	clientfr( "No current area." );
-	return;
-     }
-   
-   for ( room = current_area->rooms; room; room = room->next_in_area )
-     {
-	/* Add one to the room count. */
-	rooms++;
-	
-	/* And check if there is any other room with this same name. */
-	original_rooms++;
-	for ( r = current_area->rooms; r; r = r->next_in_area )
-	  if ( !strcmp( r->name, room->name ) && r != room )
-	    {
-	       original_rooms--;
-	       break;
-	    }
-     }
-   
-   if ( !rooms )
-     {
-	clientfr( "The area is empty..." );
-	return;
-     }
-   
-   clientff( C_R "[Rooms: " C_G "%d" C_R "  Original rooms: " C_G "%d" C_R
-	     "  Originality: " C_G "%d%%" C_R "]\r\n" C_0,
-	     rooms, original_rooms,
-	     original_rooms ? original_rooms * 100 / rooms : 0 );
-}
 
 
 void do_map_orig( char *arg )
@@ -7039,8 +6895,6 @@ void do_map_teleport( char *arg )
 		       spexit->vnum = -1;
 		       spexit->to = NULL;
 		       
-		       check_pointed_by( to );
-		       
 		       sprintf( buf, "Link cleared on exit %d.", nr );
 		       clientfr( buf );
 		       return;
@@ -7078,6 +6932,170 @@ void do_map_teleport( char *arg )
      }
 }
 
+
+
+
+void do_map_window( char *arg )
+{
+   if ( floating_map_enabled )
+     {
+	floating_map_enabled = 0;
+	clientfr( "Floating MXP map disabled. Don't forget to close the window!" );
+	return;
+     }
+   
+   if ( !mxp_tag( TAG_LOCK_SECURE ) )
+     {
+	floating_map_enabled = 0;
+	clientfr( "Unable to get a SECURE tag. Maybe your client does not support MXP?" );
+	return;
+     }
+   
+   floating_map_enabled = 1;
+   mxp( "<FRAME IMapper Left=\"-57c\" Top=\"2c\" Height=\"21c\""
+	" Width=\"55c\" FLOATING>" );
+   mxp( "<DEST IMapper>" );
+   mxp_tag( TAG_LOCK_SECURE );
+   mxp( "<!element mpelm '<send \"map path &v;|room look &v;\" "
+	"hint=\"&r;|Vnum: &v;|Type: &t;\">' ATT='v r t'>" );
+   mxp( "<!element mppers '<send \"map path &v;|room look &v;|who &p;\" "
+	"hint=\"&p; (&r;)|Vnum: &v;|Type: &t;|Player: &p;\">' ATT='v r t p'>" );
+   mxp( "</DEST>" );
+   mxp_tag( TAG_DEFAULT );
+   clientfr( "Enabled. Warning, this may slow you down." );
+}
+
+
+
+
+/* Area commands. */
+
+void do_area_help( char *arg )
+{
+   clientfr( "Module: IMapper. Area commands:" );
+   clientf( " area list   - List all areas.\r\n"
+	    " area check  - Check for problems in the current areas.\r\n"
+	    " area switch - Switch the area of the current room.\r\n"
+	    " area update - Update current area's name.\r\n"
+	    " area off    - Disable pathfinding in the current area.\r\n"
+	    " area orig   - Check the originality of the area.\r\n" );
+}
+
+
+
+// This could be cleaned up and beautified.
+void do_area_check( char *arg )
+{
+   ROOM_DATA *room;
+   char buf[256];  
+   int detected_only = 0, unknown_type = 0;
+   int rooms = 0, i;
+   
+   DEBUG( "do_area_check" );
+   
+   if ( !current_area )
+     {
+	clientfr( "No current area." );
+	return;
+     }
+   
+   clientfr( "Unlinked or no-environment rooms:" );
+   
+   for ( room = current_area->rooms; room; room = room->next_in_area )
+     {
+	int unlinked = 0, notype = 0, locked = 0;
+	
+	if ( room->room_type == null_room_type )
+	  notype = 1;
+	for ( i = 1; dir_name[i]; i++ )
+	  if ( !room->exits[i] && room->detected_exits[i] )
+	    {
+	       if ( room->locked_exits[i] )
+		 locked = 1;
+	       else
+		 unlinked = 1;
+	    }
+	
+	if ( unlinked || notype )
+	  {
+	     sprintf( buf, " - %s (" C_G "%d" C_0 ")", room->name, room->vnum );
+	     if ( unlinked )
+	       strcat( buf, C_B " (" C_G "unlinked" C_B ")" C_0 );
+	     else if ( locked )
+	       strcat( buf, C_B " (" C_G "locked" C_B ")" C_0 );
+	     if ( notype )
+	       strcat( buf, C_B " (" C_G "no type" C_B ")" C_0 );
+	     strcat( buf, "\r\n" );
+	     clientf( buf );
+	     rooms++;
+	  }
+     }
+   if ( !rooms )
+     clientff( " - None.\r\n" );
+   
+   rooms = 0;
+   
+   sprintf( buf, "Area: %s", current_area->name );
+   clientfr( buf );
+   
+   for ( room = current_area->rooms; room; room = room->next_in_area )
+     {
+	rooms++;
+	
+	if ( room->room_type == null_room_type )
+	  unknown_type++;
+	
+	for ( i = 1; dir_name[i]; i++ )
+	  if ( room->detected_exits[i] && !room->exits[i] &&
+	       !room->locked_exits[i] )
+	    detected_only++;
+     }
+   
+   sprintf( buf, C_R "Rooms: " C_G "%d" C_R "  Unlinked exits: " C_G
+	    "%d" C_R "  Unknown type rooms: " C_G "%d" C_R ".",
+	    rooms, detected_only, unknown_type );
+   clientfr( buf );
+}
+
+
+
+void do_area_orig( char *arg )
+{
+   ROOM_DATA *room, *r;
+   int rooms = 0, original_rooms = 0;
+   
+   if ( !current_area )
+     {
+	clientfr( "No current area." );
+	return;
+     }
+   
+   for ( room = current_area->rooms; room; room = room->next_in_area )
+     {
+	/* Add one to the room count. */
+	rooms++;
+	
+	/* And check if there is any other room with this same name. */
+	original_rooms++;
+	for ( r = current_area->rooms; r; r = r->next_in_area )
+	  if ( !strcmp( r->name, room->name ) && r != room )
+	    {
+	       original_rooms--;
+	       break;
+	    }
+     }
+   
+   if ( !rooms )
+     {
+	clientfr( "The area is empty..." );
+	return;
+     }
+   
+   clientff( C_R "[Rooms: " C_G "%d" C_R "  Original rooms: " C_G "%d" C_R
+	     "  Originality: " C_G "%d%%" C_R "]\r\n" C_0,
+	     rooms, original_rooms,
+	     original_rooms ? original_rooms * 100 / rooms : 0 );
+}
 
 
 
@@ -7126,13 +7144,15 @@ void do_area_list( char *arg )
 	clientf( spcs );
 	
 	sprintf( buf, " (%s%c" C_0 ") %s%s%s",
-		 notype ? C_R : ( unlinked ? C_G : C_B ),
-		 notype ? 'x' : ( unlinked ? 'l' : '*' ),
+		 ( notype || unlinked ) ? C_R : C_B,
+		 ( notype || unlinked ) ? 'x' : '*',
 		 area == current_area ? C_W : ( area->disabled ? C_D : "" ),
 		 area->name, area == current_area ? C_0 : "" );
 	clientf( buf );
      }
-   clientf( "\r\n" );
+   clientf( "\r\n\r\n" );
+   clientf( "  " C_B "*" C_0 " - Mapped entirely.                      "
+	    C_R "x" C_0 " - Mapped partially.\r\n" );
 }
 
 
@@ -7192,45 +7212,6 @@ void do_area_update( char *arg )
 
 
 
-void do_area_info( char *arg )
-{
-   ROOM_DATA *room;
-   char buf[256];
-   int detected_only = 0, unknown_type = 0;
-   int rooms = 0, i;
-   
-   DEBUG( "do_area_info" );
-   
-   if ( !current_area )
-     {
-	clientfr( "No current area set." );
-	return;
-     }
-   
-   sprintf( buf, "Area: %s", current_area->name );
-   clientfr( buf );
-   
-   for ( room = current_area->rooms; room; room = room->next_in_area )
-     {
-	rooms++;
-	
-	if ( room->room_type == null_room_type )
-	  unknown_type++;
-	
-	for ( i = 1; dir_name[i]; i++ )
-	  if ( room->detected_exits[i] && !room->exits[i] &&
-	       !room->locked_exits[i] )
-	    detected_only++;
-     }
-   
-   sprintf( buf, C_R "Rooms: " C_G "%d" C_R "  Unlinked exits: " C_G
-	    "%d" C_R "  Unknown type rooms: " C_G "%d" C_R ".",
-	    rooms, detected_only, unknown_type );
-   clientfr( buf );
-}
-
-
-
 void do_area_off( char *arg )
 {
    AREA_DATA *area;
@@ -7266,14 +7247,13 @@ void do_room_help( char *arg )
 {
    clientfr( "Module: IMapper. Room commands:" );
    clientf( " room switch  - Switch current room to another vnum.\r\n"
-	    " room look    - Show info on the current room only.\r\n"
-	    " room info    - List all rooms that weren't properly mapped.\r\n"
+	    " room look    - Show info on the current room.\r\n"
 	    " room find    - Find all rooms that contain something in their name.\r\n"
 	    " room destroy - Unlink and destroy a room.\r\n"
 	    " room list    - List all rooms in the current area.\r\n"
 	    " room underw  - Set the room as Underwater.\r\n"
 	    " room mark    - Set or clear a landmark on a vnum, or current room.\r\n"
-	    " room types   - List all known room types.\r\n"
+	    " room types   - List all known room types (environments).\r\n"
 	    " room merge   - Combine two identical rooms into one.\r\n" );
 }
 
@@ -7300,52 +7280,6 @@ void do_room_switch( char *arg )
 	     current_area = room->area;
 	     if ( mode == GET_UNLOST )
 	       mode = FOLLOWING;
-	  }
-     }
-}
-
-
-
-void do_room_info( char *arg )
-{
-   char buf[256];  
-   int i;
-   
-   if ( !current_area )
-     clientfr( "No current area." );
-   else
-     {
-	ROOM_DATA *room;
-	
-	clientfr( "Unlinked or no type rooms:" );
-	
-	for ( room = current_area->rooms; room; room = room->next_in_area )
-	  {
-	     int unlinked = 0, notype = 0, locked = 0;
-	     
-	     if ( room->room_type == null_room_type )
-	       notype = 1;
-	     for ( i = 1; dir_name[i]; i++ )
-	       if ( !room->exits[i] && room->detected_exits[i] )
-		 {
-		    if ( room->locked_exits[i] )
-		      locked = 1;
-		    else
-		      unlinked = 1;
-		 }
-	     
-	     if ( unlinked || notype )
-	       {
-		  sprintf( buf, " - %s (" C_G "%d" C_0 ")", room->name, room->vnum );
-		  if ( unlinked )
-		    strcat( buf, C_B " (" C_G "unlinked" C_B ")" C_0 );
-		  else if ( locked )
-		    strcat( buf, C_B " (" C_G "locked" C_B ")" C_0 );
-		  if ( notype )
-		    strcat( buf, C_B " (" C_G "no type" C_B ")" C_0 );
-		  strcat( buf, "\r\n" );
-		  clientf( buf );
-	       }
 	  }
      }
 }
@@ -7462,8 +7396,9 @@ void do_room_look( char *arg )
    sprintf( buf, "Room: %s  Vnum: %d.  Area: %s", room->name ?
 	    room->name : "-null-", room->vnum, room->area->name );
    clientfr( buf );
-   sprintf( buf, "Type: %s.  Underwater: %s.  Pointed by: %s.", room->room_type->name,
-	    room->underwater ? "Yes" : "No", room->pointed_by ? "Yes" : "No" );
+   sprintf( buf, "Type: %s.  Underwater: %s.",
+	    room->room_type->name,
+	    room->underwater ? "Yes" : "No" );
    clientfr( buf );
    if ( room->tags )
      {
@@ -7503,15 +7438,19 @@ void do_room_look( char *arg )
      }
    
    nr = 0;
-   for ( spexit = current_room->special_exits; spexit; spexit = spexit->next )
+   for ( spexit = room->special_exits; spexit; spexit = spexit->next )
      {
 	if ( !nr )
 	  clientfr( "Special exits:" );
 	nr++;
-	clientff( C_B "%3d" C_0 ": '" C_g "%s" C_0 "' (alias: %s) -> \"" C_g "%s" C_0 "\""
+        if ( spexit->alias )
+          sprintf( buf, "(alias: %s) ", dir_name[spexit->alias] );
+        else
+          buf[0] = 0;
+        
+	clientff( C_B "%3d" C_0 ": '" C_g "%s" C_0 "' %s-> \"" C_g "%s" C_0 "\""
 		  " -> " C_G "%d" C_0 ".\r\n",
-		  nr, spexit->command,
-		  spexit->alias ? dir_name[spexit->alias] : "n/a",
+		  nr, spexit->command ? spexit->command : "n/a", buf,
 		  spexit->message, spexit->vnum );
      }
    
@@ -7524,28 +7463,19 @@ void do_room_look( char *arg )
 	
 	for ( rexit = room->rev_exits; rexit; rexit = rexit->next )
 	  {
-	     clientff( C_B "  %s" C_0 ": From %s (" C_G "%d" C_0 ").\r\n",
+	     clientff( C_B "  %s" C_0 ": (" C_G "%d" C_0 ") From %s\r\n",
 		       rexit->direction ? dir_name[rexit->direction] : ( rexit->spexit->command ? rexit->spexit->command : "??" ),
-		       rexit->from->name, rexit->from->vnum );
+		       rexit->from->vnum, rexit->from->name );
 	  }
      }
    
    
-   /* Debugging. */
+   /* Debugging.
    sprintf( buf, "PF-Cost: %d. PF-Direction: %s.", room->pf_cost,
 	    room->pf_direction ? dir_name[room->pf_direction] : "none" );
    clientfr( buf );
    sprintf( buf, "PF-Parent: %s", room->pf_parent ? room->pf_parent->name : "none" );
-   clientfr( buf );
-   /*
-   for ( i = 1; dir_name[i]; i++ )
-     {
-	if ( room->reverse_exits[i] )
-	  clientff( "  %s: %s\r\n", dir_name[i], room->reverse_exits[i]->name );
-	if ( room->more_reverse_exits[i] )
-	  clientff( "  %s: " C_D "(more)\r\n" C_0, dir_name[i] );
-     }
-    */
+   clientfr( buf );*/
 }
 
 
@@ -7577,8 +7507,6 @@ void do_room_destroy( char *arg )
 	  clientfr( "Can't destroy the room you're currently in." );
 	else
 	  {
-	     EXIT_DATA *spexit;
-	     
 	     for ( i = 1; dir_name[i]; i++ )
 	       if ( room->exits[i] )
 		 unlink_rooms( room, i, room->exits[i] );
@@ -7591,11 +7519,7 @@ void do_room_destroy( char *arg )
 		    unlink_rooms( room->rev_exits->from, room->rev_exits->direction, room );
 		  /* Special exits. */
 		  else
-		    {
-		       spexit = room->rev_exits->spexit;
-		       unlink_special_exit( room->rev_exits->from, spexit, room );
-		       destroy_exit( spexit );
-		    }
+		    destroy_exit( room->rev_exits->spexit );
 	       }
 	     
 	     /* Replaced?
@@ -7765,6 +7689,8 @@ void do_room_types( char *arg )
 void do_room_merge( char *arg )
 {
    ROOM_DATA *r, *old_room, *new_room;
+   EXIT_DATA *spexit;
+   REVERSE_EXIT *rexit;
    char buf[4096];
    int found;
    int i;
@@ -7924,14 +7850,22 @@ void do_room_merge( char *arg )
 	       }
 	  }
 	
-	/* Start merging. */
+	/* Start merging old_room into new_room. */
+	
+	/* Exits from old_room, will now be from new_room. */
 	for ( i = 1; dir_name[i]; i++ )
-	  {  
-	     if ( !new_room->exits[i] )
+	  {
+	     if ( old_room->exits[i] )
 	       {
-		  new_room->exits[i] = old_room->exits[i];
+		  if ( !new_room->exits[i] )
+		    unlink_rooms( new_room, i, new_room->exits[i] );
+		  
+		  link_rooms( new_room, i, old_room->exits[i] );
+		  
 		  new_room->detected_exits[i] |= old_room->detected_exits[i];
 		  new_room->locked_exits[i] |= old_room->locked_exits[i];
+		  new_room->exit_joins_areas[i] |= old_room->exit_joins_areas[i];
+		  
 		  if ( !new_room->exit_length[i] )
 		    new_room->exit_length[i] = old_room->exit_length[i];
 		  if ( !new_room->use_exit_instead[i] )
@@ -7939,28 +7873,41 @@ void do_room_merge( char *arg )
 		  new_room->exit_stops_mapping[i] = old_room->exit_stops_mapping[i];
 	       }
 	  }
-	
-	/* All rooms that once pointed to the old one, should point to the new. */
-	
-	// FIXME: redo reverse exits!
-	for ( r = world; r; r = r->next_in_world )
+	/* Move special exits too. */
+	while ( old_room->special_exits )
 	  {
-	     for ( i = 1; dir_name[i]; i++ )
+	     spexit = create_exit( new_room );
+	     spexit->to		= old_room->special_exits->to;
+	     spexit->vnum	= old_room->special_exits->vnum;
+	     spexit->alias	= old_room->special_exits->alias;
+	     if ( spexit->command )
+	       spexit->command	= strdup( old_room->special_exits->command );
+	     if ( spexit->message )
+	       spexit->message	= strdup( old_room->special_exits->message );
+	     if ( spexit->to )
+	       link_special_exit( new_room, spexit, spexit->to );
+	     
+	     destroy_exit( old_room->special_exits );
+	  }
+	
+	/* Exits going INTO old_room, should go into new_room. */
+	while ( old_room->rev_exits )
+	  {
+	     rexit = old_room->rev_exits;
+	     
+	     if ( rexit->direction )
 	       {
-		  if ( r->exits[i] == old_room )
-		    {
-		       r->exits[i] = new_room;
-		       
-		       if ( !new_room->reverse_exits[i] )
-			 {
-			    new_room->reverse_exits[i] = r;
-			    new_room->more_reverse_exits[i] = 0;
-			 }
-		       else
-			 {
-			    new_room->more_reverse_exits[i] = 1;
-			 }
-		    }
+		  r = rexit->from, i = rexit->direction;
+		  unlink_rooms( r, i, old_room );
+		  link_rooms( r, i, new_room );
+	       }
+	     else if ( rexit->spexit )
+	       {
+		  r = rexit->from, spexit = rexit->spexit;
+		  unlink_special_exit( r, spexit, old_room );
+		  spexit->to = new_room;
+		  spexit->vnum = new_room->vnum;
+		  link_special_exit( r, spexit, new_room );
 	       }
 	  }
 	
@@ -8252,7 +8199,7 @@ void do_exit_unilink( char *arg )
 
 void do_exit_lock( char *arg )
 {
-   int i, set;
+   int i, set, nr;
    
    if ( mode != CREATING )
      {
@@ -8271,19 +8218,25 @@ void do_exit_lock( char *arg )
    else
      set = 1;
    
-   for ( i = 1; dir_name[i]; i++ )
+   for ( i = 1, nr = 0; dir_name[i]; i++ )
      {
 	if ( current_room->detected_exits[i] &&
 	     !current_room->exits[i] )
 	  {
+             if ( !nr++ )
+               clientff( C_R "[Marked as %slocked: ", set ? "" : "un" );
+             else
+               clientff( ", " );
+             
+             clientff( C_r "%s" C_R, dir_name[i] );
 	     current_room->locked_exits[i] = set;
 	  }
      }
    
-   if ( set )
-     clientfr( "All unlinked exits in this room have been marked as locked." );
+   if ( nr )
+     clientff( ".]\r\n" C_0 );
    else
-     clientfr( "All locked exits now unlocked." );
+     clientfr( "There are no unlinked exits to mark here." );
 }
 
 
@@ -8329,22 +8282,17 @@ void do_exit_destroy( char *arg )
 	else
 	  {
 	     unlink_rooms( current_room->exits[dir], reverse_exit[dir], current_room );
-// del	     set_reverse( NULL, reverse_exit[dir], current_room );
-// del	     current_room->exits[dir]->exits[reverse_exit[dir]] = NULL;
 	  }
 	
 	i = current_room->exits[dir]->vnum;
 	
 	unlink_rooms( current_room, dir, current_room->exits[dir] );
-// del	set_reverse( NULL, dir, current_room->exits[dir] );
-// del	current_room->exits[dir] = NULL;
 	
 	sprintf( buf, "Link to vnum %d destroyed.", i );
 	clientfr( buf );
 	return;
      }
    
-   // Oh dear... :(
    /* Destroy a special exit? */
    if ( arg[0] && isdigit( arg[0] ) )
      {
@@ -8356,8 +8304,6 @@ void do_exit_destroy( char *arg )
 	  {
 	     if ( i == nr )
 	       {
-		  if ( spexit->to )
-		    unlink_special_exit( current_room, spexit, spexit->to );
 		  destroy_exit( spexit );
 		  sprintf( buf, "Special exit %d destroyed.", nr );
 		  clientfr( buf );
@@ -8378,26 +8324,33 @@ void do_exit_destroy( char *arg )
 
 
 
+// Add "alias", <create/link <vnum>>, "nocommand"
+// Real: exit special <create/nolink/link <vnum>> [nocommand] [alias <dir>]
 // FIXME: Convert [1,n]!
 void do_exit_special( char *arg )
 {
-   EXIT_DATA *spexit;
+   ROOM_DATA *room;
    char cmd[256];
-   char buf[256];
-   int i, nr = 0;
    
    DEBUG( "do_exit_special" );
    
-   if ( mode != CREATING && strcmp( arg, "list" ) )
+   if ( mode != CREATING )
      {
 	clientfr( "Turn mapping on, first." );
 	return;
      }
    
-   if ( !strncmp( arg, "help", strlen( arg ) ) )
+   if ( !arg[0] )
      {
-	clientfr( "Syntax: exit special <command> [exit] [args]" );
-	clientfr( "Commands: capture create, capture link <vnum>, link, alias" );
+	clientfr( "Syntax: exit special <command> [arguments]" );
+	clientfr( "Commands:" );
+	clientff( C_R " create      - On the other side, create a new room.\r\n" C_0 );
+	clientff( C_R " link <vnum> - On the other side, link with <vnum>.\r\n" C_0 );
+	clientff( C_R " nolink      - On the other side, is always something random.\r\n" C_0 );
+	clientfr( "Optional arguments:" );
+	clientff( C_R " nocommand   - The exit is not triggered by a command.\r\n" C_0 );
+	clientff( C_R " alias <dir> - Create an alias for this exit's command.\r\n" C_0 );
+        
 	return;
      }
    
@@ -8407,8 +8360,89 @@ void do_exit_special( char *arg )
 	return;
      }
    
+   if ( capture_special_exit )
+     {
+        clientfr( "Already capturing, use 'stop' first." );
+        return;
+     }
+   
    arg = get_string( arg, cmd, 256 );
    
+   if ( !strcmp( cmd, "create" ) )
+     {
+	special_exit_vnum = 0;
+     }
+   else if ( !strcmp( cmd, "nolink" ) )
+     {
+	special_exit_vnum = -1;
+     }
+   else if ( !strcmp( cmd, "link" ) )
+     {
+	int vnum;
+	
+	arg = get_string( arg, cmd, 256 );
+	vnum = atoi( cmd );
+	
+	if ( vnum < 1 )
+	  {
+	     clientfr( "Specify a valid vnum to link the exit to." );
+	     return;
+	  }
+	if ( !( room = get_room( vnum ) ) )
+	  {
+	     clientfr( "No room with that vnum exists!" );
+	     return;
+	  }
+	
+	special_exit_vnum = vnum;
+     }
+   
+   special_exit_nocommand = 0;
+   special_exit_alias = 0;
+   
+   while ( arg[0] )
+     {
+	arg = get_string( arg, cmd, 256 );
+	
+	if ( !strcmp( cmd, "nocommand" ) )
+	  special_exit_nocommand = 1;
+	else if ( !strcmp( cmd, "alias" ) )
+	  {
+             int i;
+             
+	     arg = get_string( arg, cmd, 256 );
+	     
+	     for ( i = 0; dir_name[i]; i++ )
+               if ( !strcmp( cmd, dir_name[i] ) )
+                 break;
+             
+             if ( !cmd[0] || !dir_name[i] )
+               {
+                  clientfr( "Aliases can only be north, up, in, etc." );
+                  return;
+               }
+             
+             special_exit_alias = i;
+	  }
+        else
+          {
+             clientff( C_R "[Unknown option '%s'.]\r\n" C_0, cmd );
+             return;
+          }
+     }
+   
+   capture_special_exit = 1;
+   cse_message[0] = 0;
+   cse_command[0] = 0;
+   
+   clientfr( "Capturing. Use 'stop' to disable." );
+   if ( special_exit_vnum > 0 )
+     clientff( C_R "[The link will be made with '%s'.]\r\n" C_0, room->name );
+   
+   return;
+   
+#if 0
+   // ---================ *** =================---
    if ( !strcmp( cmd, "capture" ) )
      {
 	arg = get_string( arg, cmd, 256 );
@@ -8491,8 +8525,6 @@ void do_exit_special( char *arg )
 		       spexit->vnum = -1;
 		       spexit->to = NULL;
 		       
-		       check_pointed_by( to );
-		       
 		       sprintf( buf, "Link cleared on exit %d.", nr );
 		       clientfr( buf );
 		       return;
@@ -8507,7 +8539,6 @@ void do_exit_special( char *arg )
 			    spexit->vnum = -1;
 			    return;
 			 }
-		       spexit->to->pointed_by = 1;
 		       sprintf( buf, "Special exit %d linked to '%s'.",
 				nr, spexit->to->name );
 		       clientfr( buf );
@@ -8575,6 +8606,7 @@ void do_exit_special( char *arg )
      {
 	clientfr( "Unknown command... Try 'exit special help'." );
      }
+#endif
 }
 
 
@@ -8920,8 +8952,8 @@ FUNC_DATA cmd_table[] =
      { "help",		do_area_help,	CMD_AREA },
      { "list",		do_area_list,	CMD_AREA },
      { "switch",	do_area_switch,	CMD_AREA },
+     { "check",		do_area_check,	CMD_AREA },
      { "update",	do_area_update,	CMD_AREA },
-     { "info",		do_area_info,	CMD_AREA },
      { "off",		do_area_off,	CMD_AREA },
      { "orig",		do_area_orig,	CMD_AREA },
      { "orig",		do_map_orig,	CMD_MAP },
@@ -8929,7 +8961,6 @@ FUNC_DATA cmd_table[] =
    /* Room commands. */
      { "help",		do_room_help,	CMD_ROOM },
      { "switch",	do_room_switch,	CMD_ROOM },
-     { "info",		do_room_info,	CMD_ROOM },
      { "find",		do_room_find,	CMD_ROOM },
      { "look",		do_room_look,	CMD_ROOM },
      { "destroy",	do_room_destroy,CMD_ROOM },
@@ -9120,7 +9151,7 @@ int i_mapper_process_client_aliases( char *line )
 	return 1;
      }
    
-   if ( capture_special_exit )
+   if ( capture_special_exit && !special_exit_nocommand )
      {
 	strcpy( cse_command, line );
 	clientff( C_R "[Command changed to '%s'.]\r\n" C_0, cse_command );
