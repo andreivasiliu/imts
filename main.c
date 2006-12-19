@@ -440,7 +440,7 @@ void *get_variable( char *name )
 	  { "a_mana", &a_mana },
 	  { "a_max_mana", &a_max_mana },
 	  { "a_end", &a_end },
-	  { "a_max_end", &a_max_hp },
+	  { "a_max_end", &a_max_end },
 	  { "a_will", &a_will },
 	  { "a_max_will", &a_max_will },
 	  { "a_exp", &a_exp },
@@ -3974,6 +3974,25 @@ void print_line( LINE *line, int prompt )
    else
      ending = line->ending;
    
+   /* Figure out which line this is. Fully gagged lines cease existing. */
+   if ( !line->gag_ending || !line->gag_entirely ||
+	( line->replace && *line->replace ) ||
+	( line->suffix && *line->suffix ) ||
+	( line->prefix && *line->prefix ) )
+     {
+	current_line++;
+   
+	/* First line (or prompt)? */
+	if ( current_line == 1 && !sent_something )
+	  add_newline = 1;
+	
+	sent_something = 0;
+	
+	if ( prompt > 0 )
+	  current_line = 0;
+     }
+   
+   /*
    if ( prompt > 0 )
      {
 	if ( !current_line && !sent_something )
@@ -3986,18 +4005,21 @@ void print_line( LINE *line, int prompt )
      }
    else if ( prompt == 0 )
      {
-	if ( !line->gag_ending || line->replace || line->suffix )
+	if ( !line->gag_ending || !line->gag_entirely ||
+	     ( line->replace && *line->replace ) ||
+	     ( line->suffix && *line->suffix ) )
 	  current_line++;
+	
 	if ( line->len && current_line == 1 && !sent_something )
 	  add_newline = 1;
 	sent_something = 0;
-     }
+     }*/
    
    /* Add a new line whenever this line/prompt comes right after the last one. */
    if ( add_newline )
      {
 	add_newline = 0;
-	if ( !line->gag_ending )
+	if ( line->len != 0 )
 	  {
 	     SEND_BYTES_IN_BUFFER( "\r\n" );
 	  }

@@ -291,6 +291,9 @@ struct script_data
    char *path;
    char *description;
    
+   char **headers;
+   int headers_nr;
+   
    time_t modified_date;
    
    SYMBOL_TABLE *scope_symbol_table;
@@ -351,6 +354,7 @@ struct prev_data
 #define INSTR_IF		6
 #define INSTR_WHILE		7
 
+
 typedef int instruction_handler( INSTR *, VARIABLE * );
 instruction_handler instr_function;
 instruction_handler instr_doall;
@@ -402,6 +406,7 @@ operator_handler oper_less_than_or_equal_to;
 operator_handler oper_not;
 operator_handler oper_logical_and;
 operator_handler oper_logical_or;
+operator_handler oper_array;
 
 struct operator_data
 {
@@ -477,7 +482,8 @@ struct operator_data
      { "|",	0, 0,	0, 9,	0,	0, oper_not_implemented	},
    /* Assignment. */
      { "=",	0, 0,	1, 12,	P|S,	2, oper_assignment	},
-   
+   /* Array (most used as a[b], but can also be a [] b) */
+     { "[]",	0, 0,	1, 1,	P,	0, oper_array		},
      { NULL }
 };
 
@@ -507,6 +513,10 @@ system_function sysfunc_resize;
 system_function sysfunc_sizeof;
 system_function sysfunc_get_mb_variable;
 system_function sysfunc_replace_line;
+system_function sysfunc_prefix;
+system_function sysfunc_suffix;
+system_function sysfunc_gag_line;
+system_function sysfunc_gag_ending;
 
 struct sys_function_data
 {
@@ -533,6 +543,10 @@ struct sys_function_data
      { "sizeof",		1, 0, sysfunc_sizeof		},
      { "get_mb_variable",	1, 0, sysfunc_get_mb_variable	},
      { "replace_line",		1, 0, sysfunc_replace_line	},
+     { "prefix",		1, 0, sysfunc_prefix		},
+     { "suffix",		1, 0, sysfunc_suffix		},
+     { "gag_line",		0, 0, sysfunc_gag_line		},
+     { "gag_ending",		0, 0, sysfunc_gag_ending	},
    
      { NULL }
 };
@@ -564,6 +578,7 @@ SCRIPT_GROUP *groups, *groups_last;
 SCRIPT_GROUP *current_group;
 SCRIPT *current_script;
 CODE *current_code;
+char *current_file;
 
 SYMBOL_TABLE global_symbol_table;
 
@@ -575,6 +590,8 @@ VALUE *current_local_top;
 VALUE *top_of_allocated_memory_for_locals;
 
 VARIABLE *function_return_value;
+
+LINE *this_line;
 
 
 INSTR *compile_command( int priority );
@@ -700,6 +717,8 @@ void scripter_process_server_line( LINE *l )
 {
    DEBUG( "scripter_process_server_line" );
    
+   this_line = l;
+   
    /* Check for triggers. */
    check_triggers( l, 0 );
    
@@ -717,6 +736,8 @@ void scripter_process_server_line( LINE *l )
 	memcpy( searchback_buffer + sb_size + l->len, "\n", 2 );
 	sb_size += l->len + 1;
      }
+   
+   this_line = NULL;
 }
 
 
@@ -725,7 +746,11 @@ void scripter_process_server_prompt( LINE *l )
 {
    DEBUG( "scripter_process_server_prompt" );
    
+   this_line = l;
+   
    check_triggers( l, 1 );
+   
+   this_line = NULL;
 }
 
 
@@ -1070,7 +1095,7 @@ void show_statistics( SCRIPT_GROUP *groups )
    clientfr( "iScript Statistics" );
    clientff( "Strings: %d, occupying %d bytes.\r\n", *strings, *string_size );
    clientff( "Objects: %d, occupying %d bytes.\r\n", *objects, *total_size );
-   clientff( "M Zones: %d, occupying %d bytes, in %d variables.\r\n", *mem_zones, *memory_size * sizeof( VALUE ), *memory_size );
+   clientff( "M Zones: %d, occupying %d bytes, in %d variables.\r\n", *mem_zones, (int) (*memory_size * sizeof( VALUE )), *memory_size );
    clientff( "A grand total of: %.2f megabytes of your precious RAM.\r\n",
              (float) ( *string_size + *total_size + ( *memory_size * sizeof( VALUE ) ) ) / (1024*1024) );
 }
@@ -2035,6 +2060,52 @@ INSTR *compile_operator( INSTR *instr, int priority )
 	return compile_operator( i_func, priority );
      }
    
+   if ( *pos == '[' )
+     {
+        int i;
+        
+        pos++;
+        
+        for ( i = 0; operators[i].symbol; i++ )
+          if ( !strcmp( operators[i].symbol, "[]" ) )
+            break;
+        
+        if ( !operators[i].symbol )
+          {
+             abort_script( 0, "Internal error... Operator table is buggy!" );
+             destroy_instruction( instr );
+             return NULL;
+          }
+        
+        i_oper = new_instruction( INSTR_OPERATOR );
+        i_oper->oper = i;
+        
+        link_instruction( instr, i_oper );
+        
+        instr2 = compile_command( FULL_PRIORITY );
+        
+        if ( !pos )
+          {
+             destroy_instruction( i_oper );
+             return NULL;
+          }
+        
+        link_instruction( instr2, i_oper );
+        
+        skip_whitespace( );
+        
+        if ( *pos != ']' )
+          {
+             abort_script( 1, "Expected ']' instead." );
+             destroy_instruction( i_oper );
+             return NULL;
+          }
+        
+        pos++;
+        
+        return compile_operator( i_oper, priority );
+     }
+   
    temp_pos = pos;
    get_identifier( buf, 4096 );
    pos = temp_pos;
@@ -2930,21 +3001,42 @@ int load_script_trigger( SCRIPT *script )
 
 
 
-int compile_script( SCRIPT *script, char *flname )
+/* Find a file, and load it. */
+char *read_entire_file( SCRIPT *script, char *flname )
 {
-   void link_all_symbols( SCRIPT *script );
-   SCRIPT *previous_script;
    FILE *fl;
    char buf[4096];
-   char *old_pos, *old_beginning;
    char *body = NULL;
+   char *p;
    int bytes, size = 0;
-   int aborted = 0;
    
-   fl = fopen( flname, "r" );
+   /* Resolve the file's path. */
+   
+   if ( flname[0] == '~' )
+     {
+        p = flname + 1;
+        if ( *p == '/' )
+          p++;
+        
+        sprintf( buf, "iscripts/headers/%s", p );
+     }
+   else if ( flname[0] == '/' )
+     {
+        sprintf( buf, "iscripts/%s/%s", script->parent_group->name, flname + 1 );
+     }
+   else
+     {
+        sprintf( buf, "iscripts/%s%s/%s", script->parent_group->name,
+                 script->path, flname );
+     }
+   
+   fl = fopen( buf, "r" );
    
    if ( !fl )
-     return 1;
+     {
+        abort_script( 0, "Cannot open %s: %s", buf, strerror( errno ) );
+        return NULL;
+     }
    
    /* Load the code that is to be compiled. */
    
@@ -2973,18 +3065,22 @@ int compile_script( SCRIPT *script, char *flname )
    if ( !body )
      {
 	script_warning( "Empty script file." );
-	return 0;
+	return NULL;
      }
    
    body[size] = 0;
    
-   /* A scope that will contain all script-wide variables. */
-   enter_scope( script );
-   
-   /* Seek all functions/triggers within it. */
-   
-   previous_script = current_script;
-   current_script = script;
+   return body;
+}
+
+
+
+int compile_data_block( SCRIPT *script, char *body )
+{
+   char buf[4096];
+   int aborted = 0;
+   char *old_pos, *old_beginning;
+   char *previous_file;
    
    old_pos = pos;
    pos = body;
@@ -3046,6 +3142,7 @@ int compile_script( SCRIPT *script, char *flname )
 	     if ( *pos != ';' )
 	       {
 		  abort_script( 1, "Expected ';' instead." );
+                  aborted = 1;
 		  break;
 	       }
 	     pos++;
@@ -3058,9 +3155,56 @@ int compile_script( SCRIPT *script, char *flname )
         
         else if ( !strcmp( buf, "include" ) )
           {
+             char *body;
+             int i;
              
+             get_text( buf, 4096 );
              
+             if ( !pos )
+               {
+                  aborted = 1;
+                  break;
+               }
              
+	     if ( *pos != ';' )
+	       {
+		  abort_script( 1, "Expected ';' instead." );
+                  aborted = 1;
+		  break;
+	       }
+	     pos++;
+             
+             /* Prevent loops. */
+             for ( i = 0; i < script->headers_nr; i++ )
+               if ( !strcmp( script->headers[i], buf ) )
+                 {
+                    abort_script( 1, "Looping includes." );
+                    aborted = 1;
+                    break;
+                 }
+             
+             script->headers_nr++;
+             script->headers = realloc( script->headers, script->headers_nr * sizeof( char * ) );
+             script->headers[script->headers_nr-1] = strdup( buf );
+             
+             body = read_entire_file( script, buf );
+             
+             if ( !body )
+               {
+                  aborted = 1;
+                  break;
+               }
+             
+             previous_file = current_file;
+             current_file = script->path;
+             
+             aborted = compile_data_block( script, body );
+             
+             free( body );
+             current_file = previous_file;
+             
+             if ( aborted )
+               break;
           }
         
 	else if ( !strcmp( buf, "global" ) ||
@@ -3131,19 +3275,49 @@ int compile_script( SCRIPT *script, char *flname )
    
    pos = old_pos;
    beginning = old_beginning;
+   
+   return aborted;
+}
+
+
+
+int compile_script( SCRIPT *script, char *flname )
+{
+   void link_all_symbols( SCRIPT *script );
+   SCRIPT *previous_script;
+   char *previous_file;
+   char *body = NULL;
+   int aborted = 0;
+   
+   body = read_entire_file( script, flname );
+   
+   if ( !body )
+     return 1;
+   
+   /* A scope that will contain all script-wide variables. */
+   enter_scope( script );
+   
+   /* Seek all functions/triggers within it. */
+   
+   previous_script = current_script;
+   current_script = script;
+   previous_file = current_file;
+   current_file = script->path;
+   
+   aborted = compile_data_block( script, body );
+   
    free( body );
    
    leave_scope( script );
    
+   current_script = previous_script;
+   current_file = previous_file;
+   
    if ( aborted )
-     {
-	current_script = previous_script;
-        return 1;
-     }
+     return 1;
    
 //   link_all_symbols( script );
    
-   current_script = previous_script;
    
    /* Resize global memory. */
    resize_global_memory( global_symbol_table.memory_size );
@@ -3471,7 +3645,7 @@ void new_load_scripts( )
              snprintf( full_name, PATH_MAX, "iscripts/%s%s/%s",
                        group->name, script->path, script->name );
              clientff( "Loading %s\r\n", full_name );
-             if ( !compile_script( script, full_name ) )
+             if ( !compile_script( script, script->name /*full_name*/ ) )
                continue;
              
              /* Failed! Abort. */
@@ -4519,7 +4693,7 @@ inline void debug_show_value( VALUE *v, char *name, int i, char *c )
    if ( V_TYPE( *v ) == VAR_NUMBER )
      clientff( "(n)" C_0 " %d\r\n", V_NR( *v ) );
    else if ( V_TYPE( *v ) == VAR_STRING )
-     clientff( "(s)" C_0 " \"%s\" (%d)\r\n", V_STR( *v ), strlen( V_STR( *v ) ) );
+     clientff( "(s)" C_0 " \"%s\" (%d)\r\n", V_STR( *v ), (int) strlen( V_STR( *v ) ) );
    else if ( V_TYPE( *v ) == VAR_POINTER )
      clientff( "(p)" C_0 " @%c%d\r\n",
 	       mem_space[V_POINTER( *v ).memory_space],
@@ -4554,7 +4728,7 @@ SYSFUNC( sysfunc_debug )
    group = instr->parent_script->parent_group;
    
    clientff( C_Y "\r\nScript Group Memory (%d variables)\r\n" C_0,
-	     group->script_memory_top - group->script_memory );
+	     (int) (group->script_memory_top - group->script_memory) );
    
    for ( s = group->group_symbol_table.symbol; s; s = s->next )
      {
@@ -4570,8 +4744,8 @@ SYSFUNC( sysfunc_debug )
      }
    
    clientff( C_Y "\r\nLocal Memory (%d variables, %d total)\r\n" C_0,
-	     current_local_top - current_local_bottom,
-	     current_local_top - local_memory );
+	     (int) (current_local_top - current_local_bottom),
+	     (int) (current_local_top - local_memory) );
    
    for ( i = 0; i < 64; i++ )
      {
@@ -4814,15 +4988,7 @@ SYSFUNC( sysfunc_get_mb_variable )
         if ( !a_hp )
           a_hp = get_variable( "a_hp" );
         if ( a_hp )
-          V_NR( returns->value ) = *a_hp / 11;
-     }
-   else if ( !strcmp( V_STR( var.value ), "a_hp" ) )
-     {
-        static int *a_hp;
-        if ( !a_hp )
-          a_hp = get_variable( "a_hp" );
-        if ( a_hp )
-          V_NR( returns->value ) = *a_hp / 11;
+          V_NR( returns->value ) = *a_hp;
      }
    else if ( !strcmp( V_STR( var.value ), "a_max_hp" ) )
      {
@@ -4830,7 +4996,7 @@ SYSFUNC( sysfunc_get_mb_variable )
         if ( !a_max_hp )
           a_max_hp = get_variable( "a_max_hp" );
         if ( a_max_hp )
-          V_NR( returns->value ) = *a_max_hp / 11;
+          V_NR( returns->value ) = *a_max_hp;
      }
    else if ( !strcmp( V_STR( var.value ), "a_mana" ) )
      {
@@ -4838,7 +5004,7 @@ SYSFUNC( sysfunc_get_mb_variable )
         if ( !a_mana )
           a_mana = get_variable( "a_mana" );
         if ( a_mana )
-          V_NR( returns->value ) = *a_mana / 11;
+          V_NR( returns->value ) = *a_mana;
      }
    else if ( !strcmp( V_STR( var.value ), "a_max_mana" ) )
      {
@@ -4846,7 +5012,7 @@ SYSFUNC( sysfunc_get_mb_variable )
         if ( !a_max_mana )
           a_max_mana = get_variable( "a_max_mana" );
         if ( a_max_mana )
-          V_NR( returns->value ) = *a_max_mana / 11;
+          V_NR( returns->value ) = *a_max_mana;
      }
    else if ( !strcmp( V_STR( var.value ), "a_exp" ) )
      {
@@ -4888,6 +5054,70 @@ SYSFUNC( sysfunc_replace_line )
      }
    
    replace( V_STR( var.value ) );
+   
+   return 0;
+}
+
+
+
+SYSFUNC( sysfunc_prefix )
+{
+   VARIABLE value;
+   
+   INIT_VARIABLE( value );
+   
+   if ( instructions[instr->link[0]->instruction]( instr->link[0], &value ) )
+     return 1;
+   
+   if ( V_TYPE( value.value ) != VAR_STRING )
+     {
+	clientff( C_R "*** sysfunc_prefix: invalid argument ***\r\n" C_0 );
+	return 1;
+     }
+   
+   prefix( V_STR( value.value ) );
+   FREE_VARIABLE( value );
+   return 0;
+}
+
+
+
+SYSFUNC( sysfunc_suffix )
+{
+   VARIABLE value;
+   
+   INIT_VARIABLE( value );
+   
+   if ( instructions[instr->link[0]->instruction]( instr->link[0], &value ) )
+     return 1;
+   
+   if ( V_TYPE( value.value ) != VAR_STRING )
+     {
+	clientff( C_R "*** sysfunc_suffix: invalid argument ***\r\n" C_0 );
+	return 1;
+     }
+   
+   suffix( V_STR( value.value ) );
+   FREE_VARIABLE( value );
+   return 0;
+}
+
+
+
+SYSFUNC( sysfunc_gag_line )
+{
+   if ( this_line )
+     this_line->gag_entirely = 1;
+   
+   return 0;
+}
+
+
+
+SYSFUNC( sysfunc_gag_ending )
+{
+   if ( this_line )
+     this_line->gag_ending = 1;
    
    return 0;
 }
@@ -5272,6 +5502,47 @@ OPER( oper_logical_or )
 {
    V_TYPE( returns->value ) = VAR_NUMBER;
    V_NR( returns->value ) = V_TRUE( lvalue->value ) || V_TRUE( rvalue->value );
+   
+   return 0;
+}
+
+
+OPER( oper_array )
+{
+   VALUE temp, *v;
+   
+   /* a[b] = *(a+b) */
+   
+   INIT_VALUE( temp );
+   
+   if ( V_TYPE( lvalue->value ) != VAR_POINTER )
+     {
+        clientff( C_R "*** Operand given to [] is not a pointer or array. ***\r\n" C_0 );
+        return 1;
+     }
+   
+   if ( V_TYPE( rvalue->value ) != VAR_NUMBER )
+     {
+        clientff( C_R "*** Operand given inside [] is not a number. ***\r\n" C_0 );
+        return 1;
+     }
+   
+   copy_value( &lvalue->value, &temp );
+   
+   V_POINTER( temp ).offset += V_NR( rvalue->value );
+   
+   v = dereference_pointer( V_POINTER( temp ), instr->parent_script->parent_group );
+   
+   if ( !v )
+     {
+        FREE_VALUE( temp );
+        return 1;
+     }
+   
+   copy_value( v, &returns->value );
+   copy_address( V_POINTER( temp ), returns );
+   
+   FREE_VALUE( temp );
    
    return 0;
 }
