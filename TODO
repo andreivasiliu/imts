@@ -4,14 +4,41 @@ OVERALL
 - Make it all work well. :)
 
 
+Mapping Changes
+===============
+- 'map' command needs to show overlapping rooms (and point to mhelp overlapping)
+- 'map' command needs to show misaligned rooms (--,,--)
+- walking into a duplicate (mapping the same room twice) needs to show more
+info about the 'room merge' command
+- When it notices that you're chocking on pear
+- Queue
+- Demon marking? Nah, general marking
+- 'area destroy'?
+- Check the 'empty map' bug
+- New Exit warning.
+- Fix following.
+- Swimming flyers.
+- Go [flag] where flag turns on a special exit.
+
+Brydian;
+ [10953] An indoor garden. (Necropolis.)
+
 High Priority
 =============
 
-- Nothing
+- Overlapping checks.
+- Valgrind'ify everything, especially the iScript engine.
+- A way to disable Aeon mode.
+- Test http proxy.
+- Disable special exits.
+- Demon marking, from forums.
 
 
 Low Priority
 ============
+
+- Command to DROP a defence.
+- 
 
 MUDBOT
 ======
@@ -42,7 +69,6 @@ IMAPPER
 - Customizable colors.
 - Personal rooms, stored in a personal map file.
 - Undo.
-- New Exit warning.
 - Variable free/calloc max_x max_y
 - do_before's and do_after's.
 

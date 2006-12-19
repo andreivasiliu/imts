@@ -4291,6 +4291,12 @@ void show_path( ROOM_DATA *current )
 	       }
 	  }
      }
+   
+   if ( room && room->pf_parent && nr == 100 )
+     {
+        strcat( buf, C_R ", " C_G "..." );
+     }
+   
    strcat( buf, C_R ".]\r\n" C_0 );
    clientf( buf );
 }
@@ -7857,10 +7863,11 @@ void do_room_merge( char *arg )
 	  {
 	     if ( old_room->exits[i] )
 	       {
-		  if ( !new_room->exits[i] )
+		  if ( new_room->exits[i] )
 		    unlink_rooms( new_room, i, new_room->exits[i] );
 		  
 		  link_rooms( new_room, i, old_room->exits[i] );
+                  unlink_rooms( old_room, i, old_room->exits[i] );
 		  
 		  new_room->detected_exits[i] |= old_room->detected_exits[i];
 		  new_room->locked_exits[i] |= old_room->locked_exits[i];

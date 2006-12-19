@@ -31,7 +31,7 @@ endif
 
 # Linux
 ifeq ($(OS),Linux)
-  M_FLAGS  += -shared
+  M_FLAGS  += -shared -fPIC
 endif
 
 # Macintosh

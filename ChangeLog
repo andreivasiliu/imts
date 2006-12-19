@@ -14,18 +14,21 @@ IMTS-unstable
 - The 'map' command now shows various useful things while mapping.
 - New environments can be created with the 'survey' command.
 - 'room create' was deleted, after being merged into 'map create newroom'.
+- 'room info' and 'area info' are now combined into 'area check'.
 - 'exit unilink' can now be used without an argument, to create an
   unidirectional exit while at the same time creating a new room.
 - Useless commands removed: 'map remake', 'area create'.
 - 'room destroy', 'room merge', and 'map load', will no longer leave gaps
   in the vnum number interval.
+- 'exit special' rewritten from scratch. Listing moved into 'room look',
+  and removing exits moved into 'exit destroy'.
 (IOffense:)
 - Stripped the iScript out of here, into its own module.
 - Moved the 'grep' command to the other mod, to clear the pcre requirement.
 (IScript:)
 - Complete rewrite of the iScript parser.
 (MMChat:)
-- Removed entirely!
+- Removed... entirely!
 (ILua:)
 - Created... yes, entirely!
 
