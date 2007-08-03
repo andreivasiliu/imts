@@ -1003,6 +1003,8 @@ void recursive_add_instruction( INSTR *instr,
                                   strings, string_size );
 }
 
+
+// where's rec add instr?
 void show_statistics( SCRIPT_GROUP *groups )
 {
    SCRIPT_GROUP *g;
@@ -1379,8 +1381,8 @@ void abort_script( int syntax, char *error, ... )
      }
    
    /* Find the current line/column in the file. */
-   if ( beginning && current_script && current_script->name )
-     sprintf( where, " in file %s/%s:%d", current_script->path, current_script->name, get_line_number( ) );
+   if ( beginning && current_file )
+     sprintf( where, " in file %s:%d", current_file, get_line_number( ) );
    else
      where[0] = 0;
    
@@ -3075,6 +3077,22 @@ char *read_entire_file( SCRIPT *script, char *flname )
 
 
 
+int expect_character( char c )
+{
+   skip_whitespace( );
+   
+   if ( *pos != c )
+     {
+        abort_script( 1, "Expected '%c' instead.", c );
+        return 0;
+     }
+   pos++;
+   
+   return 1;
+}
+
+
+
 int compile_data_block( SCRIPT *script, char *body )
 {
    char buf[4096];
@@ -3098,54 +3116,35 @@ int compile_data_block( SCRIPT *script, char *body )
 	if ( !buf[0] )
 	  {
 	     abort_script( 1, NULL );
-	     aborted = 1;
 	     break;
 	  }
 	
 	if ( !strcmp( buf, "function" ) )
 	  {
 	     if ( load_script_function( script, 0 ) )
-	       {
-		  aborted = 1;
-		  break;
-	       }
+               break;
 	  }
 	
 	else if ( !strcmp( buf, "alias" ) )
 	  {
 	     if ( load_script_function( script, 1 ) )
-	       {
-		  aborted = 1;
-		  break;
-	       }
+               break;
 	  }
 	
 	else if ( !strcmp( buf, "trigger" ) )
 	  {
 	     if ( load_script_trigger( script ) )
-	       {
-		  aborted = 1;
-		  break;
-	       }
+               break;
 	  }
 	
 	else if ( !strcmp( buf, "script" ) )
 	  {
 	     get_text( buf, 4096 );
-	     
 	     if ( !pos )
-	       {
-		  aborted = 1;
-		  break;
-	       }
+               break;
 	     
-	     if ( *pos != ';' )
-	       {
-		  abort_script( 1, "Expected ';' instead." );
-                  aborted = 1;
-		  break;
-	       }
-	     pos++;
+             if ( !expect_character( ';' ) )
+               break;
 	     
 	     if ( script->description )
 	       free( script->description );
@@ -3159,44 +3158,32 @@ int compile_data_block( SCRIPT *script, char *body )
              int i;
              
              get_text( buf, 4096 );
-             
              if ( !pos )
-               {
-                  aborted = 1;
-                  break;
-               }
+               break;
              
-	     if ( *pos != ';' )
-	       {
-		  abort_script( 1, "Expected ';' instead." );
-                  aborted = 1;
-		  break;
-	       }
-	     pos++;
+             if ( !expect_character( ';' ) )
+               break;
              
              /* Prevent loops. */
              for ( i = 0; i < script->headers_nr; i++ )
                if ( !strcmp( script->headers[i], buf ) )
                  {
                     abort_script( 1, "Looping includes." );
-                    aborted = 1;
                     break;
                  }
+             if ( !pos )
+               break;
              
              script->headers_nr++;
              script->headers = realloc( script->headers, script->headers_nr * sizeof( char * ) );
              script->headers[script->headers_nr-1] = strdup( buf );
              
              body = read_entire_file( script, buf );
-             
              if ( !body )
-               {
-                  aborted = 1;
-                  break;
-               }
+               break;
              
              previous_file = current_file;
-             current_file = script->path;
+             current_file = buf;
              
              aborted = compile_data_block( script, body );
              
@@ -3236,6 +3223,138 @@ int compile_data_block( SCRIPT *script, char *body )
 	     pos++;
 	  }
         
+        else if ( !strcmp( buf, "enum" ) )
+          {
+             VALUE number;
+             
+             /* Form:
+              * enum { first, second, fourth = 4, fifth }
+              */
+             
+             INIT_VALUE( number );
+             V_TYPE( number ) = VAR_NUMBER;
+             V_NR( number ) = 1;
+             
+             skip_whitespace( );
+             if ( *pos != '{' )
+               {
+                  abort_script( 1, "Expected '{' instead." );
+                  aborted = 1;
+                  break;
+               }
+             pos++;
+             
+             skip_whitespace( );
+             while ( *pos != '}' )
+               {
+                  /* "first," */
+                  get_identifier( buf, 4096 );
+                  if ( !buf[0] )
+                    {
+                       abort_script( 1, "Expected identifier for enum." );
+                       break;
+                    }
+                  
+                  /* "first = 5," */
+                  skip_whitespace( );
+                  if ( *pos == '=' )
+                    {
+                       pos++;
+                       FREE_VALUE( number );
+                       INIT_VALUE( number );
+                       if ( force_constant( &number ) )
+                         {
+                            aborted = 1;
+                            break;
+                         }
+                       
+                       if ( V_TYPE( number ) != VAR_NUMBER )
+                         {
+                            abort_script( 0, "Numeric constant required." );
+                            aborted = 1;
+                            break;
+                         }
+                    }
+                  
+                  if ( !create_constant( buf, &number ) )
+                    {
+                       FREE_VALUE( number );
+                       break;
+                    }
+                  
+                  V_NR( number ) = V_NR( number ) + 1;
+                  
+                  skip_whitespace( );
+                  if ( *pos == '}' )
+                    continue;
+                  
+                  if ( *pos != ',' )
+                    {
+                       abort_script( 1, "Expected ',' or '}' instead." );
+                       aborted = 1;
+                       break;
+                    }
+                  pos++;
+                  skip_whitespace( );
+               }
+             
+             FREE_VALUE( number );
+             
+             if ( aborted )
+               break;
+             
+             pos++;
+             
+             // Maybe skip this? Might confuse.
+             skip_whitespace( );
+	     if ( *pos != ';' )
+	       {
+		  abort_script( 1, "Expected ';' instead." );
+                  aborted = 1;
+		  break;
+	       }
+	     pos++;
+          }
+        
+        else if ( !strcmp( buf, "table" ) )
+          {
+             VALUE array_size;
+             
+             skip_whitespace( );
+	     if ( *pos != '{' )
+	       {
+		  abort_script( 1, "Expected '{' instead." );
+                  aborted = 1;
+		  break;
+	       }
+             pos++;
+             
+             /* First thing... */
+             INIT_VALUE( array_size );
+             if ( force_constant( &array_size ) )
+               {
+                  aborted = 1;
+                  break;
+               }
+             
+             if ( V_TYPE( array_size ) != VAR_NUMBER ||
+                  V_NR( array_size ) < 1 )
+               {
+                  abort_script( 0, "Valid numeric constant required." );
+                  aborted = 1;
+                  FREE_VALUE( array_size );
+                  break;
+               }
+             
+             skip_whitespace( );
+             
+             while ( *pos == ',' )
+               {
+                  pos++;
+                  //...;
+	       }//
+	  }//
+	
         else
           {
              /* Most likely a variable being initialized. */
@@ -3272,6 +3391,9 @@ int compile_data_block( SCRIPT *script, char *body )
                }
           }
      }
+   
+   if ( !pos )
+     aborted = 1;
    
    pos = old_pos;
    beginning = old_beginning;
@@ -4933,7 +5055,7 @@ SYSFUNC( sysfunc_resize )
 	return 1;
      }
    
-   if ( V_NR( size.value ) < 1 || V_NR( size.value ) > 4096 )
+   if ( V_NR( size.value ) < 0 || V_NR( size.value ) > 4096 )
      {
         clientff( C_R "*** sysfunc_resize: %d is too %s ***\r\n" C_0,
                   V_NR( size.value ), V_NR( size.value ) < 0 ? "low" : "high" );
