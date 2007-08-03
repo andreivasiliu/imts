@@ -63,27 +63,27 @@ endif
 
 all: $(BIN_FILES) $(SO_FILES)
 ifeq ($(BUILDTYPE),dist)
-	@echo -e "\33[1;30mBuildtype was set as 'dist'.\33[0m"
+	@echo -e "\e[1;30mBuildtype was set as 'dist'.\e[0m"
 endif
 
 # Generic rules...
 
 $(BIN_FILES): main.c header.h
-	@echo -e "\33[1;30mbin \33[1;37m'\33[1;36m$@\33[1;37m'\33[0m"
+	@echo -e "\e[1;30mbin \e[1;37m'\e[1;36m$@\e[1;37m'\e[0m"
 	@$(CC) $(B_FLAGS) $(C_FLAGS) -o $@ $< $(LIBS_$@)
 ifeq ($(BUILDTYPE),dist)
 	@strip $@
 endif
 
 %.so:	%.c header.h module.h
-	@echo -e "\33[1;30mmod \33[1;37m'\33[1;36m$<\33[1;37m'\33[0m"
+	@echo -e "\e[1;30mmod \e[1;37m'\e[1;36m$<\e[1;37m'\e[0m"
 	@$(CC) $(M_FLAGS) $(C_FLAGS) -o $@ $< $(LIBS_$@)
 ifeq ($(BUILDTYPE),dist)
 	@strip $@
 endif
 
 gz: clean all
-	@echo -e "\33[1;30mPreparing package.\33[0m"
+	@echo -e "\e[1;30mPreparing package.\e[0m"
 	@rm -rf ./imts
 	@mkdir imts
 	@mv $(BIN_FILES) $(SO_FILES) imts
@@ -91,7 +91,7 @@ gz: clean all
 	@tar -zcf imts.tgz imts
 
 clean:
-	@echo -e "\33[1;30mCleaning up.\33[0m"
+	@echo -e "\e[1;30mCleaning up.\e[0m"
 	@rm -f *.o *.so $(BIN_FILES)
 
 # Exceptions to these rules...
