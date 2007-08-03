@@ -6481,8 +6481,8 @@ E: east 1400
 E: northwest 1402
 
 ROOM v1400
-Name: Amid the Ravana hills.
-Type: Hills
+Name: A road leading into a small valley.
+Type: Road
 E: north 1407
 E: east 8439
 E: south 1398
@@ -6494,8 +6494,8 @@ Type: Hills
 E: west 1398
 
 ROOM v1398
-Name: Northern Ravana Nearing Ederith.
-Type: Hills
+Name: A road in Northern Ravana.
+Type: Road
 E: north 1400
 E: east 1399
 E: southwest 1396
@@ -6508,8 +6508,8 @@ EL: north 1
 E: southeast 1396
 
 ROOM v1396
-Name: Hillside overlooking Ederith.
-Type: Hills
+Name: A windswept road over the hillside.
+Type: Road
 E: northeast 1398
 E: south 1245
 E: west 1395
@@ -7908,6 +7908,8 @@ E: west 1310
 ROOM v1306
 Name: The plains.
 Type: Valley
+E: north 9361
+ES: north 1
 E: south 1305
 E: northwest 1293
 
@@ -8368,8 +8370,8 @@ E: southeast 1245
 E: south 1358
 
 ROOM v1245
-Name: Eastern Banks of Ederith.
-Type: Valley
+Name: A road off the Ederith banks.
+Type: Road
 E: north 1396
 E: southeast 1242
 E: northwest 1246
@@ -8382,15 +8384,15 @@ E: southwest 1243
 E: west 1242
 
 ROOM v1243
-Name: Eastern Banks of Ederith.
-Type: Valley
+Name: A road alongside the eastern banks.
+Type: Road
 E: north 1242
 E: northeast 1244
 E: southeast 251
 
 ROOM v1242
-Name: Eastern Banks of Ederith.
-Type: Valley
+Name: A winding stretch of road.
+Type: Road
 E: east 1244
 E: southeast 1241
 E: south 1243
@@ -60701,6 +60703,18 @@ ROOM v9349
 Name: Upon a submerged walkway.
 Type: Undefined
 E: west 9348
+
+
+
+AREA
+Name: a Veiled Chaparral.
+
+ROOM v9361
+Name: An encroaching bank of mist.
+Type: Grasslands
+DE: north
+E: south 1306
+ES: south 1
 
 
 
