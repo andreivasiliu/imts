@@ -19,6 +19,8 @@ info about the 'room merge' command
 - Fix following.
 - Swimming flyers.
 - Go [flag] where flag turns on a special exit.
+- Fix 'area off'.
+- "room update", and make it EEK instead
 
 Brydian;
  [10953] An indoor garden. (Necropolis.)
