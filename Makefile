@@ -3,7 +3,7 @@
 # Export BUILDTYPE as: nothing, or "dist"
 
 # Files to be built.
-SO_FILES = imperian.so i_mapper.so i_offense.so voter.so i_script.so i_lua.so
+SO_FILES = imperian.so i_mapper.so i_script.so i_lua.so
 BIN_FILES = bot
 DIST_FILES = ChangeLog characters COPYING data IMap mhelp options *.is
 
@@ -11,7 +11,7 @@ DIST_FILES = ChangeLog characters COPYING data IMap mhelp options *.is
 OS = $(shell uname)
 
 # Header and Library directories.
-INC = -I./deps/$(OS)/ -I.
+INC = -I./deps/$(OS)/ -I. -I/usr/include/lua5.1
 LIB = -L./deps/$(OS)/ -L.
 
 # Defaults.
@@ -57,7 +57,7 @@ LIBS_i_lua.so = deps/$(OS)/liblua.a
 LIBS_bot = deps/$(OS)/libz.a -ldl
 else
 LIBS_i_script.so = -lpcre
-LIBS_i_lua.so = -llua -lm
+LIBS_i_lua.so = -llua5.1 -lm
 LIBS_bot = -lz -ldl
 endif
 
