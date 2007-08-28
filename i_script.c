@@ -1572,6 +1572,8 @@ void destroy_group( SCRIPT_GROUP *group )
    
    destroy_symbols( &group->group_symbol_table );
    
+   if ( group->name )
+     free( group->name );
    if ( group->script_memory )
      free( group->script_memory );
    
