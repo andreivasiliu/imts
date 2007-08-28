@@ -108,15 +108,15 @@ COLOR_DATA color_names[] =
      { "green",          C_g,           "\33[32m", 5 },
      { "brown",          C_y,           "\33[33m", 5 },
      { "blue",           C_b,           "\33[34m", 5 },
-     { "magenta",        "\33[0;35m",   "\33[35m", 5 },
-     { "cyan",           "\33[0;36m",   "\33[36m", 5 },
-     { "white",          "\33[0;37m",   "\33[37m", 5 },
+     { "magenta",        C_m,           "\33[35m", 5 },
+     { "cyan",           C_c,           "\33[36m", 5 },
+     { "white",          C_0,           "\33[37m", 5 },
      { "dark",           C_D,           C_D, 7 },
      { "bright-red",     C_R,           C_R, 7 },
      { "bright-green",   C_G,           C_G, 7 },
      { "bright-yellow",  C_Y,           C_Y, 7 },
      { "bright-blue",    C_B,           C_B, 7 },
-     { "bright-magenta", "\33[1;35m",   "\33[1;35m", 7 },
+     { "bright-magenta", C_M,           C_M, 7 },
      { "bright-cyan",    C_C,           C_C, 7 },
      { "bright-white",   C_W,           C_W, 7 },
    
@@ -234,6 +234,7 @@ void i_mapper_module_init_data( );
 void i_mapper_module_unload( );
 void i_mapper_process_server_line( LINE *line );
 void i_mapper_process_server_prompt( LINE *line );
+void i_mapper_process_server_paragraph( LINES *l );
 int  i_mapper_process_client_command( char *cmd );
 int  i_mapper_process_client_aliases( char *cmd );
 void i_mapper_mxp_enabled( );
@@ -250,6 +251,7 @@ ENTRANCE( i_mapper_module_register )
    self->unload = i_mapper_module_unload;
    self->process_server_line = i_mapper_process_server_line;
    self->process_server_prompt = i_mapper_process_server_prompt;
+   self->process_server_paragraph = i_mapper_process_server_paragraph;
    self->process_client_aliases = i_mapper_process_client_aliases;
    self->mxp_enabled = i_mapper_mxp_enabled;
    
@@ -922,14 +924,14 @@ int parse_title( const char *line )
           {
              clientf( C_R " (Current Room is NULL! Capturing disabled)" C_0 );
              mode = FOLLOWING;
-             return -1;
+             return 0;
           }
         
         if ( !cse_message[0] )
           {
              clientf( C_R " (No message found! Capturing disabled)" C_0 );
              mode = FOLLOWING;
-             return -1;
+             return 0;
           }
         
         if ( special_exit_vnum > 0 )
@@ -940,7 +942,7 @@ int parse_title( const char *line )
                {
                   clientf( C_R " (Destination room is now NULL! Capturing disabled)" C_0 );
                   mode = FOLLOWING;
-                  return -1;
+                  return 0;
                }
              
              /* Make sure the destination matches. */
@@ -949,7 +951,7 @@ int parse_title( const char *line )
                {
                   clientf( C_R " (Destination does not match! Capturing disabled)" C_0 );
                   mode = FOLLOWING;
-                  return -1;
+                  return 0;
                }
           }
         else if ( !special_exit_vnum )
@@ -1004,7 +1006,8 @@ int parse_title( const char *line )
              current_area = current_room->area;
           }
         
-        return -1;
+        // Why was it -1? There must've been a reason..
+        return 2;
      }
    
    
@@ -1278,7 +1281,7 @@ int parse_title( const char *line )
 
 
 
-int check_for_title( LINE *l, int start_offset )
+int check_for_title( char *line, int start_offset )
 {
    char *p;
    int end_offset;
@@ -1291,13 +1294,13 @@ int check_for_title( LINE *l, int start_offset )
    
    /* So... Check for the title name. */
    
-   if ( l->line[0] == '(' )
+   if ( line[0] == '(' )
      return -1;
    
    godname = 0;
    
    end_offset = 0;
-   p = l->line + start_offset;
+   p = line + start_offset;
    while ( *p && *p != '(' )
      {
         if ( *p == '(' )
@@ -1311,11 +1314,11 @@ int check_for_title( LINE *l, int start_offset )
           return -1;
         
         if ( *p == '.' )
-          end_offset = p - l->line + 1;
+          end_offset = p - line + 1;
         p++;
      }
    
-   if ( !*p && end_offset == p - l->line )
+   if ( !*p && end_offset == p - line )
      end_offset = 0;
    
    /* Make sure the rest is valid too. */
@@ -1344,9 +1347,131 @@ int check_for_title( LINE *l, int start_offset )
 
 
 
-void parse_room( LINE *l )
+int parse_exits( LINES *l, int start_at )
 {
-   char *line = l->line;
+   int exits_line, word_pos = 0, found_exits = 0, c, i;
+   char word[256], *color;
+   
+   for ( exits_line = start_at; exits_line <= l->nr_of_lines; exits_line++ )
+     for ( c = 0; c <= l->len[exits_line]; c++ )
+       {
+          if ( !found_exits )
+            {
+               color = l->colour[l->line_start[exits_line] + c];
+               if ( color && !strcmp( color, C_B ) )
+                 {
+                    found_exits = 1, word_pos = 0;
+                    
+                    if ( mode == CREATING )
+                      for ( i = 1; dir_name[i]; i++ )
+                        current_room->detected_exits[i] = 0;
+                    else if ( get_unlost_exits )
+                      for ( i = 1; dir_name[i]; i++ )
+                        get_unlost_detected_exits[i] = 0;
+                 }
+               
+            }
+          
+          if ( found_exits )
+            {
+               char ch = l->line[exits_line][c];
+               
+               if ( ( ch < 'A' || ch > 'Z' ) &&
+                    ( ch < 'a' || ch > 'z' ) )
+                 {
+                    if ( word_pos )
+                      {
+                         /* Check the 'word' so far. */
+                         word[word_pos] = 0;
+                         
+                         if ( mode == CREATING )
+                           for ( i = 1; dir_name[i]; i++ )
+                             {
+                                if ( !strcmp( dir_name[i], word ) )
+                                  current_room->detected_exits[i] = 1;
+                             }
+                         else if ( get_unlost_exits )
+                           for ( i = 1; dir_name[i]; i++ )
+                             {
+                                if ( !strcmp( dir_name[i], word ) )
+                                  get_unlost_detected_exits[i] = 1;
+                             }
+                         
+                         word_pos = 0;
+                      }
+                 }
+               else
+                 word[word_pos++] = ch;
+               
+               if ( get_poscolor_at( exits_line, c ) != color )
+                 return 0;
+            }
+       }
+   
+   return 0;
+}
+
+
+
+void parse_room2( LINES *l )
+{
+   int title_offset, end_offset = 0;
+   int line, i;
+   DEBUG( "parse_room2" );
+   
+   /* Room title check. */
+   for ( line = 1; line <= l->nr_of_lines; line++ )
+     {
+        if ( !l->len[line] )
+          continue;
+        
+        title_offset = 0;
+        if ( !strncmp( l->line[line], "In the trees above ", 19 ) )
+          title_offset = 19;
+        if ( !strncmp( l->line[line], "Flying above ", 13 ) )
+          title_offset = 13;
+        
+        if ( !strcmp( get_poscolor_at( line, title_offset ), room_color ) )
+          {
+             end_offset = check_for_title( l->line[line], title_offset );
+             if ( end_offset < 0 )
+               continue;
+          }
+        else
+          continue;
+        
+        /* So it looks like a title. */
+
+        set_line( line );
+        
+        if ( !title_offset && !end_offset )
+          i = parse_title( l->line[line] );
+        else
+          {
+             char buf[l->len[line]];
+             
+             strcpy( buf, l->line[line] + title_offset );
+             if ( end_offset )
+               buf[end_offset - title_offset] = 0;
+             
+             i = parse_title( buf );
+          }
+        
+        if ( !i )
+          continue;
+        
+        /* So it -still- looks like a title. Look further for exits, then. */
+        
+        parse_exits( l, line + 1 );
+        
+        continue;
+     }
+}
+
+
+void parse_room( LINE *l, char *line2, int len )
+{
+   char *line = l ? l->line : line2;
    static int exit_offset;
    int end_offset;
    int i;
@@ -1364,41 +1489,25 @@ void parse_room( LINE *l )
    if ( !parsing_room )
      {
         title_offset = 0;
-        if ( !strncmp( l->line, "In the trees above ", 19 ) )
-          title_offset = 18, similar = 1;
-        if ( !strncmp( l->line, "Flying above ", 13 ) )
-          title_offset = 12, similar = 1;
+        if ( !strncmp( line, "In the trees above ", 19 ) )
+          title_offset = 19, similar = 1;
+        if ( !strncmp( line, "Flying above ", 13 ) )
+          title_offset = 13, similar = 1;
         
-        if ( strstr( l->rawp[title_offset], room_color/*, room_color_len*/ ) )
+        if ( !strcmp( get_poscolor( title_offset ), room_color ) )
           {
-//           insert( title_offset, "Y" );
              parsing_room = 1;
-          }
-        
-        if ( title_offset )
-          title_offset++;
-        
-        /* Still nothing? Maybe the color code is at the end...
-         * But this means the room is on the next line, not this. */
-        if ( !title_offset && !parsing_room )
-          {
-             if ( l->rawp[l->len] && strstr( l->rawp[l->len], "35" ) )
-               {
-//                insert( l->len, "Z" );
-                  parsing_room = 1;
-                  return;
-               }
           }
      }
    
-   if ( !l->len || !parsing_room )
+   if ( !len || !parsing_room )
      return;
    
    /* Stage one, room name. */
    if ( parsing_room == 1 )
      {
         /* Check if it actually looks like a room. */
-        end_offset = check_for_title( l, title_offset );
+        end_offset = check_for_title( line, title_offset );
         
         if ( end_offset < 0 )
           {
@@ -1459,16 +1568,17 @@ void parse_room( LINE *l )
              return;
           }
         
-        for ( i = 0; i < l->len; i++ )
+        for ( i = 0; i < len; i++ )
           {
              /* Blue color. */
+             
              if ( !sub_stage && *l->rawp[i] && strstr( l->rawp[i], "34" ) )
                sub_stage = 1;
              
              if ( sub_stage == 1 )
                {
-//                debugf( "(%d)", strlen( l->rawp[i] ) );
-//                insert( i, "X" );
+                  //debugf( "(%d)", strlen( l->rawp[i] ) );
+                  //insert( i, "X" );
                   if ( l->line[i] == ' ' || l->line[i] == '\0' )
                     continue;
                   
@@ -1532,18 +1642,18 @@ void parse_room( LINE *l )
         
         i = exit_offset;
         
-        while( i < l->len )
+        while( i < len )
           {
              w = word;
              /* Extract a word. */
              beginning = i;
-             while( l->line[i] && ( l->line[i] != ',' && l->line[i] != ' ' && l->line[i] != '.' ) )
-               *w++ = l->line[i++];
+             while( line[i] && ( line[i] != ',' && line[i] != ' ' && line[i] != '.' ) )
+               *w++ = line[i++];
              *w = 0;
              end = i;
              
              /* Skip spaces and weird stuff. */
-             while( l->line[i] == ',' || l->line[i] == ' ' )
+             while( line[i] == ',' || line[i] == ' ' )
                i++;
              
              for ( j = 1; dir_name[j]; j++ )
@@ -1564,7 +1674,7 @@ void parse_room( LINE *l )
                     }
                }
              
-             if ( l->line[i] == '.' )
+             if ( line[i] == '.' )
                {
                   parsing_room = 0;
                   
@@ -2808,7 +2918,7 @@ int save_settings( char *file )
    
    for ( i = 0; color_names[i].name; i++ )
      {
-        if ( !strcmp( color_names[i].title_code, room_color ) )
+        if ( !strcmp( color_names[i].code, room_color ) )
           {
              fprintf( fl, "Title-Color %s\r\n", color_names[i].name );
              break;
@@ -2893,7 +3003,7 @@ int load_settings( char *file )
                {
                   if ( !strcmp( value, color_names[i].name ) )
                     {
-                       room_color = color_names[i].title_code;
+                       room_color = color_names[i].code;
                        room_color_len = color_names[i].length;
                        break;
                     }
@@ -4979,12 +5089,11 @@ void parse_pursue( char *line )
 
 
 
-void parse_alertness( LINE *l )
+void parse_alertness( char *line )
 {
    static char buf[512];
    static int alertness_message;
    char buf2[512];
-   char *line = l->line;
    
    DEBUG( "parse_alertness" );
    
@@ -5000,8 +5109,7 @@ void parse_alertness( LINE *l )
    if ( !alertness_message )
      return;
    
-   l->gag_entirely = 1;
-   l->gag_ending = 1;
+   hide_line( );
    
    /* In case something goes wrong. */
    if ( alertness_message++ > 3 )
@@ -5142,7 +5250,7 @@ void parse_eventstatus( char *line )
 
 
 
-void parse_petlist( LINE *line )
+void parse_petlist( char *line, int line_len )
 {
    ROOM_DATA *room = NULL, *r;
    char *roomname, *place = NULL;
@@ -5151,7 +5259,7 @@ void parse_petlist( LINE *line )
     * 18742  a mysterious winged, black ten* A well-swept, comfortable ke
     */
    
-   if ( !cmp( "Your Pets in the Land", line->line ) )
+   if ( !cmp( "Your Pets in the Land", line ) )
      {
         pet_list = 1;
         return;
@@ -5161,13 +5269,13 @@ void parse_petlist( LINE *line )
      return;
    
    /* Usually begins with the pet's number. */
-   if ( line->line[0] < '0' || line->line[0] > '9' )
+   if ( line[0] < '0' || line[0] > '9' )
      return;
    
    /* And the room name starts at pos 37. */
-   if ( line->len < 39 )
+   if ( line_len < 39 )
      return;
-   roomname = line->line + 37;
+   roomname = line + 37;
    if ( roomname[0] == '*' )
      roomname += 2;
    len = strlen( roomname );
@@ -5222,7 +5330,7 @@ void parse_petlist( LINE *line )
 
 
 
-void parse_who( LINE *line )
+void parse_who( LINES *l, int line )
 {
    static int first_time = 1, len1, len2;
    ROOM_DATA *r, *room;
@@ -5236,8 +5344,8 @@ void parse_who( LINE *line )
    DEBUG( "parse_who" );
    
    if ( disable_wholist ||
-        line->line[0] != ' ' ||
-        line->len < 53 )
+        l->line[line][0] != ' ' ||
+        l->len[line] < 53 )
      return;
    
    /* Initialize these two, so we won't do them each time. */
@@ -5250,22 +5358,22 @@ void parse_who( LINE *line )
    
    /* Has two lines, with color changes at the sides? */
    
-   if ( !cmp( " - *", line->line + 14 ) &&
-        !cmp( " - *", line->line + 51 ) )
+   if ( !cmp( " - *", l->line[line] + 14 ) &&
+        !cmp( " - *", l->line[line] + 51 ) )
      {
-        if ( *line->rawp[0] )
-          strcpy( color, line->rawp[0] );
+        if ( l->colour[l->line_start[line]] )
+          strcpy( color, l->colour[l->line_start[line]] );
         else
           strcpy( color, C_0 );
         
-        get_string( line->line, name, 64 );
+        get_string( l->line[line], name, 64 );
         
-        strcpy( roomname, line->line + 54 );
+        strcpy( roomname, l->line[line] + 54 );
      }
    else
      return;
    
-   line->gag_entirely = 1;
+   hide_line( );
    
    /* Search for it. */
    
@@ -5328,6 +5436,8 @@ void parse_who( LINE *line )
      }
    else
      clientf( C_D "(" C_R "unknown" C_D ")" C_0 );
+   
+   clientf( "\r\n" );
 }
 
 
@@ -5678,7 +5788,7 @@ void check_autobump( )
 
 
 
-void i_mapper_process_server_line( LINE *l )
+void process_line( char *line, int len )
 {
    const char *block_messages[] =
      {    "You cannot move that fast, slow down!",
@@ -5721,58 +5831,40 @@ void i_mapper_process_server_line( LINE *l )
           
           NULL
      };
-   char *line = l->raw_line;
    int i;
    
    DEBUG( "i_mapper_process_server_line" );
    
-   if ( ( auto_walk && ( !cmp( "You cannot move that fast, slow down!", l->line ) ||
-                         !cmp( "Now now, don't be so hasty!", l->line ) ) ) ||
-        ( auto_bump && ( !cmp( "There is no exit in that direction.", l->line ) ) ) )
-     {
-        l->gag_entirely = 1;
-        l->gag_ending = 1;
-        gag_next_prompt = 1;
-     }
-   
-   /* Gag/replace the alertness message, with something easier to read. */
-   parse_alertness( l );
-   
-   parse_who( l );
-   
-   if ( !l->raw_len )
-     return;
-   
    /* Are we sprinting, now? */
-   parse_sprint( l->line );
-   
-   /* Is this a room? Parse it. */
-   parse_room( l );
+   parse_sprint( line );
    
    /* Is this a special exit message? */
-   parse_special_exits( l->line );
+   parse_special_exits( line );
    
    /* Is this a follow message, if we're following someone? */
-   parse_follow( l->line );
+   parse_follow( line );
+   
+   /* Gag/replace the alertness message, with something easier to read. */
+   parse_alertness( line );
    
    /* Is this a sense/seek command? */
    if ( !disable_locating )
      {
-        parse_msense( l->line );
-        parse_window( l->line );
-        parse_scent( l->line );
-        parse_scry( l->line );
-        parse_ka( l->line );
-        parse_seek( l->line );
-        parse_scout( l->line );
-        parse_view( l->line );
-        parse_pursue( l->line );
-        parse_eventstatus( l->line );
-        parse_petlist( l );
+        parse_msense( line );
+        parse_window( line );
+        parse_scent( line );
+        parse_scry( line );
+        parse_ka( line );
+        parse_seek( line );
+        parse_scout( line );
+        parse_view( line );
+        parse_pursue( line );
+        parse_eventstatus( line );
+        parse_petlist( line, len );
         
         /* Is this a fullsense command? */
-        parse_fullsense( l->line );
-        parse_shrinesight( l->line );
+        parse_fullsense( line );
+        parse_shrinesight( line );
      }
    
    /* Can we get the area name and room type from here? */
@@ -5855,6 +5947,24 @@ void i_mapper_process_server_line( LINE *l )
              auto_walk = 2;
           }
      }
+}
+
+
+void i_mapper_process_server_line( LINE *l )
+{
+   process_line( l->line, l->len );
+   
+   if ( ( auto_walk && ( !cmp( "You cannot move that fast, slow down!", l->line ) ||
+                         !cmp( "Now now, don't be so hasty!", l->line ) ) ) ||
+        ( auto_bump && ( !cmp( "There is no exit in that direction.", l->line ) ) ) )
+     {
+        hide_line( );
+     }
+   
+   //parse_who( l );
+
+   /* Is this a room? Parse it. */
+   parse_room( l, NULL, l->len );
 }
 
 
@@ -6007,10 +6117,37 @@ void i_mapper_process_server_prompt( LINE *l )
    
    if ( gag_next_prompt )
      {
-        gag_next_prompt = 0;
-        l->gag_entirely = 1;
-        l->gag_ending = 1;
+        hide_line( );
      }
+}
+
+
+
+void i_mapper_process_server_paragraph( LINES *l )
+{
+   int line;
+   
+   for ( line = 1; line <= l->nr_of_lines; line++ )
+     {
+        set_line( line );
+        
+        process_line( l->line[line], l->len[line] );
+        
+        parse_who( l, line );
+        
+        if ( ( auto_walk && ( !cmp( "You cannot move that fast, slow down!", l->line[line] ) ||
+                              !cmp( "Now now, don't be so hasty!", l->line[line] ) ) ) ||
+             ( auto_bump && ( !cmp( "There is no exit in that direction.", l->line[line] ) ) ) )
+          {
+             hide_line( );
+          }
+     }
+   
+   /* Is this a room? Parse it. */
+   parse_room2( l );
+   
+   set_line( -1 );
+   i_mapper_process_server_prompt( NULL );
 }
 
 
@@ -6411,7 +6548,7 @@ void do_map_status( char *arg )
    
    for ( i = 0; color_names[i].name; i++ )
      {
-        if ( !strcmp( color_names[i].title_code, room_color ) )
+        if ( !strcmp( color_names[i].code, room_color ) )
           break;
      }
    
@@ -6433,7 +6570,7 @@ void do_map_color( char *arg )
      {
         if ( !strcmp( color_names[i].name, buf ) )
           {
-             room_color = color_names[i].title_code;
+             room_color = color_names[i].code;
              room_color_len = color_names[i].length;
              
              sprintf( buf, "Room title color changed to: " C_0 "%s%s" C_R ".",
@@ -6450,8 +6587,8 @@ void do_map_color( char *arg )
    for ( i = 0; color_names[i].name; i++ )
      {
         sprintf( buf, "%s - " C_0 "%s%s" C_0 ".\r\n",
-                 !strcmp( color_names[i].title_code, room_color ) ? C_R : "",
-                 color_names[i].title_code, color_names[i].name );
+                 !strcmp( color_names[i].code, room_color ) ? C_R : "",
+                 color_names[i].code, color_names[i].name );
         clientf( buf );
      }
    

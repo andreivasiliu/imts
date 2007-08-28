@@ -101,6 +101,7 @@ typedef struct module_data MODULE;
 typedef struct descriptor_data DESCRIPTOR;
 typedef struct timer_data TIMER;
 typedef struct line_data LINE;
+typedef struct lines_data LINES;
 
 /* Module information structure. */
 struct module_data
@@ -131,6 +132,7 @@ struct module_data
    void (*show_notice)( );
    void (*process_server_line)( LINE *line );
    void (*process_server_prompt)( LINE *line );
+   void (*process_server_paragraph)( LINES *lines );
    int  (*process_client_command)( char *cmd );
    int  (*process_client_aliases)( char *cmd );
    int  (*main_loop)( int argc, char **argv );
@@ -205,5 +207,45 @@ struct line_data
    short gag_ending;		/* Gag the new line, prompt marker, etc. */
    short gag_character[INPUT_BUF];  /* Gag a specific character. */
    short gag_raw[INPUT_BUF];	/* Gag a specific raw character. */
+};
+
+
+/* A set of lines and a prompt from the server. */
+struct lines_data
+{
+   char *raw;			// raw_buffer_size - get_raw
+   int raw_len;			// 0 - get_raw_length
+   
+   char *lines;			// normal_buffer_size - get_lines()
+   char **line;			// ? (max nbs) - get_line(i)
+   int full_len;		// 0 - get_full_length()
+   int *len;			// ? (max nbs) - get_line_length(i)
+   int *line_start;		// ? (max nbs) - get_line_start(i)
+   int *raw_line_start;		// ? (max nbs) - get_raw_line_start(i)
+   char **colour;		// normal_buffer_size - get_colour(i, i)
+   int nr_of_lines;		// 0 - get_nr_of_lines()
+   char *prompt;		// 0 - same as line[last] - get_prompt()
+   int prompt_len;		// 0 - same as len[last] - get_prompt_length()
+   
+   /* --- */
+   
+   char *zeroed_lines;		// normal_buffer_size - hidden
+   char ending[3];		// ? - hidden
+   char *insert_point;		// raw_buffer_size - hidden
+   
+   /* --- */
+   
+   short *gag_char;
+   char **inlines;
+   
+   struct line_info_data
+     {
+	short hide_line;
+	char *prefix;
+	char *suffix;
+	char *replace;
+	char *append_line;
+     } *line_info;
+   
 };
 

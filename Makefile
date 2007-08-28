@@ -57,7 +57,7 @@ LIBS_i_lua.so = deps/$(OS)/liblua.a
 LIBS_bot = deps/$(OS)/libz.a -ldl
 else
 LIBS_i_script.so = -lpcre
-LIBS_i_lua.so = -llua5.1 -lm
+LIBS_i_lua.so = -llua5.1 -lpcre -lm
 LIBS_bot = -lz -ldl
 endif
 

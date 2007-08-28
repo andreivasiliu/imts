@@ -122,7 +122,7 @@ main_loop
 #endif
 
 int main_version_major = 2;
-int main_version_minor = 5;
+int main_version_minor = 6;
 
 
 
@@ -139,10 +139,17 @@ extern char *winmain_id;
 
 
 /* Line operators. */
+void prefix_at( int line, char *string );
+void suffix_at( int line, char *string );
+void replace_at( int line, char *string );
+void insert_at( int line, int pos, char *string );
+void hide_line_at( int line );
 void prefix( char *string );
 void suffix( char *string );
 void replace( char *string );
 void insert( int pos, char *string );
+void hide_line( );
+void set_line( int line );
 void prefixf( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
 void suffixf( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
 
@@ -160,6 +167,8 @@ void show_prompt( );
 void mxp( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
 int mxp_tag( int tag );
 int mxp_stag( int tag, char *dest );
+char *get_poscolor( int pos );
+char *get_poscolor_at( int line, int pos );
 
 /* Utility */
 #if defined( FOR_WINDOWS )
@@ -229,7 +238,10 @@ DESCRIPTOR *server;
 
 DESCRIPTOR *current_descriptor;
 
-LINE *current_new_line;
+LINE *current_line;
+LINES *current_paragraph;
+LINES *global_l;
+int current_line_in_paragraph;
 
 char exec_file[1024];
 
@@ -268,7 +280,6 @@ int buffer_send_to_server;
 int safe_mode;
 int last_timer;
 int sent_something;
-int current_line;
 int show_processing_time;
 int unable_to_write;
 char *buffer_write_error;
@@ -282,7 +293,8 @@ int clientf_modifies_suffix;
 int add_newline;
 int show_prompt_again;
 int processing;
-LINE last_prompt;
+char *last_prompt;
+int last_prompt_len;
 char *wildcards[16][2];
 int wildcard_limit;
 
@@ -468,10 +480,17 @@ void *get_function( char *name )
    } functions[ ] =
      {
 	/* Line operators. */
+	  { "prefix_at", prefix_at },
+	  { "suffix_at", suffix_at },
+	  { "replace_at", replace_at },
+	  { "insert_at", insert_at },
+	  { "hide_line_at", hide_line_at },
 	  { "prefix", prefix },
 	  { "suffix", suffix },
 	  { "replace", replace },
 	  { "insert", insert },
+	  { "hide_line", hide_line },
+	  { "set_line", set_line },
 	  { "prefixf", prefixf },
 	  { "suffixf", suffixf },
 	/* Communication */
@@ -489,6 +508,8 @@ void *get_function( char *name )
 	  { "mxp", mxp },
 	  { "mxp_tag", mxp_tag },
 	  { "mxp_stag", mxp_stag },
+	  { "get_poscolor", get_poscolor },
+	  { "get_poscolor_at", get_poscolor_at },
 	  { "share_memory", share_memory },
 	  { "shared_memory_is_pointer_to_string", shared_memory_is_pointer_to_string },
 	/* Utility */
@@ -1475,7 +1496,7 @@ void module_process_server_line( LINE *line )
    
    DEBUG( "module_process_server_line" );
    
-   current_new_line = line;
+   current_line = line;
    clientf_modifies_suffix = 1;
    
    /* Our own triggers, to start/stop MCCP when needed. */
@@ -1520,13 +1541,14 @@ void module_process_server_line( LINE *line )
 }
 
 
+
 void module_process_server_prompt( LINE *line )
 {
    MODULE *module;
    
    DEBUG( "module_process_server_prompt" );
    
-   current_new_line = line;
+   current_line = line;
    clientf_modifies_suffix = 1;
    
    /* It won't print that echo_off, so I'll force it. */
@@ -1548,6 +1570,73 @@ void module_process_server_prompt( LINE *line )
    
    clientf_modifies_suffix = 0;
 }
+
+
+
+void module_process_server_paragraph( LINES *l )
+{
+   char mccp_stop[] = { IAC, DONT, TELOPT_COMPRESS2, 0 };
+   MODULE *module;
+   int i;
+   
+   DEBUG( "module_process_server_paragraph" );
+   
+   current_paragraph = l;
+   clientf_modifies_suffix = 1;
+   
+   /* Our own triggers, to start/stop MCCP when needed. */
+   for ( i = 1; i <= l->nr_of_lines; i++ )
+     {
+	if ( compressed &&
+	     ( !cmp( "you are out of the land.", l->line[i] ) ) )
+	  {
+	     add_timer( "restart_mccp", 20, restart_mccp, 0, 0, 0 );
+	     send_to_server( mccp_stop );
+	  }
+	if ( !compressed && !disable_mccp &&
+	     ( !cmp( "You cease your praying.", l->line[i] ) ) )
+	  {
+	     del_timer( "restart_mccp" );
+	     restart_mccp( NULL );
+	  }
+#if defined( FOR_WINDOWS )
+	if ( compressed &&
+	     ( !cmp( "You enter the editor.", l->line[i] ) ||
+	       !cmp( "You begin writing.", l->line[i] ) ) )
+	  {
+	     char mccp_start[] = { IAC, DO, TELOPT_COMPRESS2, 0 };
+	     
+	     /* Only briefly, ATCP over MCCP is very buggy. */
+	     verbose_mccp = 0;
+	     debugf( "Temporarely stopping MCCP." );
+	     send_to_server( mccp_stop );
+	     send_to_server( mccp_start );
+	  }
+#endif
+     }
+   
+   /* It won't print that echo_off, so I'll force it. */
+   if ( !cmp( "What is your password?*", l->prompt ) )
+     {
+	void send_to_client( char *data, int bytes );
+	char telnet_echo_off[ ] = { IAC, WILL, TELOPT_ECHO, '\0' };
+	
+	send_to_client( telnet_echo_off, 3 );
+     }
+   
+   mod_section = "Processing server line";
+   for ( module = modules; module; module = module->next )
+     {
+	current_mod = module;
+	if ( module->process_server_paragraph )
+	  (module->process_server_paragraph)( l );
+	update_shared_memory( module );
+     }
+   mod_section = NULL;
+   
+   clientf_modifies_suffix = 0;
+}
+
 
 
 int module_process_client_command( char *rawcmd )
@@ -1573,6 +1662,7 @@ int module_process_client_command( char *rawcmd )
    
    return 1;
 }
+
 
 
 int module_process_client_aliases( char *line )
@@ -2502,6 +2592,14 @@ void send_to_client( char *data, int bytes )
    if ( bytes < 1 )
      return;
    
+   if ( !client )
+     {
+	/* Client crashed, or something? Then we'll remember what the server said. */
+	if ( server )
+	  strncat( buffer_noclient, data, bytes );
+	return;
+     }
+   
    /* Show it off to all the modules... Maybe they want to log it. */
    for ( module = modules; module; module = module->next )
      {
@@ -2608,26 +2706,79 @@ void shrink_buffer( char **buffer, char **pointer, char **max )
 }
 
 
+int line_is_valid( int *line, char *func )
+{
+   if ( !current_paragraph )
+     {
+	debugf( "Function '%s' called without a proper paragraph." );
+	return 0;
+     }
+   
+   if ( *line == -1 )
+     *line = current_paragraph->nr_of_lines + 1;
+   
+   else if ( *line < 0 || *line > current_paragraph->nr_of_lines )
+     {
+	debugf( "Function '%s' called on an invalid line (%d).", func, *line );
+	return 0;
+     }
+   
+   return 1;
+}
+
+
+void append_string( char *string, char **pointer )
+{
+   if ( !*pointer )
+     *pointer = strdup( string );
+   else
+     {
+	*pointer = realloc( *pointer, strlen( *pointer ) +
+			    strlen( string ) + 1 );
+	strcat( *pointer, string );
+     }
+}
+
+
+
+void prefix_at( int line, char *string )
+{
+   if ( !line_is_valid( &line, "prefix_at" ) )
+     return;
+   
+   append_string( string, &current_paragraph->line_info[line].prefix );
+}
 
 void prefix( char *string )
 {
-   if ( current_new_line )
-     add_buffer( string, &prefix_buffer, &prefix_p, &prefix_max );
-   else
-     clientf( string );
+   prefix_at( current_line_in_paragraph, string );
 }
+
+void suffix_at( int line, char *string )
+{
+   if ( !line_is_valid( &line, "suffix_at" ) )
+     return;
+   
+   append_string( string, &current_paragraph->line_info[line].suffix );
+}
+
 
 void suffix( char *string )
 {
-   if ( current_new_line )
-     add_buffer( string, &suffix_buffer, &suffix_p, &suffix_max );
-   else
-     clientf( string );
+   suffix_at( current_line_in_paragraph, string );
+}
+
+void replace_at( int line, char *string )
+{
+   if ( !line_is_valid( &line, "replace_at" ) )
+     return;
+   
+   append_string( string, &current_paragraph->line_info[line].replace );
 }
 
 void replace( char *string )
 {
-   add_buffer( string, &replace_buffer, &replace_p, &replace_max );
+   replace_at( current_line_in_paragraph, string );
 }
 
 void prefixf( char *string, ... )
@@ -2655,32 +2806,45 @@ void suffixf( char *string, ... )
 }
 
 
-void insert( int pos, char *string )
+void insert_at( int line, int pos, char *string )
 {
-   if ( !current_new_line )
+   if ( !line_is_valid( &line, "insert_at" ) )
+     return;
+   
+   if ( pos < 0 || pos > current_paragraph->len[line] )
      {
-	debugf( "Warning! insert() called with no current line known!" );
+	debugf( "Warning! insert_at called with an invalid position!" );
 	return;
      }
    
-   if ( pos > current_new_line->len )
-     {
-	debugf( "Warning! insert() was attempted over the length limit!" );
-	debugf( "Line: [%s]", current_new_line->line );
-     }
+   pos += current_paragraph->line_start[line];
    
-   if ( !current_new_line->inlines[pos] )
-     {
-	current_new_line->inlines[pos] = malloc( strlen( string ) );
-	strcpy( current_new_line->inlines[pos], string );
-     }
-   else
-     {
-	current_new_line->inlines[pos] = realloc( current_new_line->inlines[pos], strlen( current_new_line->inlines[pos] ) + strlen( string ) );
-	strcat( current_new_line->inlines[pos], string );
-     }
+   append_string( string, &current_paragraph->inlines[pos] );
 }
 
+void insert( int pos, char *string )
+{
+   insert_at( current_line_in_paragraph, pos, string );
+}
+
+void hide_line_at( int line )
+{
+   if ( !line_is_valid( &line, "hide_line_at" ) )
+     return;
+   
+   current_paragraph->line_info[line].hide_line = 1;
+}
+
+void hide_line( )
+{
+   hide_line_at( current_line_in_paragraph );
+}
+
+
+void set_line( int line )
+{
+   current_line_in_paragraph = line;
+}
 
 
 void clientf( char *string )
@@ -2697,14 +2861,6 @@ void clientf( char *string )
    if ( buffer_output )
      {
 	strcat( buffer_data, string );
-	return;
-     }
-   
-   if ( !client )
-     {
-	/* Client crashed, or something? Then we'll remember what the server said. */
-	if ( server )
-	  strcat( buffer_noclient, string );
 	return;
      }
    
@@ -2744,22 +2900,13 @@ void clientfr( char *string )
 }
 
 
-void send_to_server( char *string )
+void send_bytes( char *data, int length )
 {
    MODULE *module;
-   int length;
    int bytes;
-   
-   if ( buffer_send_to_server )
-     {
-	strcat( send_buffer, string );
-	return;
-     }
    
    if ( !server )
      return;
-   
-   length = strlen( string );
    
    /* Show it off to all the modules... Maybe they want to log it. */
    for ( module = modules; module; module = module->next )
@@ -2767,22 +2914,35 @@ void send_to_server( char *string )
 	if ( !module->send_to_server )
 	  continue;
 	
-        if ( (*module->send_to_server)( string, length ) )
+        if ( (*module->send_to_server)( data, length ) )
           return;
      }
    
    bytes_sent += length;
    
-   bytes = c_write( server->fd, string, length );
+   bytes = c_write( server->fd, data, length );
    
    if ( bytes < 0 )
      {
 	debugf( "send_to_server: %s.", get_socket_error( NULL ) );
 	exit( 1 );
      }
-   
-   sent_something = 1;
 }
+
+
+void send_to_server( char *string )
+{
+   if ( buffer_send_to_server )
+     {
+	strcat( send_buffer, string );
+	return;
+     }
+   
+   send_bytes( string, strlen( string ) );
+   
+   //sent_something = 1;
+}
+
 
 
 void copy_over( char *reason )
@@ -3013,6 +3173,8 @@ void handle_atcp( char *msg )
    int we_control_it;
    
    DEBUG( "handle_atcp" );
+   
+   // This might not work yet.
    
    we_control_it = strcmp( atcp_login_as, "none" );
    
@@ -3308,8 +3470,35 @@ int mxp_stag( int tag, char *dest )
 }
 
 
+char *get_poscolor_at( int line, int pos )
+{
+   int i;
+   
+   if ( !line_is_valid( &line, "get_poscolor_at" ) )
+     return NULL;
+   
+   pos += current_paragraph->line_start[line];
+   if ( pos < 0 || pos > current_paragraph->full_len )
+     return NULL;
+   
+   for ( i = pos; i >= 0; i-- )
+     {
+	if ( current_paragraph->colour[i] )
+	  return current_paragraph->colour[i];
+     }
+   
+   return C_0;
+}
+
+
+char *get_poscolor( int pos )
+{
+   return get_poscolor_at( current_line_in_paragraph, pos );
+}
+
+
 void do_test( )
-{ 
+{
    /*
    void process_buffer( char *buf, int bytes );
    char buf[4096*4096];
@@ -3963,6 +4152,7 @@ void print_buffer( char *src )
 
 void print_line( LINE *line, int prompt )
 {
+   static int current_line;
    char *ending;
    char *s;
    int i;
@@ -4121,7 +4311,8 @@ void clean_line( LINE *line )
 
 
 
-void process_buffer( char *raw_buf, int bytes )
+#if 0
+void process_buffer_old( char *raw_buf, int bytes )
 {
    static char *telsub_buffer, *telsub_p, *telsub_max;
    static char iac_string[4];
@@ -4429,6 +4620,582 @@ void process_buffer( char *raw_buf, int bytes )
    mb_section = "Out of process_buffer";
    crash_buffer = NULL;
 }
+#endif
+
+
+int analyse_telnetsequence( char *ts, int bytes )
+{
+   /* An offer of compression? */
+   if ( ts[1] == (char) WILL &&
+	ts[2] == (char) TELOPT_COMPRESS2 )
+     {
+#if !defined( DISABLE_MCCP )
+	if ( !disable_mccp )
+	  {
+	     const char do_compress2[] =
+	       { IAC, DO, TELOPT_COMPRESS2, 0 };
+	     
+	     /* Send it for ourselves. */
+	     send_to_server( (char *) do_compress2 );
+	     
+	     debugf( "mccp: Sent IAC DO COMPRESS2." );
+	  }
+#else
+	debugf( "mccp: Internally disabled, ignoring." );
+#endif
+	
+	return 1;
+     }
+   
+   else if ( ts[1] == (char) WILL &&
+	     ts[2] == (char) ATCP &&
+	     strcmp( atcp_login_as, "none" ) )
+     {
+	char buf[256];
+	char do_atcp[] = { IAC, DO, ATCP, 0 };
+	char sb_atcp[] = { IAC, SB, ATCP, 0 };
+	
+	/* Send it for ourselves. */
+	send_to_server( do_atcp );
+	
+	debugf( "atcp: Sent IAC DO ATCP." );
+	
+	if ( !atcp_login_as[0] || !strcmp( atcp_login_as, "default" ) )
+	  sprintf( atcp_login_as, "MudBot %d.%d", main_version_major, main_version_minor );
+	
+	sprintf( buf, "%s" "hello %s\nauth 1\ncomposer 1\nchar_name 1\nchar_vitals 1\nroom_brief 0\nroom_exits 0" "%s",
+		 sb_atcp, atcp_login_as, iac_se );
+	send_to_server( buf );
+	
+	if ( default_user[0] && default_pass[0] )
+	  {
+	     sprintf( buf, "%s" "login %s %s" "%s",
+		      sb_atcp, default_user, default_pass, iac_se );
+	     send_to_server( buf );
+	     debugf( "atcp: Requested login with '%s'.", default_user );
+	  }
+	
+	return 1;
+     }
+   
+   else if ( ts[1] == (char) SB &&
+	     ts[2] == (char) ATCP )
+     {
+	char buf[bytes];
+	
+	memcpy( buf, ts + 3, bytes - 2 );
+	buf[bytes-5] = 0;
+	
+	handle_atcp( buf );
+	
+	return 1;
+     }
+   else if ( ts[1] == (char) WILL &&
+	     ts[2] == (char) TELOPT_ECHO )
+     {
+	char telnet_echo_off[ ] = { IAC, WILL, TELOPT_ECHO, '\0' };
+	
+	/* This needs to be passed further -as soon- as it is received. */
+	send_to_client( telnet_echo_off, 3 );
+	
+	return 1;
+     }
+   
+   return 0;
+}
+
+
+
+void print_paragraph( LINES *l )
+{
+   static char *output_buffer;
+   static int buffer_size;
+   int prompt_start = 0;
+   int normal_pos = 0;
+   int raw_pos = 0;
+   int pos = 0, c;
+   int line = 1;
+   char *p;
+   
+   if ( buffer_size != 256 )
+     {
+	if ( output_buffer )
+	  free( output_buffer );
+	
+	output_buffer = malloc( 256 * sizeof(char*) );
+	buffer_size = 256;
+     }
+   
+#define ADD_CHAR(ch) \
+   { if ( pos == buffer_size ) \
+       output_buffer = realloc( output_buffer, ( buffer_size += 256 ) ); \
+      output_buffer[pos++] = (ch); }
+   
+   if ( !sent_something && l->line[1][0] )
+     {
+	ADD_CHAR( '\n' );
+     }
+   else
+     sent_something = 0;
+   
+   for ( line = 1; line <= l->nr_of_lines + 1; line++ )
+     {
+	if ( l->line_info[line].replace )
+	  l->line_info[line].hide_line = 1;
+	
+	/* Remember the beginning of the prompt. */
+	if ( line == l->nr_of_lines + 1 )
+	  prompt_start = pos;
+	
+	p = l->line_info[line].prefix;
+	if ( p )
+	  while ( *p )
+	    ADD_CHAR( *(p++) );
+	
+	for ( c = 0; c <= l->len[line]; c++ )
+	  {
+	     /* Raw, then colour, then inline, then normal. */
+	     while ( !l->insert_point[raw_pos] )
+	       ADD_CHAR( l->raw[raw_pos++] );
+	     
+	     p = l->colour[normal_pos];
+	     if ( p )
+	       while ( *p )
+		 ADD_CHAR( *(p++) );
+	     
+	     if ( !l->line_info[line].hide_line )
+	       {
+		  p = l->inlines[normal_pos];
+		  if ( p )
+		    while ( *p )
+		      ADD_CHAR( *(p++) );
+	       }
+	     
+	     if ( c == l->len[line] )
+	       {
+		  p = l->line_info[line].replace;
+		  if ( p )
+		    while ( *p )
+		      ADD_CHAR( *(p++) );
+		  
+		  p = l->line_info[line].suffix;
+		  if ( p )
+		    while ( *p )
+		      ADD_CHAR( *(p++) );
+	       }
+	     
+	     /* Prompts are a bit different. */
+	     if ( c == l->len[line] &&
+		  line == l->nr_of_lines + 1 )
+	       {
+		  /* This should be the IAC-GA, but can be anything. */
+		  while( raw_pos < l->raw_len )
+		    ADD_CHAR( l->raw[raw_pos++] );
+		  
+		  /* Store it, so we can show it again with show_prompt. */
+		  if ( last_prompt )
+		    free( last_prompt );
+		  last_prompt = malloc( pos - prompt_start + 1 );
+		  memcpy( last_prompt, output_buffer + prompt_start, pos - prompt_start );
+		  last_prompt_len = pos - prompt_start;
+	       }
+	     else
+	       {
+		  /* A normal printable character, or \n. */
+		  if ( !l->line_info[line].hide_line )
+		    {
+		       ADD_CHAR( l->raw[raw_pos] );
+		    }
+		  
+		  raw_pos++;
+		  normal_pos++;
+	       }
+	  }
+	
+	p = l->line_info[line].append_line;
+	if ( p )
+	  while ( *p )
+	    ADD_CHAR( *(p++) );
+     }
+   
+   /* This should be the IAC-GA */
+   while( raw_pos < l->raw_len )
+     ADD_CHAR( l->raw[raw_pos++] );
+     
+   
+#undef ADD_CHAR
+   
+   send_to_client( output_buffer, pos );
+}
+
+
+
+/* Currently only supports colours, but it's here just in case full
+ * console-codes support. */
+inline int inside_escapesequence( char c )
+{
+   static int inside;
+   
+   /* '\33' == ESC */
+   if ( !inside && c != '\33' )
+     return 0;
+   
+   if ( inside )
+     {
+	if ( c == 'm' )
+	  {
+	     int len = inside + 1;
+	     
+	     inside = 0;
+	     
+	     return len;
+	  }
+	
+	inside++;
+	return -1;
+     }
+   else
+     {
+	inside = 1;
+	return -1;
+     }
+}
+
+
+inline int inside_telnetsequence( char c )
+{
+   static short inside;
+   static int subnegotiation;
+   
+   if ( subnegotiation )
+     subnegotiation++;
+   
+   if ( !inside && c != (char) IAC )
+     return subnegotiation ? -1 : 0;
+   
+   if ( !inside )
+     {
+	/* From the previous check, we know that c holds IAC. */
+	inside = 1;
+	return -1;
+     }
+   else if ( inside == 1 )
+     {
+	inside = 0;
+	
+	if ( c == (char) WILL || c == (char) WONT ||
+	     c == (char) DO   || c == (char) DONT )
+	  {
+	     inside = 2;
+	     return -1;
+	  }
+	else if ( c == (char) SB )
+	  {
+	     /* Keep going... */
+	     subnegotiation = 2;
+	     return -1;
+	  }
+	else if ( c == (char) SE )
+	  {
+	     int len = subnegotiation;
+	     
+	     subnegotiation = 0;
+	     inside = 0;
+	     
+	     return len;
+	  }
+	else
+	  {
+	     /* Two bytes. */
+	     return 2;
+	  }
+     }
+   else if ( inside == 2 )
+     {
+	inside = 0;
+	
+	/* Three bytes. */
+	return 3;
+     }
+   
+   return 0;
+}
+
+
+void process_buffer_new( char *raw_buffer, int bytes )
+{
+   static LINES l;
+   
+   static int raw_buffer_size;
+   static int normal_buffer_size;
+   static int lines_buffer_size;
+   
+   static int raw_pos;
+   static int normal_pos;
+   
+   static int colour_is_bright;
+   static int foreground_colour = 7;
+   
+   int es, ts;
+   
+   struct timeval tv1, tv2;
+   int sec, usec;
+   
+   mb_section = "Processing buffer";
+   crash_buffer = raw_buffer;
+   crash_buffer_len = bytes;
+   
+   bytes_uncompressed += bytes;
+   
+   log_bytes( "s->m", raw_buffer, bytes );
+   
+   global_l = &l;
+   
+   while ( bytes )
+     {
+	/* We don't like this character. Skip it. */
+	// Umm.. how do we skip '\r'? Maybe skip it just from normal?
+	
+	/* Adjust memory size, when needed. */
+	if ( raw_pos == raw_buffer_size )
+	  {
+	     raw_buffer_size += 256;
+	     l.raw		= realloc( l.raw,		raw_buffer_size );
+	     l.insert_point	= realloc( l.insert_point,	raw_buffer_size );
+	  }
+	if ( normal_pos == normal_buffer_size )
+	  {
+	     normal_buffer_size += 256;
+	     l.lines 		= realloc( l.lines,
+					   normal_buffer_size );
+	     l.zeroed_lines	= realloc( l.zeroed_lines,
+					   normal_buffer_size );
+	     l.colour		= realloc( l.colour,
+					   normal_buffer_size * sizeof(char*));
+	     l.inlines		= realloc( l.inlines,
+					   normal_buffer_size * sizeof(char*));
+	     l.gag_char		= realloc( l.gag_char,
+					   normal_buffer_size * sizeof(short));
+	     
+	     memset( l.colour + normal_buffer_size - 256, 0,
+		     256 * sizeof(char*) );
+	     memset( l.inlines + normal_buffer_size - 256, 0,
+		     256 * sizeof(char*) );
+	     memset( l.gag_char + normal_buffer_size - 256, 0,
+		     256 * sizeof(short) );
+	  }
+	if ( l.nr_of_lines == lines_buffer_size )
+	  {
+	     lines_buffer_size += 256;
+	     l.line		= realloc( l.line,
+					   (lines_buffer_size+2)*sizeof(char*) );
+	     l.len		= realloc( l.len,
+					   (lines_buffer_size+2)*sizeof(int) );
+	     l.line_start	= realloc( l.line_start,
+					   (lines_buffer_size+2)*sizeof(int) );
+	     l.raw_line_start	= realloc( l.raw_line_start,
+					   (lines_buffer_size+2)*sizeof(int) );
+	     l.line_info	= realloc( l.line_info,
+					   (lines_buffer_size+2)*sizeof(struct line_info_data) );
+	     
+	     l.len[0] = l.line_start[0] = l.raw_line_start[0] = 0;
+	     l.len[1] = l.line_start[1] = l.raw_line_start[1] = 0;
+	     
+	     memset( l.line_info + lines_buffer_size - 256, 0,
+		     256 * sizeof(struct line_info_data) );
+	  }
+	
+	l.raw[raw_pos] = *raw_buffer;
+	l.insert_point[raw_pos] = 0;
+	
+	es = inside_escapesequence( *raw_buffer );
+	ts = inside_telnetsequence( *raw_buffer );
+	
+	if ( es || ts )
+	  {
+	     /* Colourful! */
+	     if ( es && es != -1 )
+	       {
+		  char *p = l.raw + raw_pos - es + 1;
+		  
+		  char *colour_list[2][8] =
+		    { { C_d, C_r, C_g, C_y, C_b, C_m, C_c, C_0 },
+		      { C_D, C_R, C_G, C_Y, C_B, C_M, C_C, C_W } };
+		  
+		  /* Determine which colour it is. */
+		  
+		  /* Skip "\33[" first. A colour looks like: \33[1;31m */
+		  p += 2;
+		  while ( *p )
+		    {
+		       if ( *p == '0' )
+			 {
+			    colour_is_bright = 0;
+			    foreground_colour = 0;
+			 }
+		       else if ( *p == '1' )
+			 colour_is_bright = 1;
+		       else if ( *p == '3' )
+			 {
+			    p++;
+			    foreground_colour = *p - '0';
+			 }
+		       
+		       p++;
+		       if ( *p == ';' )
+			 {
+			    p++;
+			    continue;
+			 }
+		       else
+			 break;
+		    }
+		  
+		  l.colour[normal_pos] =
+		    colour_list[colour_is_bright][foreground_colour];
+		  
+		  /*
+		  for ( i = 0; colour_list[i]; i++ )
+		    if ( !memcmp( p, colour_list[i], strlen( colour_list[i] ) ) )
+		      {
+			 l.colour[normal_pos] = colour_list[i];
+			 
+			 raw_pos -= es;
+			 
+			 break;
+		      }*/
+	       }
+	     
+	     if ( ts && ts != -1 )
+	       {
+		  char *p = l.raw + raw_pos - ts + 1;
+		  
+		  /* Ze end? Ein prompt? */
+		  if ( p[1] == (char) GA || p[1] == (char) EOR )
+		    {
+		       int line, i;
+		       
+		       l.line[0] = l.line[l.nr_of_lines+1] = NULL;
+		       for ( i = 1; i <= l.nr_of_lines + 1; i++ )
+			 l.line[i] = l.zeroed_lines + l.line_start[i];
+		       l.zeroed_lines[normal_pos] = 0;
+		       l.len[l.nr_of_lines+1] = normal_pos - l.line_start[l.nr_of_lines+1];
+		       l.prompt = l.line[l.nr_of_lines+1];
+		       l.prompt_len = l.len[l.nr_of_lines+1];
+		       l.full_len = normal_pos + 1;
+		       l.raw_len = raw_pos + 1;
+		       l.insert_point[raw_pos - 1] = 1;
+		       
+		       /* Gathered an entire paragraph! Now, let's do
+			* something with it! */
+		       
+		       
+		       if ( show_processing_time )
+			 gettimeofday( &tv1, NULL );
+		       module_process_server_paragraph( &l );
+		       if ( show_processing_time )
+			 gettimeofday( &tv2, NULL );
+		       
+		       print_paragraph( &l );
+		       
+		       if ( show_processing_time )
+			 {
+			    char buf[512];
+			    
+			    usec = tv2.tv_usec - tv1.tv_usec;
+			    sec = tv2.tv_sec - tv1.tv_sec;
+			    
+			    sprintf( buf, "<" C_g "%d" C_0 "> ",
+				     usec + ( sec * 1000000 ) );
+			    send_to_client( buf, strlen( buf ) );
+			 }
+		       
+		       /* Clean it up. */
+		       memset( l.colour, 0, normal_pos * sizeof(char*) );
+		       memset( l.gag_char, 0, normal_pos * sizeof(short) );
+		       for ( i = 0; i < normal_pos; i++ )
+			 if ( l.inlines[i] )
+			   free( l.inlines[i] );
+		       memset( l.inlines, 0, normal_pos * sizeof(char*) );
+		       for ( line = 0; line < l.nr_of_lines + 2; line++ )
+			 {
+			    if ( l.line_info[line].prefix )
+			      free( l.line_info[line].prefix );
+			    if ( l.line_info[line].suffix )
+			      free( l.line_info[line].suffix );
+			    if ( l.line_info[line].replace )
+			      free( l.line_info[line].replace );
+			    if ( l.line_info[line].append_line )
+			      free( l.line_info[line].append_line );
+			 }
+		       memset( l.line_info, 0, (l.nr_of_lines + 2) *
+			       sizeof(struct line_info_data) );
+		       raw_pos = -1;
+		       normal_pos = 0;
+		       l.nr_of_lines = 0;
+		       l.full_len = 0;
+		       l.raw_len = 0;
+		       
+		       colour_is_bright = 0;
+		       foreground_colour = 7;
+		    }
+		  
+		  else if ( analyse_telnetsequence( p, ts ) )
+		    {
+		       raw_pos -= ts;
+		    }
+	       }
+	     
+	  }
+	else if ( *raw_buffer == '\r' )
+	  {
+	     /* We hate this character, so skip it. */
+	     raw_pos--;
+	  }
+	else
+	  {
+	     l.lines[normal_pos] = *raw_buffer;
+	     l.zeroed_lines[normal_pos] = *raw_buffer;
+	     l.insert_point[raw_pos] = 1;
+	     
+	     if ( *raw_buffer == '\n' )
+	       {
+		  l.zeroed_lines[normal_pos] = 0;
+		  l.nr_of_lines++;
+		  l.len[l.nr_of_lines] = normal_pos - l.line_start[l.nr_of_lines];
+		  
+		  /* Note; This is information about the -next- line. */
+		  l.line[l.nr_of_lines+1] = normal_pos + l.lines + 1;
+		  l.line_start[l.nr_of_lines+1] = normal_pos + 1;
+		  l.raw_line_start[l.nr_of_lines+1] = raw_pos + 1;
+	       }
+	     
+	     normal_pos++;
+	  }
+	
+	raw_pos++, raw_buffer++, bytes--;
+     }
+   
+   mb_section = "Out of process_buffer";
+   crash_buffer = NULL;
+}
+
+
+
+void process_buffer( char *raw_buf, int bytes )
+{
+//   struct timeval tv1, tv2;
+//   int usec, sec;
+   
+//   gettimeofday( &tv1, NULL );
+   process_buffer_new( raw_buf, bytes );
+//   gettimeofday( &tv2, NULL );
+   
+//   usec = tv2.tv_usec - tv1.tv_usec;
+//   sec = tv2.tv_sec - tv1.tv_sec;
+   
+//   clientff( "<" C_r "%d" C_0 "> ", usec + ( sec * 1000000 ) );
+}
 
 
 
@@ -4437,8 +5204,13 @@ void show_prompt( )
    char *last_section;
    
    last_section = mb_section;
-   mb_section = "Reparsing prompt";
+   mb_section = "Showing prompt";
    
+   send_to_client( last_prompt, last_prompt_len );
+   
+   sent_something = 0;
+   
+   /*
    if ( processing )
      {
 	show_prompt_again = 1;
@@ -4460,6 +5232,7 @@ void show_prompt( )
 	empty_buffer( );
 	crash_line = NULL;
      }
+    */
    
    mb_section = last_section;
 }
@@ -4649,8 +5422,14 @@ int process_server( void )
      }
    else if ( bytes == 0 )
      {
+	char iac_ga[] = { IAC, GA };
+	
+	/* The GA will force any buffered text to be printed. */
+	process_buffer( iac_ga, 2 );
+	
 	clientfb( "Server closed connection." );
 	debugf( "Server closed connection." );
+	
 	force_off_mccp( );
 	return 1;
      }

@@ -4,6 +4,8 @@ IMTS-unstable
 (MudBot:)
 - Added limited shared/synchronized memory zone support.
 - Added support for socks5 and http proxies.
+- Rewrote the LINE structure into a LINES structure. Modules now get a
+  whole set of lines at once.
 (Imperian:)
 - Added the 'back' body part.
 (IMapper:)
@@ -22,20 +24,25 @@ IMTS-unstable
   in the vnum number interval.
 - 'exit special' rewritten from scratch. Listing moved into 'room look',
   and removing exits moved into 'exit destroy'.
+- Updated to use the LINES structure, and rewrote the room parser.
 (IOffense:)
 - Stripped the iScript out of here, into its own module.
-- Moved the 'grep' command to the other mod, to clear the pcre requirement.
+- Removed completely.
+(MMChat:)
+- Removed completely.
+(Voter:)
+- Removed completely.
 (IScript:)
 - Complete rewrite of the iScript parser.
-(MMChat:)
-- Removed... entirely!
 (ILua:)
-- Created... yes, entirely!
+- Created... yes, completely.
+- Updated to use the LINES structure.
+- Added PCRE support with 'regex_compile' and 'regex_match'.
 
 
 
 IMTS-6
-=============
+======
 
 (MudBot:)
 - Completely rewritten the way lines/prompts are parsed and sent to the

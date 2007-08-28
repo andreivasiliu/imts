@@ -46,10 +46,17 @@
 /*** Global functions. ***/
 
 /* Line operators. */
+void	(*prefix_at)( int line, char *string );
+void	(*suffix_at)( int line, char *string );
+void	(*replace_at)( int line, char *string );
+void	(*insert_at)( int line, int pos, char *string );
+void	(*hide_line_at)( int line );
 void	(*prefix)( char *string );
 void	(*suffix)( char *string );
 void	(*replace)( char *string );
 void	(*insert)( int pos, char *string );
+void	(*hide_line)( );
+void	(*set_line)( int line );
 void	(*prefixf)( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
 void	(*suffixf)( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
 
@@ -68,6 +75,8 @@ void	(*show_prompt)( );
 void	(*mxp)( char *string, ... ) __attribute__ ( ( format( printf, 1, 2 ) ) );
 int	(*mxp_tag)( int tag );
 int	(*mxp_stag)( int tag, char *dest );
+char *	(*get_poscolor_at)( int line, int pos );
+char *	(*get_poscolor)( int pos );
 void	(*share_memory)( char *name, void *pointer, int size );
 void	(*shared_memory_is_pointer_to_string)( char *name );
 
@@ -99,10 +108,17 @@ int	(*c_close)( int fd );
 
 #define GET_FUNCTIONS( self ) \
    /* Line operators. */ \
+   prefix_at = self->get_func( "prefix_at" ); \
+   suffix_at = self->get_func( "suffix_at" ); \
+   replace_at = self->get_func( "replace_at" ); \
+   insert_at = self->get_func( "insert_at" ); \
+   hide_line_at = self->get_func( "hide_line_at" ); \
    prefix = self->get_func( "prefix" ); \
    suffix = self->get_func( "suffix" ); \
    replace = self->get_func( "replace" ); \
    insert = self->get_func( "insert" ); \
+   hide_line = self->get_func( "hide_line" ); \
+   set_line = self->get_func( "set_line" ); \
    prefixf = self->get_func( "prefixf" ); \
    suffixf = self->get_func( "suffixf" ); \
    /* Communication */ \
@@ -120,6 +136,8 @@ int	(*c_close)( int fd );
    mxp = self->get_func( "mxp" ); \
    mxp_tag = self->get_func( "mxp_tag" ); \
    mxp_stag = self->get_func( "mxp_stag" ); \
+   get_poscolor_at = self->get_func( "get_poscolor_at" ); \
+   get_poscolor = self->get_func( "get_poscolor" ); \
    share_memory = self->get_func( "share_memory" ); \
    shared_memory_is_pointer_to_string = self->get_func( "shared_memory_is_pointer_to_string" ); \
    /* Utility */ \

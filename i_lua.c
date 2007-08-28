@@ -5,6 +5,7 @@
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
+#include <pcre.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -12,7 +13,7 @@
 
 
 int i_lua_version_major = 0;
-int i_lua_version_minor = 7;
+int i_lua_version_minor = 8;
 
 char *i_lua_id = I_LUA_ID "\r\n" HEADER_ID "\r\n" MODULE_ID "\r\n";
 
@@ -31,8 +32,16 @@ struct ilua_mod
    ILUA_MOD *next;
 };
 
+struct pcre_userdata
+{
+   pcre *data;
+   pcre_extra *extra;
+};
+
 
 ILUA_MOD *ilua_modules;
+
+LINES *current_paragraph;
 
 void ilua_open_mbapi( lua_State *L );
 void ilua_open_mbcolours( lua_State *L );
@@ -44,8 +53,7 @@ void read_ilua_config( char *file_name, char *mod_name );
 
 void i_lua_init_data( );
 void i_lua_unload( );
-void i_lua_process_server_line( LINE *line );
-void i_lua_process_server_prompt( LINE *line );
+void i_lua_process_server_paragraph( LINES *l );
 int i_lua_process_client_aliases( char *cmd );
 int i_lua_process_client_command( char *cmd );
 
@@ -59,8 +67,7 @@ ENTRANCE( i_lua_module_register )
    
    self->init_data = i_lua_init_data;
    self->unload = i_lua_unload;
-   self->process_server_line = i_lua_process_server_line;
-   self->process_server_prompt = i_lua_process_server_prompt;
+   self->process_server_paragraph = i_lua_process_server_paragraph;
    self->process_client_command = i_lua_process_client_command;
    self->process_client_aliases = i_lua_process_client_aliases;
    
@@ -312,8 +319,10 @@ void read_ilua_config( char *file_name, char *mod_name )
 
 
 
-void set_line_in_table( lua_State *L, LINE *line )
+void set_lines_in_table( lua_State *L, LINES *l )
 {
+   int i;
+   
    lua_getglobal( L, "mb" );
    if ( !lua_istable( L, -1 ) )
      {
@@ -324,22 +333,58 @@ void set_line_in_table( lua_State *L, LINE *line )
      }
    
    /* Put some info from our LINE structure in here. */
-   lua_pushstring( L, line->line );
-   lua_setfield( L, -2, "line" );
-   lua_pushlstring( L, line->raw_line, line->raw_len );
-   lua_setfield( L, -2, "raw_line" );
-   lua_pushstring( L, line->ending );
-   lua_setfield( L, -2, "ending" );
-   lua_pushinteger( L, line->len );
-   lua_setfield( L, -2, "len" );
-   lua_pushinteger( L, line->raw_len );
-   lua_setfield( L, -2, "raw_len" );
    
-   /* Reset these, else we gag everything. */
+   lua_newtable( L );
+   for ( i = 1; i <= l->nr_of_lines; i++ )
+     {
+	lua_pushnumber( L, i );
+	lua_pushstring( L, l->line[i] );
+	lua_settable( L, -3 );
+     }
+   lua_setfield( L, -2, "lines" );
+   
+   lua_newtable( L );
+   for ( i = 1; i <= l->nr_of_lines; i++ )
+     {
+	lua_pushnumber( L, i );
+	lua_pushnumber( L, l->len[i] );
+	lua_settable( L, -3 );
+     }
+   lua_setfield( L, -2, "line_len" );
+   
+   lua_newtable( L );
+   for ( i = 1; i <= l->nr_of_lines; i++ )
+     {
+	lua_pushnumber( L, i );
+	lua_pushnumber( L, l->line_start[i] );
+	lua_settable( L, -3 );
+     }
+   lua_setfield( L, -2, "line_start" );
+   
+   lua_pushstring( L, l->prompt );
+   lua_setfield( L, -2, "prompt" );
+   lua_pushnumber( L, l->prompt_len );
+   lua_setfield( L, -2, "prompt_len" );
+   lua_pushnumber( L, l->line_start[l->nr_of_lines + 1] );
+   lua_setfield( L, -2, "prompt_start" );
+   
+   lua_pushlstring( L, l->raw, l->raw_len );
+   lua_setfield( L, -2, "raw" );
+   lua_pushnumber( L, l->raw_len );
+   lua_setfield( L, -2, "raw_len" );
+   lua_pushstring( L, l->lines );
+   lua_setfield( L, -2, "paragraph" );
+   lua_pushnumber( L, l->full_len );
+   lua_setfield( L, -2, "paragraph_len" );
+   lua_pushnumber( L, l->nr_of_lines );
+   lua_setfield( L, -2, "nr_of_lines" );
+   
    lua_pushnil( L );
-   lua_setfield( L, -2, "gag_line" );
+   lua_setfield( L, -2, "line" );
    lua_pushnil( L );
-   lua_setfield( L, -2, "gag_ending" );
+   lua_setfield( L, -2, "len" );
+   lua_pushnil( L );
+   lua_setfield( L, -2, "current_line" );
    
    lua_pop( L, 1 );
 }
@@ -464,25 +509,6 @@ int ilua_callback( lua_State *L, char *func, char *arg, char *dir )
 
 
 
-void set_gags( lua_State *L, LINE *line )
-{
-   lua_getglobal( L, "mb" );
-   if ( !lua_istable( L, -1 ) )
-     {
-        lua_pop( L, 1 );
-        return;
-     }
-   
-   lua_getfield( L, -1, "gag_line" );
-   line->gag_entirely |= lua_toboolean( L, -1 );
-   lua_getfield( L, -2, "gag_ending" );
-   line->gag_ending |= lua_toboolean( L, -1 );
-   
-   lua_pop( L, 3 );
-}
-
-
-
 void i_lua_unload( )
 {
    ILUA_MOD *m;
@@ -496,31 +522,21 @@ void i_lua_unload( )
 
 
 
-void i_lua_process_server_line( LINE *line )
+void i_lua_process_server_paragraph( LINES *l )
 {
    ILUA_MOD *m;
    
+   /* Ideally, this wouldn't exist.. it's needed for get_color_at() though. */
+   current_paragraph = l;
+   
    for ( m = ilua_modules; m; m = m->next )
      {
-        set_line_in_table( m->L, line );
-        ilua_callback( m->L, "server_line", NULL, m->work_dir );
-        set_gags( m->L, line );
+	set_lines_in_table( m->L, l );
+	set_atcp_table( m->L );
+	ilua_callback( m->L, "server_lines", NULL, m->work_dir );
      }
-}
-
-
-
-void i_lua_process_server_prompt( LINE *line )
-{
-   ILUA_MOD *m;
    
-   for ( m = ilua_modules; m; m = m->next )
-     {
-        set_line_in_table( m->L, line );
-        set_atcp_table( m->L );
-        ilua_callback( m->L, "server_prompt", NULL, m->work_dir ); 
-        set_gags( m->L, line );
-    }
+   current_paragraph = NULL;
 }
 
 
@@ -675,16 +691,38 @@ static int ilua_debug( lua_State *L )
 
 
 
-static int ilua_prefix( lua_State *L )
+void paragraph_manip( lua_State *L,
+		     void (*func_at)( int line, char *string ),
+		     void (*func)( char *string ) )
 {
-   const char *str;
+   char *str;
+   int line, use_line = 0;
+   
+   if ( lua_isnumber( L, 1 ) )
+     {
+	line = lua_tonumber( L, 1 );
+	lua_remove( L, 1 );
+	use_line = 1;
+     }
    
    lua_concat( L, lua_gettop( L ) );
    
-   str = lua_tostring( L, -1 );
+   str = (char*) lua_tostring( L, -1 );
    if ( str )
-     prefix( (char*) str );
+     {
+	if ( use_line )
+	  func_at( line, str );
+	else
+	  func( str );
+     }
    lua_pop( L, 1 );
+}
+
+
+
+static int ilua_prefix( lua_State *L )
+{
+   paragraph_manip( L, prefix_at, prefix );
    
    return 0;
 }
@@ -693,14 +731,7 @@ static int ilua_prefix( lua_State *L )
 
 static int ilua_suffix( lua_State *L )
 {
-   const char *str;
-   
-   lua_concat( L, lua_gettop( L ) );
-   
-   str = lua_tostring( L, -1 );
-   if ( str )
-     suffix( (char*) str );
-   lua_pop( L, 1 );
+   paragraph_manip( L, suffix_at, suffix );
    
    return 0;
 }
@@ -711,6 +742,14 @@ static int ilua_insert( lua_State *L )
 {
    const char *str;
    int pos;
+   int line, use_line = 0;
+   
+   if ( lua_isnumber( L, 2 ) )
+     {
+	line = luaL_checkint( L, 1 );
+	use_line = 1;
+	lua_remove( L, 1 );
+     }
    
    pos = luaL_checkint( L, 1 );
    
@@ -718,7 +757,12 @@ static int ilua_insert( lua_State *L )
    
    str = lua_tostring( L, -1 );
    if ( str )
-     insert( pos, (char*) str );
+     {
+	if ( use_line )
+	  insert_at( line, pos, (char*) str );
+	else
+	  insert( pos, (char*) str );
+     }
    
    lua_pop( L, 2 );
    
@@ -729,14 +773,7 @@ static int ilua_insert( lua_State *L )
 
 static int ilua_replace( lua_State *L )
 {
-   const char *str;
-   
-   lua_concat( L, lua_gettop( L ) );
-   
-   str = lua_tostring( L, -1 );
-   if ( str )
-     replace( (char*) str );
-   lua_pop( L, 1 );
+   paragraph_manip( L, replace_at, replace );
    
    return 0;
 }
@@ -750,6 +787,107 @@ static int ilua_show_prompt( lua_State *L )
    return 0;
 }
 
+
+
+static int ilua_get_color_at( lua_State *L )
+{
+   char *colour;
+   int line;
+   int use_line = 0;
+   int pos;
+   
+   if ( !current_paragraph )
+     {
+	lua_pushstring( L, "get_color_at() called at a wrong time." );
+	lua_error( L );
+     }
+   
+   if ( lua_isnumber( L, 2 ) )
+     {
+	line = luaL_checkint( L, 1 );
+	use_line = 1;
+     }
+   
+   pos = luaL_checkint( L, 1 + use_line );
+   
+   if ( use_line )
+     colour = get_poscolor_at( line, pos );
+   else
+     colour = get_poscolor( pos );
+   
+   lua_pop( L, 1 + use_line );
+   lua_pushstring( L, colour );
+   
+   return 1;
+}
+
+
+
+static int ilua_hide_line( lua_State *L )
+{
+   if ( lua_isnumber( L, 1 ) )
+     {
+	int line;
+	
+	line = lua_tonumber( L, 1 );
+	hide_line_at( line );
+	
+	lua_remove( L, 1 );
+     }
+   else
+     hide_line( );
+   
+   return 0;
+}
+
+
+
+static int ilua_set_line( lua_State *L )
+{
+   int line;
+   
+   line = luaL_checkint( L, 1 );
+   
+   set_line( line );
+   
+   lua_getglobal( L, "mb" );
+   if ( !lua_istable( L, -1 ) )
+     {
+        lua_pop( L, 1 );
+        clientfr( "** What the hell did you do with the global 'mb' table? **" );
+        ilua_open_mbapi( L );
+        lua_getglobal( L, "mb" );
+     }
+   
+   if ( line == -1 )
+     {
+	lua_getfield( L, -1, "prompt" );
+	lua_setfield( L, -2, "line" );
+	
+	lua_getfield( L, -1, "prompt_len" );
+	lua_setfield( L, -2, "len" );
+     }
+   else
+     {
+	lua_getfield( L, -1, "lines" );
+	lua_pushnumber( L, line );
+	lua_gettable( L, -2 );
+	lua_setfield( L, -3, "line" );
+	lua_pop( L, 1 );
+	
+	lua_getfield( L, -1, "line_len" );
+	lua_pushnumber( L, line );
+	lua_gettable( L, -2 );
+	lua_setfield( L, -3, "len" );
+	lua_pop( L, 1 );
+     }
+   
+   lua_pushnumber( L, line );
+   lua_setfield( L, -2, "current_line" );
+   lua_pop( L, 1 );
+   
+   return 0;
+}
 
 
 static int ilua_cmp( lua_State *L )
@@ -909,6 +1047,180 @@ static int ilua_del_timer( lua_State *L )
 
 
 
+static int ilua_regex_compile( lua_State *L )
+{
+   struct pcre_userdata *pattern;
+   pcre *pattern_data;
+   const char *str, *error;
+   int error_offset;
+   
+   str = luaL_checkstring( L, 1 );
+   
+   pattern_data = pcre_compile( str, 0, &error, &error_offset, NULL );
+   
+   if ( error )
+     {
+	char buf[256];
+	
+	sprintf( buf, "Cannot compile regular expression, at character "
+		 "%d.\nReason: %s.\nPattern was: '%s'",
+		 error_offset, error, str );
+	
+	lua_pushstring( L, buf );
+	lua_error( L );
+     }
+   
+   pattern = lua_newuserdata( L, sizeof( struct pcre_userdata ) );
+   
+   pattern->data = pattern_data;
+   pattern->extra = pcre_study( pattern_data, 0, &error );
+   
+   if ( error )
+     {
+	char buf[256];
+	
+	sprintf( buf, "Pattern study error: %s.\nPattern was: '%s'",
+		 error, str );
+	
+	lua_pushstring( L, buf );
+	lua_error( L );
+     }
+   
+   lua_remove( L, 1 );
+   
+   return 1;
+}
+
+
+
+static int ilua_regex_match( lua_State *L )
+{
+   pcre *pattern_data;
+   pcre_extra *extra;
+   const char *error;
+   int error_offset;
+   const char *text;
+   int offset;
+   size_t text_len;
+   int temporary = 0;
+   
+   int ovector[30];
+   int rc, i;
+   
+   int name_count, name_entry_size, nr;
+   char *name_table;
+   
+   if ( lua_isuserdata( L, 1 ) )
+     {
+	struct pcre_userdata *pattern;
+	
+	pattern = lua_touserdata( L, 1 );
+	pattern_data = pattern->data;
+	extra = pattern->extra;
+     }
+   else
+     {
+	const char *str;
+	
+	str = luaL_checkstring( L, 1 );
+	
+	pattern_data = pcre_compile( str, 0, &error, &error_offset, NULL );
+	extra = NULL;
+	temporary = 1;
+	
+	if ( error )
+	  {
+	     char buf[256];
+	     
+	     sprintf( buf, "Cannot compile regular expression, at character "
+		      "%d.\nReason: %s.\nPattern was: '%s'",
+		      error_offset, error, str );
+	     
+	     lua_pushstring( L, buf );
+	     lua_error( L );
+	  }
+     }
+   
+   if ( lua_isnumber( L, 2 ) )
+     {
+	offset = lua_tonumber( L, 2 );
+	lua_remove( L, 2 );
+     }
+   else
+     offset = 0;
+   
+   text = luaL_checklstring( L, 2, &text_len );
+   
+   rc = pcre_exec( pattern_data, extra, text, text_len,
+		   offset, 0, ovector, 30 );
+   
+   /* No match. */
+   if ( rc < 0 )
+     {
+	lua_pop( L, 2 );
+	lua_pushnil( L );
+	if ( temporary )
+	  free( pattern_data );
+	return 1;
+     }
+   
+   lua_newtable( L );
+   
+   /* .start_offset */
+   lua_newtable( L );
+   /* .end_offset */
+   lua_newtable( L );
+   
+   /* Put the substrings into the table. */
+   
+   if ( rc == 0 )
+     rc = 10;
+   for ( i = 0; i < rc; i++ )
+     {
+	lua_pushnumber( L, i );
+	lua_pushlstring( L, text + ovector[i*2],
+			 ovector[i*2+1] - ovector[i*2] );
+	lua_settable( L, -5 );
+	
+	lua_pushnumber( L, i );
+	lua_pushnumber( L, ovector[i*2] );
+	lua_settable( L, -4 );
+	
+	lua_pushnumber( L, i );
+	lua_pushnumber( L, ovector[i*2+1] );
+	lua_settable( L, -3 );
+     }
+   
+   lua_setfield( L, -3, "end_offset" );
+   lua_setfield( L, -2, "start_offset" );
+   
+   /* Save named substrings into the table as well. */
+   
+   pcre_fullinfo( pattern_data, NULL, PCRE_INFO_NAMECOUNT, &name_count );
+   pcre_fullinfo( pattern_data, NULL, PCRE_INFO_NAMEENTRYSIZE, &name_entry_size );
+   pcre_fullinfo( pattern_data, NULL, PCRE_INFO_NAMETABLE, &name_table );
+   
+   for ( i = 0; i < name_count; i++ )
+     {
+	nr  = ((unsigned char *)name_table)[name_entry_size*i] * 256;
+	nr += ((unsigned char *)name_table)[name_entry_size*i+1];
+	
+	lua_pushstring( L, name_table + name_entry_size*i + 2 );
+	lua_pushlstring( L, text + ovector[nr*2],
+			 ovector[nr*2+1] - ovector[nr*2] );
+	lua_settable( L, -3 );
+     }
+   
+   lua_remove( L, 2 );
+   lua_remove( L, 1 );
+   
+   if ( temporary )
+     free( pattern_data );
+   
+   return 1;
+}
+
+
 /*
  * mb =
  * {
@@ -916,8 +1228,7 @@ static int ilua_del_timer( lua_State *L )
  *    
  *    -- Callbacks
  *    unload = nil,
- *    server_line = nil,
- *    server_prompt = nil,
+ *    server_paragraph = nil,
  *    client_aliases = nil,
  *    
  *    -- Communication
@@ -941,7 +1252,7 @@ static int ilua_del_timer( lua_State *L )
  *    
  *    -- Networking / not implemented
  *    
- *    -- LINE structure
+ *    -- LINE structure / old
  *    line
  *    raw_line
  *    ending
@@ -973,10 +1284,15 @@ void ilua_open_mbapi( lua_State *L )
    lua_register( L, "suffix", ilua_suffix );
    lua_register( L, "insert", ilua_insert );
    lua_register( L, "replace", ilua_replace );
+   lua_register( L, "hide_Line", ilua_hide_line );
+   lua_register( L, "set_line", ilua_set_line );
+   lua_register( L, "get_color_at", ilua_get_color_at );
    lua_register( L, "show_prompt", ilua_show_prompt );
    lua_register( L, "cmp", ilua_cmp );
    lua_register( L, "add_timer", ilua_add_timer );
    lua_register( L, "del_timer", ilua_del_timer );
+   lua_register( L, "regex_compile", ilua_regex_compile );
+   lua_register( L, "regex_match", ilua_regex_match );
 }
 
 

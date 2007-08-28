@@ -26,11 +26,11 @@ all: $(FILES)
 # Dependencies.
 LIBS_mb-core.exe   = zlib1.dll -lwsock32 -lcomctl32
 LIBS_i_script.dll  = pcre.dll
-LIBS_i_lua.dll     = lua51.dll
+LIBS_i_lua.dll     = lua51.dll pcre.dll
 imperian.o: header.h module.h imperian.h
 i_mapper.o: header.h module.h i_mapper.h
 i_script.o: header.h module.h deps/pcre.h
-i_lua.o   : header.h module.h deps/lua.h deps/lualib.h deps/lauxlib.h
+i_lua.o   : header.h module.h deps/lua.h deps/lualib.h deps/lauxlib.h deps/pcre.h
 winmain.o: header.h winres.h
 
 clean:
