@@ -548,7 +548,7 @@ int i_lua_process_client_aliases( char *cmd )
    
    for ( m = ilua_modules; m; m = m->next )
      {
-        i = ilua_callback( m->L, "client_aliases", cmd, m->work_dir );
+        i |= ilua_callback( m->L, "client_aliases", cmd, m->work_dir );
      }
    
    return i;
