@@ -5330,6 +5330,48 @@ void parse_petlist( char *line, int line_len )
 
 
 
+void parse_wormholes( char *line )
+{
+   static int unfinished_message;
+   char name1[1024];
+   char *name2;
+   
+   if ( !cmp( "You sense a connection between *", line ) )
+     {
+        name1[0] = 0;
+        line += 31;
+        unfinished_message = 1;
+     }
+   
+   if ( !unfinished_message )
+     return;
+   
+   strcat( name1, line );
+   if ( strstr( name1, "." ) )
+     unfinished_message = 0;
+   else
+     {
+        /* Unfinished message - if it doesn't end in a space, add one. */
+        if ( strlen( name1 ) && name1[strlen( name1 ) - 1] != ' ' )
+          strcat( name1, " " );
+        return;
+     }
+   
+   name2 = strstr( name1, " and " );
+   if ( !name2 )
+     return;
+   *name2 = '.';
+   *(name2+1) = 0;
+   
+   name2 += 5;
+   
+   locate_room( name1, 0, NULL );
+   suffix( " ->" );
+   locate_room( name2, 0, NULL );
+}
+
+
+
 void parse_who( LINES *l, int line )
 {
    static int first_time = 1, len1, len2;
@@ -5861,6 +5903,7 @@ void process_line( char *line, int len )
         parse_pursue( line );
         parse_eventstatus( line );
         parse_petlist( line, len );
+        parse_wormholes( line );
         
         /* Is this a fullsense command? */
         parse_fullsense( line );
