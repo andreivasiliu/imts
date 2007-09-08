@@ -1104,7 +1104,7 @@ static int ilua_regex_match( lua_State *L )
    size_t text_len;
    int temporary = 0;
    
-   int ovector[30];
+   int ovector[90];
    int rc, i;
    
    int name_count, name_entry_size, nr;
@@ -1174,7 +1174,7 @@ static int ilua_regex_match( lua_State *L )
    /* Put the substrings into the table. */
    
    if ( rc == 0 )
-     rc = 10;
+     rc = 30;
    for ( i = 0; i < rc; i++ )
      {
 	lua_pushnumber( L, i );
@@ -1202,9 +1202,12 @@ static int ilua_regex_match( lua_State *L )
    
    for ( i = 0; i < name_count; i++ )
      {
-	nr  = ((unsigned char *)name_table)[name_entry_size*i] * 256;
+        nr  = ((unsigned char *)name_table)[name_entry_size*i] * 256;
 	nr += ((unsigned char *)name_table)[name_entry_size*i+1];
 	
+        if ( nr >= rc )
+          continue;
+        
 	lua_pushstring( L, name_table + name_entry_size*i + 2 );
 	lua_pushlstring( L, text + ovector[nr*2],
 			 ovector[nr*2+1] - ovector[nr*2] );
@@ -1284,7 +1287,7 @@ void ilua_open_mbapi( lua_State *L )
    lua_register( L, "suffix", ilua_suffix );
    lua_register( L, "insert", ilua_insert );
    lua_register( L, "replace", ilua_replace );
-   lua_register( L, "hide_Line", ilua_hide_line );
+   lua_register( L, "hide_line", ilua_hide_line );
    lua_register( L, "set_line", ilua_set_line );
    lua_register( L, "get_color_at", ilua_get_color_at );
    lua_register( L, "show_prompt", ilua_show_prompt );

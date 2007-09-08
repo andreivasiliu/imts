@@ -3812,6 +3812,9 @@ void process_client_line( char *buf )
 		       p++;
 		    }
 		  *(b++) = '\n';
+		  *(b++) = '>';
+		  *(b++) = (char) IAC;
+		  *(b++) = (char) GA;
 		  *b = 0;
 		  
 		  clientfb( "Processing buffer.." );
@@ -4715,6 +4718,7 @@ void print_paragraph( LINES *l )
    int raw_pos = 0;
    int pos = 0, c;
    int line = 1;
+   int lines_hidden = 0;
    char *p;
    
    if ( buffer_size != 256 )
@@ -4731,7 +4735,7 @@ void print_paragraph( LINES *l )
        output_buffer = realloc( output_buffer, ( buffer_size += 256 ) ); \
       output_buffer[pos++] = (ch); }
    
-   if ( !sent_something && l->line[1][0] )
+   if ( !sent_something && l->len[1] )
      {
 	ADD_CHAR( '\n' );
      }
@@ -4740,12 +4744,21 @@ void print_paragraph( LINES *l )
    
    for ( line = 1; line <= l->nr_of_lines + 1; line++ )
      {
-	if ( l->line_info[line].replace )
-	  l->line_info[line].hide_line = 1;
-	
-	/* Remember the beginning of the prompt. */
+	/* Prompt. */
 	if ( line == l->nr_of_lines + 1 )
-	  prompt_start = pos;
+	  {
+	     /* If all lines are gagged, gag the prompt too. */
+	     if ( l->nr_of_lines &&
+		  l->nr_of_lines == lines_hidden )
+	       l->line_info[line].hide_line = 1;
+	     
+	     /* Remember the beginning of the prompt. */
+	     prompt_start = pos;
+	  }
+	
+	/* Remember the number of lines that were gagged. */
+	else if ( l->line_info[line].hide_line )
+	  lines_hidden++;
 	
 	p = l->line_info[line].prefix;
 	if ( p )
@@ -4763,7 +4776,8 @@ void print_paragraph( LINES *l )
 	       while ( *p )
 		 ADD_CHAR( *(p++) );
 	     
-	     if ( !l->line_info[line].hide_line )
+	     if ( !l->line_info[line].hide_line &&
+		  !l->line_info[line].replace )
 	       {
 		  p = l->inlines[normal_pos];
 		  if ( p )
@@ -4802,7 +4816,9 @@ void print_paragraph( LINES *l )
 	     else
 	       {
 		  /* A normal printable character, or \n. */
-		  if ( !l->line_info[line].hide_line )
+		  if ( !l->line_info[line].hide_line &&
+		       ( !l->line_info[line].replace ||
+			 l->raw[raw_pos] == '\n' ) )
 		    {
 		       ADD_CHAR( l->raw[raw_pos] );
 		    }
