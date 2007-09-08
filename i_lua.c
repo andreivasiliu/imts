@@ -372,7 +372,7 @@ void set_lines_in_table( lua_State *L, LINES *l )
    lua_setfield( L, -2, "raw" );
    lua_pushnumber( L, l->raw_len );
    lua_setfield( L, -2, "raw_len" );
-   lua_pushstring( L, l->lines );
+   lua_pushlstring( L, l->lines, l->full_len );
    lua_setfield( L, -2, "paragraph" );
    lua_pushnumber( L, l->full_len );
    lua_setfield( L, -2, "paragraph_len" );

@@ -5098,7 +5098,7 @@ void process_buffer_new( char *raw_buffer, int bytes )
 		       l.len[l.nr_of_lines+1] = normal_pos - l.line_start[l.nr_of_lines+1];
 		       l.prompt = l.line[l.nr_of_lines+1];
 		       l.prompt_len = l.len[l.nr_of_lines+1];
-		       l.full_len = normal_pos + 1;
+		       l.full_len = normal_pos;
 		       l.raw_len = raw_pos + 1;
 		       l.insert_point[raw_pos - 1] = 1;
 		       
