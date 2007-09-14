@@ -2,6 +2,10 @@ OVERALL
 =======
 
 - Make it all work well. :)
+- Fix show_prompt
+- Fix 'connect host'
+- Fix 'Esp'
+- Fix match nil
 
 
 Mapping Changes

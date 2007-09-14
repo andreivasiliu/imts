@@ -38,6 +38,8 @@ IMTS-unstable
 - Created... yes, completely.
 - Updated to use the LINES structure.
 - Added PCRE support with 'regex_compile' and 'regex_match'.
+- Added 'gettimeofday()' for usec-precision, and updated add_timer to return
+  the time it will fire at.
 
 
 

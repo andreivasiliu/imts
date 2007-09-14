@@ -8,6 +8,7 @@
 #include <pcre.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "module.h"
 
@@ -992,6 +993,7 @@ void ilua_destroy_timer( TIMER *timer )
 static int ilua_add_timer( lua_State *L )
 {
    TIMER *timer;
+   lua_Number fire_at;
    const char *name;
    lua_Number delay;
    int optargs, i;
@@ -1029,7 +1031,12 @@ static int ilua_add_timer( lua_State *L )
    
    lua_settable( L, LUA_REGISTRYINDEX );
    
-   return 0;
+   /* Return the fire_at time. */
+   fire_at = (lua_Number) (timer->fire_at_sec & 0xFFFFFF) +
+             (lua_Number) timer->fire_at_usec / 1000000;
+   lua_pushnumber( L, fire_at );
+   
+   return 1;
 }
 
 
@@ -1043,6 +1050,24 @@ static int ilua_del_timer( lua_State *L )
    del_timer( name );
    
    return 0;
+}
+
+
+
+static int ilua_gettimeofday( lua_State *L )
+{
+   struct timeval tv;
+   lua_Number timeofday;
+   
+   gettimeofday( &tv, NULL );
+   
+   /* Lowering the upper precision, so that the fractional position can fit. */
+   timeofday = (lua_Number) (tv.tv_sec & 0xFFFFFF) +
+               (lua_Number) tv.tv_usec / 1000000;
+   
+   lua_pushnumber( L, timeofday );
+   
+   return 1;
 }
 
 
@@ -1294,6 +1319,7 @@ void ilua_open_mbapi( lua_State *L )
    lua_register( L, "cmp", ilua_cmp );
    lua_register( L, "add_timer", ilua_add_timer );
    lua_register( L, "del_timer", ilua_del_timer );
+   lua_register( L, "gettimeofday", ilua_gettimeofday );
    lua_register( L, "regex_compile", ilua_regex_compile );
    lua_register( L, "regex_match", ilua_regex_match );
 }
