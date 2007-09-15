@@ -18,7 +18,7 @@ MAKEEXE = $(CC) $(LIBS) -mwindows
 
 
 # Targets.
-FILES   = $(BIN) i_mapper.dll imperian.dll i_script.dll i_lua.dll
+FILES   = $(BIN) i_mapper.dll i_script.dll i_lua.dll
 EXTRA   = ChangeLog characters COPYING data IMap mhelp options *.is
 
 all: $(FILES)
