@@ -73,6 +73,9 @@ ENTRANCE( i_lua_module_register )
    self->process_client_aliases = i_lua_process_client_aliases;
    
    GET_FUNCTIONS( self );
+#if defined( FOR_WINDOWS )
+   gettimeofday = self->get_func( "gettimeofday" );
+#endif
 }
 
 
