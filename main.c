@@ -4823,7 +4823,16 @@ void print_paragraph( LINES *l )
 	       {
 		  /* This should be the IAC-GA, but can be anything. */
 		  while( raw_pos < l->raw_len )
-		    ADD_CHAR( l->raw[raw_pos++] );
+                    {
+                       /* Skip IAC-GA if strip_telnet_ga is set. */
+                       if ( strip_telnet_ga && raw_pos < l->raw_len - 1 &&
+                            l->raw[raw_pos] == (char) IAC &&
+                            ( l->raw[raw_pos+1] == (char) GA ||
+                              l->raw[raw_pos+1] == (char) EOR ) )
+                         raw_pos += 2;
+                       else
+                         ADD_CHAR( l->raw[raw_pos++] );
+                    }
 	       }
 	     else
 	       {
