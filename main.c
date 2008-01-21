@@ -1635,6 +1635,7 @@ void module_process_server_paragraph( LINES *l )
    mod_section = NULL;
    
    clientf_modifies_suffix = 0;
+   current_paragraph = NULL;
 }
 
 
@@ -2710,7 +2711,7 @@ int line_is_valid( int *line, char *func )
 {
    if ( !current_paragraph )
      {
-	debugf( "Function '%s' called without a proper paragraph." );
+	debugf( "Function '%s' called without a proper paragraph.", func );
 	return 0;
      }
    
@@ -3031,6 +3032,7 @@ void check_timers( )
                /* Remove first, execute later. Why? Because it may be added again. */
                unlink_timer( t );
                
+               current_mod = t->mod;
                if ( t->callback )
                  (*t->callback)( t );
                
@@ -3117,6 +3119,8 @@ TIMER *add_timer( const char *name, float delay, void (*cb)( TIMER *timer ),
    t->data[0] = d0;
    t->data[1] = d1;
    t->data[2] = d2;
+   
+   t->mod = current_mod;
    
    return t;
 }
@@ -3812,18 +3816,18 @@ void process_client_line( char *buf )
 		       p++;
 		    }
 		  *(b++) = '\n';
-		  *(b++) = '>';
-		  *(b++) = (char) IAC;
-		  *(b++) = (char) GA;
-		  *b = 0;
+                  memcpy( b, last_prompt, last_prompt_len );
+                  b += last_prompt_len;
 		  
 		  clientfb( "Processing buffer.." );
-		  process_buffer( buf2, strlen( buf2 ) );
+		  process_buffer( buf2, b - buf2 );
+                  
+                  return;
 	       }
 	  }
 	else if ( !strcmp( buf, "`echo" ) )
 	  {
-	     clientfb( "Usage: `echo <string>" );
+	     clientfb( "Usage: `echo line1$line2$etc" );
 	  }
 	else if ( !strncmp( buf, "`sendatcp", 9 ) )
 	  {
@@ -4713,12 +4717,12 @@ void print_paragraph( LINES *l )
 {
    static char *output_buffer;
    static int buffer_size;
-   int prompt_start = 0;
    int normal_pos = 0;
    int raw_pos = 0;
    int pos = 0, c;
    int line = 1;
    int lines_hidden = 0;
+   int first = 1;
    char *p;
    
    if ( buffer_size != 256 )
@@ -4735,13 +4739,6 @@ void print_paragraph( LINES *l )
        output_buffer = realloc( output_buffer, ( buffer_size += 256 ) ); \
       output_buffer[pos++] = (ch); }
    
-   if ( !sent_something && l->len[1] )
-     {
-	ADD_CHAR( '\n' );
-     }
-   else
-     sent_something = 0;
-   
    for ( line = 1; line <= l->nr_of_lines + 1; line++ )
      {
 	/* Prompt. */
@@ -4751,15 +4748,25 @@ void print_paragraph( LINES *l )
 	     if ( l->nr_of_lines &&
 		  l->nr_of_lines == lines_hidden )
 	       l->line_info[line].hide_line = 1;
-	     
-	     /* Remember the beginning of the prompt. */
-	     prompt_start = pos;
 	  }
 	
 	/* Remember the number of lines that were gagged. */
 	else if ( l->line_info[line].hide_line )
 	  lines_hidden++;
 	
+        if ( first && !l->line_info[line].hide_line )
+          {
+             if ( !sent_something && l->len[line] )
+               {
+                  ADD_CHAR( '\r' );
+                  ADD_CHAR( '\n' );
+               }
+             else
+               sent_something = 0;
+             
+             first = 0;
+          }
+        
 	p = l->line_info[line].prefix;
 	if ( p )
 	  while ( *p )
@@ -4785,13 +4792,17 @@ void print_paragraph( LINES *l )
 		      ADD_CHAR( *(p++) );
 	       }
 	     
+             /* At the end, before \n or IAC-GA, put the suffix. */
 	     if ( c == l->len[line] )
 	       {
-		  p = l->line_info[line].replace;
-		  if ( p )
-		    while ( *p )
-		      ADD_CHAR( *(p++) );
-		  
+                  if ( !l->line_info[line].hide_line )
+                    {
+                       p = l->line_info[line].replace;
+                       if ( p )
+                         while ( *p )
+                           ADD_CHAR( *(p++) );
+                    }
+                  
 		  p = l->line_info[line].suffix;
 		  if ( p )
 		    while ( *p )
@@ -4805,13 +4816,6 @@ void print_paragraph( LINES *l )
 		  /* This should be the IAC-GA, but can be anything. */
 		  while( raw_pos < l->raw_len )
 		    ADD_CHAR( l->raw[raw_pos++] );
-		  
-		  /* Store it, so we can show it again with show_prompt. */
-		  if ( last_prompt )
-		    free( last_prompt );
-		  last_prompt = malloc( pos - prompt_start + 1 );
-		  memcpy( last_prompt, output_buffer + prompt_start, pos - prompt_start );
-		  last_prompt_len = pos - prompt_start;
 	       }
 	     else
 	       {
@@ -4820,6 +4824,8 @@ void print_paragraph( LINES *l )
 		       ( !l->line_info[line].replace ||
 			 l->raw[raw_pos] == '\n' ) )
 		    {
+                       if ( l->raw[raw_pos] == '\n' )
+                         ADD_CHAR( '\r' );
 		       ADD_CHAR( l->raw[raw_pos] );
 		    }
 		  
@@ -5105,6 +5111,13 @@ void process_buffer_new( char *raw_buffer, int bytes )
 		       /* Gathered an entire paragraph! Now, let's do
 			* something with it! */
 		       
+                       /* Store the prompt, so we can show it again
+                        * with show_prompt. */
+                       if ( last_prompt )
+                         free( last_prompt );
+                       last_prompt_len = raw_pos - l.raw_line_start[l.nr_of_lines+1] + 1;
+                       last_prompt = malloc( last_prompt_len );
+                       memcpy( last_prompt, l.raw + l.raw_line_start[l.nr_of_lines+1], last_prompt_len );
 		       
 		       if ( show_processing_time )
 			 gettimeofday( &tv1, NULL );
@@ -5219,10 +5232,16 @@ void show_prompt( )
 {
    char *last_section;
    
+   if ( current_paragraph )
+     {
+        debugf( "Someone called show_prompt() from a paragraph!" );
+        return;
+     }
+   
    last_section = mb_section;
    mb_section = "Showing prompt";
    
-   send_to_client( last_prompt, last_prompt_len );
+   process_buffer( last_prompt, last_prompt_len );
    
    sent_something = 0;
    

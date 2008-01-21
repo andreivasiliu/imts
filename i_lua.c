@@ -700,7 +700,7 @@ void paragraph_manip( lua_State *L,
 		     void (*func)( char *string ) )
 {
    char *str;
-   int line, use_line = 0;
+   int line = 0, use_line = 0;
    
    if ( lua_isnumber( L, 1 ) )
      {
@@ -746,7 +746,7 @@ static int ilua_insert( lua_State *L )
 {
    const char *str;
    int pos;
-   int line, use_line = 0;
+   int line = 0, use_line = 0;
    
    if ( lua_isnumber( L, 2 ) )
      {
@@ -796,8 +796,7 @@ static int ilua_show_prompt( lua_State *L )
 static int ilua_get_color_at( lua_State *L )
 {
    char *colour;
-   int line;
-   int use_line = 0;
+   int line = 0, use_line = 0;
    int pos;
    
    if ( !current_paragraph )
@@ -916,6 +915,7 @@ void ilua_timer( TIMER *self )
    lua_State *L;
    int args, i;
    int timertable;
+   char current_work_dir[4096];
    
    for ( m = ilua_modules; m; m = m->next )
      if ( m->L == (lua_State *) self->pdata[0] )
@@ -951,6 +951,16 @@ void ilua_timer( TIMER *self )
         return;
      }
    
+   if ( m->work_dir )
+     {
+        getcwd( current_work_dir, 4096 );
+        if ( chdir( m->work_dir ) )
+          {
+             debugf( "%s (ILua): %s: %s", m->name, m->work_dir,
+                     strerror( errno ) );
+          }
+     }
+   
    /* Get the arguments ready... */
    args = lua_tointeger( L, -2 );
    lua_checkstack( L, args );
@@ -969,6 +979,9 @@ void ilua_timer( TIMER *self )
    
    /* The table, error handler, and number of arguments. */
    lua_pop( L, 3 );
+   
+   if ( m->work_dir )
+     chdir( current_work_dir );
 }
 
 
