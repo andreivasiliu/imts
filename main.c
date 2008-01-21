@@ -4739,6 +4739,14 @@ void print_paragraph( LINES *l )
        output_buffer = realloc( output_buffer, ( buffer_size += 256 ) ); \
       output_buffer[pos++] = (ch); }
    
+   /* First line empty? Gag it until we find a non-gagged line. */
+   if ( l->nr_of_lines && !l->len[1] &&
+        !l->line_info[1].replace )
+     {
+        l->line_info[1].hide_line = 1;
+        sent_something = 0;
+     }
+   
    for ( line = 1; line <= l->nr_of_lines + 1; line++ )
      {
 	/* Prompt. */
