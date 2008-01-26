@@ -5862,6 +5862,7 @@ void process_line( char *line, int len )
           "You struggle to escape the quicksand, but only manage to partly free yourself.",
           "A loud sucking noise can be heard as you try desperately to escape the mud.",
           "You struggle to escape the mud, but only manage to partly free yourself.",
+          "A strange force prevents the movement.",
           
           /* Lusternia. */
           "Now now, don't be so hasty!",
