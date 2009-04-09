@@ -1,4 +1,4 @@
 @echo off
-PATH=%PATH%;d:\programs\dev-cpp\bin\
+PATH=%PATH%;C:\Dev-Cpp\bin
 make -f Makefile.win clean
 pause

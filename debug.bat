@@ -1,3 +1,3 @@
 @echo off
-PATH=%PATH%;d:\programs\dev-cpp\bin\
+PATH=%PATH%;d:\Dev-Cpp\bin
 gdb ./mb-core.exe

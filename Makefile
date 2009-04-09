@@ -3,7 +3,7 @@
 # Export BUILDTYPE as: nothing, or "dist"
 
 # Files to be built.
-SO_FILES = imperian.so i_mapper.so i_script.so i_lua.so
+SO_FILES = i_mapper.so i_script.so i_lua.so
 BIN_FILES = bot
 DIST_FILES = ChangeLog characters COPYING data IMap mhelp options *.is
 
