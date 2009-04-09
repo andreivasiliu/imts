@@ -264,7 +264,6 @@ struct trigger_data
    char *name;
    
    short prompt;
-   short raw;
    short regex;
    short continuous;
    
@@ -515,8 +514,9 @@ system_function sysfunc_get_mb_variable;
 system_function sysfunc_replace_line;
 system_function sysfunc_prefix;
 system_function sysfunc_suffix;
-system_function sysfunc_gag_line;
-system_function sysfunc_gag_ending;
+system_function sysfunc_hide_line;
+//system_function sysfunc_gag_line;
+//system_function sysfunc_gag_ending;
 
 struct sys_function_data
 {
@@ -545,8 +545,9 @@ struct sys_function_data
      { "replace_line",		1, 0, sysfunc_replace_line	},
      { "prefix",		1, 0, sysfunc_prefix		},
      { "suffix",		1, 0, sysfunc_suffix		},
-     { "gag_line",		0, 0, sysfunc_gag_line		},
-     { "gag_ending",		0, 0, sysfunc_gag_ending	},
+     { "hide_line",		0, 0, sysfunc_hide_line		},
+//   { "gag_line",		0, 0, sysfunc_gag_line		},
+//   { "gag_ending",		0, 0, sysfunc_gag_ending	},
    
      { NULL }
 };
@@ -591,20 +592,16 @@ VALUE *top_of_allocated_memory_for_locals;
 
 VARIABLE *function_return_value;
 
-LINE *this_line;
-
 
 INSTR *compile_command( int priority );
 int run_code( CODE *code );
 
 
-
 /* Here we register our functions. */
 
 void scripter_module_init_data( );
-void scripter_process_server_line( LINE *l );
-void scripter_process_server_prompt( LINE *l );
 int  scripter_process_client_aliases( char *cmd );
+void scripter_process_server_paragraph( LINES *l );
 
 
 ENTRANCE( scripter_module_register )
@@ -615,8 +612,7 @@ ENTRANCE( scripter_module_register )
    self->id = i_script_id;
    
    self->init_data = scripter_module_init_data;
-   self->process_server_line = scripter_process_server_line;
-   self->process_server_prompt = scripter_process_server_prompt;
+   self->process_server_paragraph = scripter_process_server_paragraph;
    self->process_client_command = NULL;
    self->process_client_aliases = scripter_process_client_aliases;
    
@@ -650,13 +646,11 @@ void exec_trigger( TRIGGER *trigger )
 
 
 
-void check_triggers( LINE *l, int prompt )
+void check_triggers( char *line, int len, int prompt )
 {
    SCRIPT_GROUP *group;
    SCRIPT *script;
    TRIGGER *trigger;
-   char *line;
-   int len;
    int rc;
    
    for ( group = groups; group; group = group->next )
@@ -665,17 +659,6 @@ void check_triggers( LINE *l, int prompt )
          {
             if ( trigger->prompt != prompt )
               continue;
-            
-            if ( !trigger->raw )
-              {
-                 line = l->line;
-                 len = l->len;
-              }
-            else
-              {
-                 line = l->raw_line;
-                 len = l->raw_len;
-              }
             
             if ( trigger->everything )
               {
@@ -712,47 +695,47 @@ void check_triggers( LINE *l, int prompt )
 }
 
 
-
-void scripter_process_server_line( LINE *l )
+void add_to_search_buffer( char *line, int len )
 {
    DEBUG( "scripter_process_server_line" );
    
-   this_line = l;
-   
-   /* Check for triggers. */
-   check_triggers( l, 0 );
-   
    /* Add the line in our search-back buffer. */
-   if ( l->len )
+   if ( len )
      {
-	if ( l->len + sb_size + 10 > SB_FULL_SIZE )
+	if ( len + sb_size + 10 > SB_FULL_SIZE )
 	  {
 	     /* Copy the second half onto the first half. */
 	     memmove( searchback_buffer, searchback_buffer + SB_HALF_SIZE, SB_HALF_SIZE );
 	     sb_size -= SB_HALF_SIZE;
 	  }
-	
-	memcpy( searchback_buffer + sb_size, l->line, l->len );
-	memcpy( searchback_buffer + sb_size + l->len, "\n", 2 );
-	sb_size += l->len + 1;
+
+	memcpy( searchback_buffer + sb_size, line, len );
+	memcpy( searchback_buffer + sb_size + len, "\n", 2 );
+	sb_size += len + 1;
      }
-   
-   this_line = NULL;
 }
 
 
 
-void scripter_process_server_prompt( LINE *l )
+void scripter_process_server_paragraph( LINES *l )
 {
-   DEBUG( "scripter_process_server_prompt" );
-   
-   this_line = l;
-   
-   check_triggers( l, 1 );
-   
-   this_line = NULL;
+    int line;
+    
+    for ( line = 1; line <= l->nr_of_lines + 1; line++ )
+    {
+        set_line( line );
+        
+        if ( line <= l->nr_of_lines )
+        {
+            check_triggers( l->line[line], l->len[line], 0 );
+            add_to_search_buffer( l->line[line], l->len[line] );
+        }
+        else
+        {
+            check_triggers( l->line[line], l->len[line], 1 );
+        }
+    }
 }
-
 
 
 void set_args( char *line )
@@ -2937,8 +2920,6 @@ int load_script_trigger( SCRIPT *script )
 	
 	if ( !strcmp( buf, "prompt" ) )
 	  trigger->prompt = 1;
-	else if ( !strcmp( buf, "raw" ) )
-	  trigger->raw = 1;
 	else if ( !strcmp( buf, "regex" ) )
 	  trigger->regex = 1;
 	else if ( !strcmp( buf, "continuous" ) )
@@ -5228,6 +5209,14 @@ SYSFUNC( sysfunc_suffix )
 
 
 
+SYSFUNC( sysfunc_hide_line )
+{
+    hide_line( );
+    
+    return 0;
+}
+
+/*
 SYSFUNC( sysfunc_gag_line )
 {
    if ( this_line )
@@ -5244,7 +5233,7 @@ SYSFUNC( sysfunc_gag_ending )
      this_line->gag_ending = 1;
    
    return 0;
-}
+}*/
 
 
 
